@@ -12,7 +12,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "maker:create": "node tools/apps-in-toss-maker/create-app.mjs"
   },
   "dependencies": {
     "@apps-in-toss/web-framework": "^2.7.0",

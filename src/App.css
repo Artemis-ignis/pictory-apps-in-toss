@@ -391,11 +391,17 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   min-height: 148px;
   padding: 18px 16px 14px;
   border: 1px solid var(--line);
   border-radius: 20px;
   overflow: hidden;
+}
+
+.summary-hero > div {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .summary-hero h1 {
@@ -421,6 +427,16 @@
 
 .saved-hero {
   background: linear-gradient(110deg, #eefbf5, #ffffff);
+}
+
+.saved-hero > div {
+  flex: 0 1 180px;
+}
+
+.saved-hero .mascot-card {
+  width: 126px;
+  height: 126px;
+  margin-right: -6px;
 }
 
 .bucket-list {
@@ -669,6 +685,11 @@
   padding: 18px;
   border-radius: 18px;
   background: #f4f8ff;
+}
+
+.saved-empty .mascot-empty {
+  width: 104px;
+  height: 104px;
 }
 
 .saved-empty strong,
