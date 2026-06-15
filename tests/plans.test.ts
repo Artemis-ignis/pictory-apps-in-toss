@@ -43,27 +43,46 @@ describe("usage plans", () => {
     );
   });
 
-  it("uses server AI only after ad revenue or paid plan entitlement exists", () => {
+  it("uses server AI for free users only when ad credits cover the batch", () => {
     expect(
-      canUseServerAiRefinement({
-        ...defaultPictoryState,
-        planId: "free",
-        credits: 0,
-      }),
+      canUseServerAiRefinement(
+        {
+          ...defaultPictoryState,
+          planId: "free",
+          credits: 0,
+        },
+        1,
+      ),
     ).toBe(false);
     expect(
-      canUseServerAiRefinement({
-        ...defaultPictoryState,
-        planId: "free",
-        credits: 100,
-      }),
+      canUseServerAiRefinement(
+        {
+          ...defaultPictoryState,
+          planId: "free",
+          credits: 1,
+        },
+        40,
+      ),
+    ).toBe(false);
+    expect(
+      canUseServerAiRefinement(
+        {
+          ...defaultPictoryState,
+          planId: "free",
+          credits: 40,
+        },
+        40,
+      ),
     ).toBe(true);
     expect(
-      canUseServerAiRefinement({
-        ...defaultPictoryState,
-        planId: "plus",
-        credits: 0,
-      }),
+      canUseServerAiRefinement(
+        {
+          ...defaultPictoryState,
+          planId: "plus",
+          credits: 0,
+        },
+        40,
+      ),
     ).toBe(true);
   });
 

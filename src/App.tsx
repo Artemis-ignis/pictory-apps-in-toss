@@ -176,14 +176,17 @@ function App() {
     setIsScanning(true);
     setScanMessage("픽토리가 사진 신호를 읽고 있어요.");
     const classified = await classifyAlbumItems(nextItems, statusMap, {
-      refineWithServerAi: canUseServerAiRefinement(entitledState),
+      refineWithServerAi: canUseServerAiRefinement(
+        entitledState,
+        nextItems.length,
+      ),
     });
     const recentItems = await prepareRecentItemsForStorage(classified);
     const scannedAt = new Date().toISOString();
     setItems(classified);
     setState((previous) => {
       const consumedState = consumeScanAllowance(
-        getEntitledBillingState(previous, billingRuntime),
+        getEntitledBillingState(previous, billingRuntime, verifiedPlanId),
         classified.length,
       );
 

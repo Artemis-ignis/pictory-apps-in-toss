@@ -151,6 +151,9 @@ export function canSaveMore(state: PersistedPictoryState, savedCount: number) {
   return savedCount < getPlan(state.planId).storageLimit;
 }
 
-export function canUseServerAiRefinement(state: PersistedPictoryState) {
-  return state.planId !== "free" || state.credits > 0;
+export function canUseServerAiRefinement(
+  state: PersistedPictoryState,
+  batchCount: number,
+) {
+  return state.planId !== "free" || state.credits >= batchCount;
 }

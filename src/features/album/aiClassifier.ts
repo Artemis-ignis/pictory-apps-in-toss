@@ -18,6 +18,20 @@ interface AiClassificationResponse {
   items?: AiClassificationPatch[];
 }
 
+type AiClassificationRequestSignals =
+  | NonNullable<ClassifiedItem["signals"]>
+  | Omit<NonNullable<ClassifiedItem["signals"]>, "perceptualHash">;
+
+interface AiClassificationRequestItem {
+  id: string;
+  fileName?: string;
+  createdAt?: string;
+  hints: string[];
+  signals: AiClassificationRequestSignals | undefined;
+  imageDataUri?: string;
+  redacted?: boolean;
+}
+
 const MAX_AI_REFINEMENT_ITEMS = 40;
 const AI_IMAGE_MAX_EDGE = 512;
 
@@ -43,16 +57,7 @@ export async function refineWithAiClassifier(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         schemaVersion: 1,
-        items: await Promise.all(
-          candidates.map(async (item) => ({
-            id: item.id,
-            fileName: item.fileName,
-            createdAt: item.createdAt,
-            hints: item.hints ?? [],
-            signals: item.signals,
-            imageDataUri: await shrinkImageForAi(item.dataUri),
-          })),
-        ),
+        items: await Promise.all(candidates.map(toAiClassificationRequestItem)),
       }),
     });
 
@@ -69,6 +74,54 @@ export async function refineWithAiClassifier(
   } catch {
     return items;
   }
+}
+
+async function toAiClassificationRequestItem(
+  item: ClassifiedItem,
+): Promise<AiClassificationRequestItem> {
+  const imageDataUri = canAttachImageForAi(item)
+    ? await shrinkImageForAi(item.dataUri)
+    : undefined;
+
+  if (!imageDataUri) {
+    return toRedactedAiClassificationRequestItem(item);
+  }
+
+  return {
+    id: item.id,
+    fileName: item.fileName,
+    createdAt: item.createdAt,
+    hints: item.hints ?? [],
+    signals: item.signals,
+    imageDataUri,
+  };
+}
+
+function canAttachImageForAi(item: ClassifiedItem) {
+  return item.privacy === "normal" && item.cleanBucketId !== "sensitive";
+}
+
+function toRedactedAiClassificationRequestItem(
+  item: ClassifiedItem,
+): AiClassificationRequestItem {
+  return {
+    id: item.id,
+    hints: item.hints ?? [],
+    signals: withoutPerceptualHash(item.signals),
+    redacted: true,
+  };
+}
+
+function withoutPerceptualHash(
+  signals: ClassifiedItem["signals"],
+): Omit<NonNullable<ClassifiedItem["signals"]>, "perceptualHash"> | undefined {
+  if (!signals) {
+    return undefined;
+  }
+
+  const { perceptualHash, ...redactedSignals } = signals;
+  void perceptualHash;
+  return redactedSignals;
 }
 
 function needsAiRefinement(item: ClassifiedItem) {
@@ -97,15 +150,59 @@ export function applyAiClassificationPatch(
   return {
     ...item,
     categoryId: patch.categoryId ?? item.categoryId,
-    cleanBucketId: patch.cleanBucketId ?? item.cleanBucketId,
+    cleanBucketId: resolveCleanBucketPatch(
+      item.cleanBucketId,
+      patch.cleanBucketId,
+    ),
     confidence,
-    privacy: patch.privacy ?? item.privacy,
+    privacy: resolvePrivacyPatch(item.privacy, patch.privacy),
     reasons:
       patch.reasons && patch.reasons.length > 0
         ? patch.reasons.slice(0, 3)
         : item.reasons,
     hints: Array.from(new Set([...(item.hints ?? []), ...(patch.hints ?? [])])),
   };
+}
+
+const privacyStrength: Record<ClassifiedItem["privacy"], number> = {
+  normal: 0,
+  review: 1,
+  sensitive: 2,
+};
+
+const cleanBucketStrength: Record<CleanBucketId, number> = {
+  keep: 0,
+  similar: 0,
+  dark: 0,
+  capturePile: 0,
+  needsReview: 1,
+  sensitive: 2,
+};
+
+function resolvePrivacyPatch(
+  current: ClassifiedItem["privacy"],
+  patched: ClassifiedItem["privacy"] | undefined,
+) {
+  if (!patched) {
+    return current;
+  }
+
+  return privacyStrength[patched] < privacyStrength[current]
+    ? current
+    : patched;
+}
+
+function resolveCleanBucketPatch(
+  current: CleanBucketId,
+  patched: CleanBucketId | undefined,
+) {
+  if (!patched) {
+    return current;
+  }
+
+  return cleanBucketStrength[patched] < cleanBucketStrength[current]
+    ? current
+    : patched;
 }
 
 function clampConfidence(value: number) {
@@ -118,7 +215,7 @@ async function shrinkImageForAi(dataUri: string) {
     typeof Image === "undefined" ||
     !dataUri.startsWith("data:image/")
   ) {
-    return dataUri;
+    return undefined;
   }
 
   try {
@@ -134,12 +231,13 @@ async function shrinkImageForAi(dataUri: string) {
     canvas.height = height;
     const context = canvas.getContext("2d");
     if (!context) {
-      return dataUri;
+      return undefined;
     }
     context.drawImage(image, 0, 0, width, height);
-    return canvas.toDataURL("image/jpeg", 0.72);
+    const encoded = canvas.toDataURL("image/jpeg", 0.72);
+    return encoded.startsWith("data:image/") ? encoded : undefined;
   } catch {
-    return dataUri;
+    return undefined;
   }
 }
 

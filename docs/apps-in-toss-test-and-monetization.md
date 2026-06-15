@@ -162,10 +162,34 @@ flowchart LR
         "perceptualHash": "..."
       },
       "imageDataUri": "data:image/jpeg;base64,..."
+    },
+    {
+      "id": "sensitive-photo-id",
+      "hints": ["id", "sensitive"],
+      "signals": {
+        "width": 720,
+        "height": 960,
+        "aspectRatio": 0.75,
+        "brightness": 0.7,
+        "saturation": 0.15,
+        "edgeDensity": 0.4,
+        "textLineScore": 0.6,
+        "colorVariance": 0.2
+      },
+      "redacted": true
     }
   ]
 }
 ```
+
+`privacy !== "normal"` 이거나 `cleanBucketId === "sensitive"` 인 항목은
+`imageDataUri`를 보내지 않고 `redacted: true`로 보낸다. 이미지 리사이즈나
+인코딩을 할 수 없는 환경에서도 원본 `dataUri`로 대체하지 않고 같은 방식으로
+redacted 처리한다. redacted 항목은 원본 `fileName`, 정확한 `createdAt`,
+`perceptualHash`를 보내지 않고 힌트와 비식별 신호만 보낸다. 서버 응답이 로컬
+`privacy`의 `review`/`sensitive` 또는 `cleanBucketId`의
+`needsReview`/`sensitive` 판정을 더 약하게 바꾸려 하면 클라이언트는 기존
+판정을 유지하고, 더 강한 판정으로 올리는 응답만 반영한다.
 
 응답:
 
@@ -202,6 +226,8 @@ flowchart LR
 - 민감정보: 주민등록증, 여권, 운전면허증, 카드번호, 계좌번호, 인증번호, 계약서, 병원/금융 문서
 
 이미지 원본은 저장하지 않고, 서버 로그에도 base64 본문을 남기지 않는다.
+민감/검토 항목은 클라이언트에서 이미지 본문을 아예 제외하므로 서버가 원본을
+받는 경로도 만들지 않는다.
 
 ## 수익 구조
 
