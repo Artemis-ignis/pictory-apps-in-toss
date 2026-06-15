@@ -107,7 +107,7 @@ describe("rewardAd config", () => {
 
     showHandler({
       type: "userEarnedReward",
-      data: { unitAmount: 120 },
+      data: { unitType: "scan", unitAmount: 120 },
     });
     await Promise.resolve();
     expect(settled).toBe(false);
@@ -118,6 +118,7 @@ describe("rewardAd config", () => {
       reward: 120,
       rewardId: expect.any(String),
       source: "native",
+      unitType: "scan",
     });
   });
 

@@ -27,6 +27,7 @@ PICTORY_SESSION_SECRET=${"t".repeat(40)}
 PICTORY_PLUS_SUBSCRIPTION_SKU=ait.plus.monthly
 PICTORY_PRO_SUBSCRIPTION_SKU=ait.pro.monthly
 PICTORY_SUBSCRIPTION_VALID_DAYS=32
+PICTORY_REWARD_REQUIRE_NATIVE_EVENT=true
 APPS_IN_TOSS_MTLS_CERT_PATH=client-cert.pem
 APPS_IN_TOSS_MTLS_KEY_PATH=client-key.pem
 OPENAI_API_KEY=${"sk-" + "a".repeat(32)}
@@ -62,6 +63,7 @@ PICTORY_SESSION_SECRET=short
 PICTORY_PLUS_SUBSCRIPTION_SKU=server-plus
 PICTORY_PRO_SUBSCRIPTION_SKU=server-pro
 PICTORY_SUBSCRIPTION_VALID_DAYS=0
+PICTORY_REWARD_REQUIRE_NATIVE_EVENT=false
 APPS_IN_TOSS_MTLS_CERT_PATH=missing-cert.pem
 APPS_IN_TOSS_MTLS_KEY_PATH=missing-key.pem
 OPENAI_API_KEY=replace_with_openai_api_key_server_only
@@ -89,6 +91,7 @@ PICTORY_AI_LOG_RAW_IMAGES=true
         "OPENAI_API_KEY is not a placeholder",
         "raw image logging is disabled",
         "free server AI quota is zero",
+        "reward grants require native ad evidence",
       ]),
     );
   });

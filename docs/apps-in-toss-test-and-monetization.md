@@ -35,6 +35,7 @@ PICTORY_SESSION_SECRET=replace_with_long_random_session_secret
 PICTORY_PLUS_SUBSCRIPTION_SKU=replace_with_toss_plus_subscription_sku
 PICTORY_PRO_SUBSCRIPTION_SKU=replace_with_toss_pro_subscription_sku
 PICTORY_SUBSCRIPTION_VALID_DAYS=32
+PICTORY_REWARD_REQUIRE_NATIVE_EVENT=true
 APPS_IN_TOSS_MTLS_CERT_PATH=replace_with_server_only_mtls_cert_path
 APPS_IN_TOSS_MTLS_KEY_PATH=replace_with_server_only_mtls_key_path
 OPENAI_API_KEY=replace_with_openai_api_key_server_only
@@ -214,6 +215,7 @@ flowchart LR
 - 광고를 본 뒤 받은 크레딧이 있을 때 서버 AI 정밀 분류를 열어준다.
 - 유료 사용자는 월 제공량 안에서 서버 AI 정밀 분류를 제공한다.
 - 같은 사진은 perceptual hash 기준으로 중복 과금하지 않는다.
+- 광고 크레딧 지급 서버는 rewardId만 믿지 않고 `source=native`, 광고 그룹 ID, `unitType`, `unitAmount`를 확인한다.
 - 서버는 사용자별 월/일/분당 한도를 강제하고, AI 호출 전에 quota를 예약한다.
 - `PICTORY_AI_DAILY_LIMIT_PER_USER`는 사용자별 일일 서버 AI 이미지 수 한도다.
 - `PICTORY_AI_DAILY_GLOBAL_LIMIT`는 서비스 전체 일일 서버 AI 이미지 수 한도다.

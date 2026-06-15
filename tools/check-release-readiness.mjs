@@ -59,6 +59,7 @@ function checkEnvExample() {
     "PICTORY_PLUS_SUBSCRIPTION_SKU",
     "PICTORY_PRO_SUBSCRIPTION_SKU",
     "PICTORY_SUBSCRIPTION_VALID_DAYS",
+    "PICTORY_REWARD_REQUIRE_NATIVE_EVENT",
     "APPS_IN_TOSS_MTLS_CERT_PATH",
     "APPS_IN_TOSS_MTLS_KEY_PATH",
     "OPENAI_API_KEY",
@@ -139,6 +140,10 @@ function checkEnvExample() {
   record(
     env.get("PICTORY_AI_LOG_RAW_IMAGES") === "false",
     ".env.example keeps raw image logging disabled",
+  );
+  record(
+    env.get("PICTORY_REWARD_REQUIRE_NATIVE_EVENT") === "true",
+    ".env.example requires native reward evidence",
   );
   record(
     ["low", "auto", "high"].includes(env.get("OPENAI_IMAGE_DETAIL") ?? ""),

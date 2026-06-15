@@ -8,6 +8,7 @@ const reward: RewardedScanAdResult = {
   source: "native",
   adGroupId: "reward-ad-group",
   usingTestAdGroup: false,
+  unitType: "scan",
 };
 
 describe("rewardCredit", () => {
@@ -60,7 +61,14 @@ describe("rewardCredit", () => {
         }),
       }),
     );
-    expect(JSON.parse(requestBody)).toEqual({ rewardId: "reward-event-1" });
+    expect(JSON.parse(requestBody)).toEqual({
+      rewardId: "reward-event-1",
+      adGroupId: "reward-ad-group",
+      source: "native",
+      unitType: "scan",
+      unitAmount: 100,
+      usingTestAdGroup: false,
+    });
   });
 
   it("does not fall back to local credits when the configured server endpoint fails", async () => {

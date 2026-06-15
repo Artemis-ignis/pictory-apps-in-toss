@@ -22,6 +22,8 @@ const server = spawn(process.execPath, [serverEntry], {
     PORT: String(port),
     PICTORY_LEDGER_FILE: ledgerFile,
     PICTORY_SERVER_SECRET: "server-secret",
+    VITE_TOSS_REWARDED_AD_GROUP_ID: "ait.prod.rewarded",
+    PICTORY_REWARD_REQUIRE_NATIVE_EVENT: "true",
     PICTORY_AI_PLUS_MONTHLY_QUOTA: "10",
     PICTORY_AI_RATE_LIMIT_PER_MINUTE: "10",
     PICTORY_AI_LOG_RAW_IMAGES: "false",
@@ -36,6 +38,19 @@ server.stderr.on("data", (chunk) => output.push(String(chunk)));
 try {
   const baseUrl = `http://127.0.0.1:${port}`;
   await waitForHealth(`${baseUrl}/healthz`);
+
+  const reward = await postJson(`${baseUrl}/pictory/reward`, {
+    headers: internalHeaders(),
+    body: {
+      rewardId: "ad-event-built-qa",
+      adGroupId: "ait.prod.rewarded",
+      source: "native",
+      unitType: "scan",
+      unitAmount: 100,
+      usingTestAdGroup: false,
+    },
+  });
+  assertStatus(reward, 200, "reward");
 
   const entitlement = await postJson(`${baseUrl}/pictory/entitlement`, {
     headers: internalHeaders(),
@@ -82,7 +97,13 @@ try {
       {
         ok: true,
         url: baseUrl,
-        checked: ["healthz", "entitlement", "classify", "account-delete"],
+        checked: [
+          "healthz",
+          "reward",
+          "entitlement",
+          "classify",
+          "account-delete",
+        ],
       },
       null,
       2,

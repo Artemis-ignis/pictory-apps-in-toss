@@ -30,8 +30,8 @@ npm run snapshot:release
 
 `npm run build`는 `pictory.ait`를 생성합니다.
 `npm run qa:server:built`는 서버 API를 `dist-server`로 빌드한 뒤 실제 Node
-프로세스로 띄워 `/healthz`, `/pictory/entitlement`, `/pictory/classify`,
-`/pictory/account`를 smoke 검증합니다.
+프로세스로 띄워 `/healthz`, `/pictory/reward`, `/pictory/entitlement`,
+`/pictory/classify`, `/pictory/account`를 smoke 검증합니다.
 `npm run check:production-env -- --file .env.production`은 운영 후보 환경값이
 테스트 광고 ID, placeholder endpoint, SKU 불일치, 짧은 secret, mTLS 파일 누락,
 원본 이미지 로그 설정 실수로 배포되지 않게 막습니다. `.env.production`은
@@ -77,6 +77,7 @@ PICTORY_SESSION_SECRET=replace_with_long_random_session_secret
 PICTORY_PLUS_SUBSCRIPTION_SKU=replace_with_toss_plus_subscription_sku
 PICTORY_PRO_SUBSCRIPTION_SKU=replace_with_toss_pro_subscription_sku
 PICTORY_SUBSCRIPTION_VALID_DAYS=32
+PICTORY_REWARD_REQUIRE_NATIVE_EVENT=true
 APPS_IN_TOSS_MTLS_CERT_PATH=replace_with_server_only_mtls_cert_path
 APPS_IN_TOSS_MTLS_KEY_PATH=replace_with_server_only_mtls_key_path
 OPENAI_API_KEY=replace_with_openai_api_key_server_only
@@ -100,7 +101,7 @@ PICTORY_AI_LOG_RAW_IMAGES=false
 - 브라우저 개발 환경용 실제 이미지 파일 선택
 - 캔버스 기반 이미지 신호 분석과 종류/정리 후보 분류
 - 운영 서버 AI 분류 endpoint 연결부와 OpenAI Responses API 기본 분류기
-- 서버 권위 광고 크레딧/유료 월 quota 원장 모듈
+- 네이티브 보상형 광고 이벤트 증거를 요구하는 서버 권위 광고 크레딧/유료 월 quota 원장 모듈
 - 서명 세션 쿠키/Authorization 토큰 기반 서버 subject 검증
 - 사용자별/서비스 전체 서버 AI 일일 한도와 사용자별 분당 이미지 수 제한
 - 배포 런타임에 붙일 수 있는 `POST /pictory/classify` HTTP 어댑터
@@ -125,7 +126,7 @@ npm run qa:server:built
 `/pictory/classify`, `/pictory/account`, `/pictory/entitlement`를 실제 포트에서 호출하고, 파일 원장
 저장소가 이미지 본문 없이 사용량만 저장하며 계정 삭제가 되는지 확인합니다.
 `qa:server:built`는 배포용 서버 bundle을 실제 `node dist-server/pictoryNodeRuntime.js`로
-기동 가능한지 확인합니다.
+기동하고 reward/classify/delete smoke를 통과하는지 확인합니다.
 브라우저 앱은 서버 secret을 보내지 않으므로 운영 배포에서는 Node 런타임의
 `PICTORY_SESSION_SECRET`으로 검증되는 `pictory_session` 쿠키/Authorization
 토큰, `resolveSubjectId` 옵션, 또는 게이트웨이 미들웨어로 동일 출처 세션

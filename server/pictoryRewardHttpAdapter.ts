@@ -13,6 +13,7 @@ import {
 } from "./pictoryUsageLedger";
 
 type MaybePromise<T> = T | Promise<T>;
+const TEST_REWARDED_AD_GROUP_ID = "ait-ad-test-rewarded-id";
 
 interface PictoryRewardHttpHandlerOptions {
   store: PictoryUsageLedgerStore;
@@ -26,6 +27,11 @@ interface PictoryRewardHttpHandlerOptions {
 
 interface RewardRequestBody {
   rewardId?: string;
+  adGroupId?: string;
+  source?: string;
+  unitType?: string;
+  unitAmount?: number;
+  usingTestAdGroup?: boolean;
 }
 
 export function createPictoryRewardHttpHandler({
@@ -85,6 +91,20 @@ export function createPictoryRewardHttpHandler({
       );
     }
 
+    const evidenceError = validateRewardEvidence(body, env);
+    if (evidenceError) {
+      return jsonResponse(
+        400,
+        {
+          error: {
+            code: "invalid_reward_evidence",
+            message: evidenceError,
+          },
+        },
+        responseHeaders,
+      );
+    }
+
     const account =
       (await store.readAccount(subjectId)) ??
       createNewUsageAccount(subjectId, "free", now());
@@ -107,6 +127,47 @@ export function createPictoryRewardHttpHandler({
       responseHeaders,
     );
   };
+}
+
+function validateRewardEvidence(
+  body: RewardRequestBody,
+  env: Record<string, string | undefined>,
+) {
+  if (!shouldRequireNativeRewardEvidence(env)) {
+    return undefined;
+  }
+
+  const expectedAdGroupId = env.VITE_TOSS_REWARDED_AD_GROUP_ID?.trim();
+  if (body.source !== "native") {
+    return "Native rewarded ad evidence is required.";
+  }
+  if (!body.adGroupId || body.adGroupId === TEST_REWARDED_AD_GROUP_ID) {
+    return "Production rewarded ad group id is required.";
+  }
+  if (expectedAdGroupId && body.adGroupId !== expectedAdGroupId) {
+    return "Rewarded ad group id does not match server configuration.";
+  }
+  if (body.usingTestAdGroup === true) {
+    return "Test rewarded ad events cannot grant server credits.";
+  }
+  if (typeof body.unitType !== "string" || body.unitType.trim().length === 0) {
+    return "Reward unitType is required.";
+  }
+  if (
+    typeof body.unitAmount !== "number" ||
+    !Number.isFinite(body.unitAmount) ||
+    body.unitAmount <= 0
+  ) {
+    return "Reward unitAmount must be positive.";
+  }
+
+  return undefined;
+}
+
+function shouldRequireNativeRewardEvidence(
+  env: Record<string, string | undefined>,
+) {
+  return env.PICTORY_REWARD_REQUIRE_NATIVE_EVENT !== "false";
 }
 
 function parseRewardRequestBody(text: string): RewardRequestBody {

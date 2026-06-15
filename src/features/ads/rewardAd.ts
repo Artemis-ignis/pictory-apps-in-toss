@@ -25,11 +25,13 @@ export interface RewardedScanAdResult {
   adGroupId: string;
   usingTestAdGroup: boolean;
   rewardId: string;
+  unitType: string;
 }
 
 type NativeRewardAdResult = {
   reward: number;
   rewardId?: string;
+  unitType?: string;
   status:
     | Exclude<RewardedScanAdSource, "native" | "localFallback">
     | "rewarded";
@@ -89,6 +91,7 @@ export async function showRewardedScanAd(): Promise<RewardedScanAdResult> {
       adGroupId,
       usingTestAdGroup,
       rewardId: nativeReward.rewardId ?? createRewardId("native", adGroupId),
+      unitType: nativeReward.unitType ?? "scan",
     };
   }
 
@@ -104,6 +107,7 @@ export async function showRewardedScanAd(): Promise<RewardedScanAdResult> {
       adGroupId,
       usingTestAdGroup,
       rewardId: createRewardId("localFallback", adGroupId),
+      unitType: "scan",
     };
   }
 
@@ -113,6 +117,7 @@ export async function showRewardedScanAd(): Promise<RewardedScanAdResult> {
     adGroupId,
     usingTestAdGroup,
     rewardId: createRewardId(nativeReward.status, adGroupId),
+    unitType: "scan",
   };
 }
 
@@ -184,6 +189,7 @@ function waitForAdShow(adGroupId: string) {
   return new Promise<NativeRewardAdResult>((resolve, reject) => {
     let reward = 0;
     let rewardId: string | undefined;
+    let unitType: string | undefined;
     let settled = false;
     let cleanup = () => undefined;
 
@@ -206,6 +212,7 @@ function waitForAdShow(adGroupId: string) {
       onEvent: (event) => {
         if (event.type === "userEarnedReward") {
           reward = Number(event.data.unitAmount) || DEFAULT_SCAN_REWARD;
+          unitType = readRewardUnitType(event.data);
           rewardId = readRewardEventId(event.data);
         }
 
@@ -214,6 +221,7 @@ function waitForAdShow(adGroupId: string) {
             resolve({
               reward,
               rewardId,
+              unitType,
               status: reward > 0 ? "rewarded" : "dismissed",
             }),
           );
@@ -265,4 +273,15 @@ function readRewardEventId(data: unknown) {
   }
 
   return undefined;
+}
+
+function readRewardUnitType(data: unknown) {
+  if (typeof data !== "object" || data === null) {
+    return undefined;
+  }
+
+  const value = (data as Record<string, unknown>).unitType;
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : undefined;
 }

@@ -14,6 +14,7 @@ describe("pictoryRewardHttpAdapter", () => {
       env: {
         PICTORY_SERVER_SECRET: "server-secret",
         PICTORY_AI_AD_CREDIT_QUOTA: "100",
+        VITE_TOSS_REWARDED_AD_GROUP_ID: "ait.prod.rewarded",
       },
     });
 
@@ -23,7 +24,7 @@ describe("pictoryRewardHttpAdapter", () => {
         "x-pictory-server-secret": "server-secret",
         "x-pictory-subject-id": "user-1",
       },
-      body: JSON.stringify({ rewardId: "ad-event-1" }),
+      body: JSON.stringify(rewardEvidence()),
     });
 
     expect(response.status).toBe(200);
@@ -45,6 +46,7 @@ describe("pictoryRewardHttpAdapter", () => {
       env: {
         PICTORY_SERVER_SECRET: "server-secret",
         PICTORY_AI_AD_CREDIT_QUOTA: "100",
+        VITE_TOSS_REWARDED_AD_GROUP_ID: "ait.prod.rewarded",
       },
     });
     const request = {
@@ -53,7 +55,7 @@ describe("pictoryRewardHttpAdapter", () => {
         "x-pictory-server-secret": "server-secret",
         "x-pictory-subject-id": "user-1",
       },
-      body: JSON.stringify({ rewardId: "ad-event-1" }),
+      body: JSON.stringify(rewardEvidence()),
     };
 
     const first = await handler(request);
@@ -73,6 +75,7 @@ describe("pictoryRewardHttpAdapter", () => {
       env: {
         PICTORY_SERVER_SECRET: "server-secret",
         PICTORY_AI_AD_CREDIT_QUOTA: "25",
+        VITE_TOSS_REWARDED_AD_GROUP_ID: "ait.prod.rewarded",
       },
     });
 
@@ -82,7 +85,7 @@ describe("pictoryRewardHttpAdapter", () => {
         "x-pictory-server-secret": "server-secret",
         "x-pictory-subject-id": "user-1",
       },
-      body: JSON.stringify({ rewardId: "ad-event-1", rewardCredits: 9999 }),
+      body: JSON.stringify({ ...rewardEvidence(), rewardCredits: 9999 }),
     });
 
     expect(JSON.parse(response.body)).toMatchObject({
@@ -100,7 +103,7 @@ describe("pictoryRewardHttpAdapter", () => {
     const response = await handler({
       method: "POST",
       headers: { "x-pictory-subject-id": "user-1" },
-      body: JSON.stringify({ rewardId: "ad-event-1" }),
+      body: JSON.stringify(rewardEvidence()),
     });
 
     expect(response.status).toBe(401);
@@ -112,6 +115,9 @@ describe("pictoryRewardHttpAdapter", () => {
     const handler = createPictoryRewardHttpHandler({
       store,
       corsOrigin: "https://pictory.example.com",
+      env: {
+        VITE_TOSS_REWARDED_AD_GROUP_ID: "ait.prod.rewarded",
+      },
       resolveSubjectId: vi.fn(async (context) =>
         context.headers.authorization === "Bearer session-token"
           ? "auth-user"
@@ -123,7 +129,7 @@ describe("pictoryRewardHttpAdapter", () => {
     const response = await handler({
       method: "POST",
       headers: { Authorization: "Bearer session-token" },
-      body: JSON.stringify({ rewardId: "ad-event-1" }),
+      body: JSON.stringify(rewardEvidence()),
     });
 
     expect(preflight.status).toBe(204);
@@ -147,7 +153,62 @@ describe("pictoryRewardHttpAdapter", () => {
     expect(JSON.parse(missingReward.body).error.code).toBe("invalid_reward");
     expect(getResponse.status).toBe(405);
   });
+
+  it("rejects reward grants without native rewarded ad evidence", async () => {
+    const store = createMemoryStore();
+    const handler = createPictoryRewardHttpHandler({
+      store,
+      env: {
+        PICTORY_SERVER_SECRET: "server-secret",
+        VITE_TOSS_REWARDED_AD_GROUP_ID: "ait.prod.rewarded",
+      },
+    });
+
+    const spoofed = await handler({
+      method: "POST",
+      headers: {
+        "x-pictory-server-secret": "server-secret",
+        "x-pictory-subject-id": "user-1",
+      },
+      body: JSON.stringify({ rewardId: "ad-event-1" }),
+    });
+    const localFallback = await handler({
+      method: "POST",
+      headers: {
+        "x-pictory-server-secret": "server-secret",
+        "x-pictory-subject-id": "user-1",
+      },
+      body: JSON.stringify({ ...rewardEvidence(), source: "localFallback" }),
+    });
+    const wrongAdGroup = await handler({
+      method: "POST",
+      headers: {
+        "x-pictory-server-secret": "server-secret",
+        "x-pictory-subject-id": "user-1",
+      },
+      body: JSON.stringify({ ...rewardEvidence(), adGroupId: "wrong" }),
+    });
+
+    expect(spoofed.status).toBe(400);
+    expect(localFallback.status).toBe(400);
+    expect(wrongAdGroup.status).toBe(400);
+    expect(JSON.parse(spoofed.body).error.code).toBe(
+      "invalid_reward_evidence",
+    );
+    expect(await store.readAccount("user-1")).toBeUndefined();
+  });
 });
+
+function rewardEvidence() {
+  return {
+    rewardId: "ad-event-1",
+    adGroupId: "ait.prod.rewarded",
+    source: "native",
+    unitType: "scan",
+    unitAmount: 100,
+    usingTestAdGroup: false,
+  };
+}
 
 function createMemoryStore(
   initialAccount?: PictoryUsageAccount,

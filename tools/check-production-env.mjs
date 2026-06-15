@@ -18,6 +18,7 @@ const requiredKeys = [
   "PICTORY_PLUS_SUBSCRIPTION_SKU",
   "PICTORY_PRO_SUBSCRIPTION_SKU",
   "PICTORY_SUBSCRIPTION_VALID_DAYS",
+  "PICTORY_REWARD_REQUIRE_NATIVE_EVENT",
   "APPS_IN_TOSS_MTLS_CERT_PATH",
   "APPS_IN_TOSS_MTLS_KEY_PATH",
   "OPENAI_API_KEY",
@@ -115,6 +116,10 @@ export function validateProductionEnv(env, { cwd = rootDir } = {}) {
   add(
     value("PICTORY_AI_FREE_MONTHLY_QUOTA") === "0",
     "free server AI quota is zero",
+  );
+  add(
+    value("PICTORY_REWARD_REQUIRE_NATIVE_EVENT") === "true",
+    "reward grants require native ad evidence",
   );
 
   for (const key of [

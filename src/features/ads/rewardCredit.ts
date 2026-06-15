@@ -55,6 +55,11 @@ export async function grantRewardCredits(
       },
       body: JSON.stringify({
         rewardId: reward.rewardId,
+        adGroupId: reward.adGroupId,
+        source: reward.source,
+        unitType: reward.unitType,
+        unitAmount: reward.reward,
+        usingTestAdGroup: reward.usingTestAdGroup,
       }),
     });
 

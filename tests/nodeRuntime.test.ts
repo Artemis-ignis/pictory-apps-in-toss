@@ -50,12 +50,13 @@ describe("pictoryNodeRuntime", () => {
         PICTORY_SERVER_SECRET: "server-secret",
         PICTORY_AI_PLUS_MONTHLY_QUOTA: "500",
         PICTORY_AI_AD_CREDIT_QUOTA: "100",
+        VITE_TOSS_REWARDED_AD_GROUP_ID: "ait.prod.rewarded",
       },
     });
 
     const health = await fetch(`${baseUrl}/healthz`);
     const reward = await postJson(`${baseUrl}/pictory/reward`, {
-      body: { rewardId: "ad-event-1" },
+      body: rewardEvidence(),
     });
     const classify = await postJson(`${baseUrl}/pictory/classify`, {
       body: classifyBody,
@@ -107,6 +108,7 @@ describe("pictoryNodeRuntime", () => {
       env: {
         PICTORY_AI_PLUS_MONTHLY_QUOTA: "500",
         PICTORY_AI_AD_CREDIT_QUOTA: "100",
+        VITE_TOSS_REWARDED_AD_GROUP_ID: "ait.prod.rewarded",
       },
     });
     const headers = {
@@ -117,7 +119,7 @@ describe("pictoryNodeRuntime", () => {
     const reward = await fetch(`${baseUrl}/pictory/reward`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ rewardId: "ad-event-1" }),
+      body: JSON.stringify(rewardEvidence()),
     });
     const classify = await fetch(`${baseUrl}/pictory/classify`, {
       method: "POST",
@@ -164,6 +166,7 @@ describe("pictoryNodeRuntime", () => {
         PICTORY_SESSION_AUDIENCE: "pictory",
         PICTORY_AI_PLUS_MONTHLY_QUOTA: "500",
         PICTORY_AI_AD_CREDIT_QUOTA: "100",
+        VITE_TOSS_REWARDED_AD_GROUP_ID: "ait.prod.rewarded",
       },
     });
     const headers = {
@@ -174,7 +177,7 @@ describe("pictoryNodeRuntime", () => {
     const reward = await fetch(`${baseUrl}/pictory/reward`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ rewardId: "ad-event-1" }),
+      body: JSON.stringify(rewardEvidence()),
     });
     const classify = await fetch(`${baseUrl}/pictory/classify`, {
       method: "POST",
@@ -356,6 +359,17 @@ function deleteAccount(url: string) {
       "x-pictory-subject-id": "user-1",
     },
   });
+}
+
+function rewardEvidence() {
+  return {
+    rewardId: "ad-event-1",
+    adGroupId: "ait.prod.rewarded",
+    source: "native",
+    unitType: "scan",
+    unitAmount: 100,
+    usingTestAdGroup: false,
+  };
 }
 
 function createMemoryStore(
