@@ -68,6 +68,8 @@ export const DEFAULT_SERVER_AI_CREDITS = {
   rateLimitPerMinute: 40,
 } as const;
 
+let usageLedgerWriteLock = Promise.resolve();
+
 export function createPictoryUsageLedgerDeps({
   store,
   resolveSubjectId,
@@ -114,63 +116,67 @@ export function createPictoryUsageLedgerDeps({
       return minQuota(userQuota, globalQuota);
     },
     consumeQuota: async (context) => {
-      const account = await readAccountByEntitlement(
-        store,
-        context.entitlement,
-      );
-      if (!account) {
-        return null;
-      }
+      return withUsageLedgerWriteLock(async () => {
+        const account = await readAccountByEntitlement(
+          store,
+          context.entitlement,
+        );
+        if (!account) {
+          return null;
+        }
 
-      const date = now();
-      const normalized = normalizeUsageMonth(account, date);
-      const next = debitServerAiQuota(
-        withEntitlementPlan(normalized, context),
-        context.itemCount,
-        env,
-        date,
-      );
-      if (!next) {
-        return null;
-      }
+        const date = now();
+        const normalized = normalizeUsageMonth(account, date);
+        const next = debitServerAiQuota(
+          withEntitlementPlan(normalized, context),
+          context.itemCount,
+          env,
+          date,
+        );
+        if (!next) {
+          return null;
+        }
 
-      const nextGlobal = debitGlobalServerAiQuota(
-        await readGlobalUsageAccount(store, date),
-        context.itemCount,
-        env,
-        date,
-      );
-      if (!nextGlobal) {
-        return null;
-      }
+        const nextGlobal = debitGlobalServerAiQuota(
+          await readGlobalUsageAccount(store, date),
+          context.itemCount,
+          env,
+          date,
+        );
+        if (!nextGlobal) {
+          return null;
+        }
 
-      await store.writeAccount(nextGlobal.account);
-      await store.writeAccount(preserveAccountPlan(next.account, normalized));
-      return minQuota(next.quota, nextGlobal.quota);
+        await store.writeAccount(nextGlobal.account);
+        await store.writeAccount(preserveAccountPlan(next.account, normalized));
+        return minQuota(next.quota, nextGlobal.quota);
+      });
     },
     refundQuota: async (context) => {
-      const account = await readAccountByEntitlement(
-        store,
-        context.entitlement,
-      );
-      if (!account) {
-        return;
-      }
+      await withUsageLedgerWriteLock(async () => {
+        const account = await readAccountByEntitlement(
+          store,
+          context.entitlement,
+        );
+        if (!account) {
+          return;
+        }
 
-      const date = now();
-      const globalAccount = await readGlobalUsageAccount(store, date);
-      await store.writeAccount(
-        refundGlobalServerAiQuota(globalAccount, context.itemCount),
-      );
-      await store.writeAccount(
-        preserveAccountPlan(
-          refundServerAiQuota(
-            withEntitlementPlan(normalizeUsageMonth(account, date), context),
-            context.itemCount,
+        const date = now();
+        const globalAccount = await readGlobalUsageAccount(store, date);
+        await store.writeAccount(
+          refundGlobalServerAiQuota(globalAccount, context.itemCount),
+        );
+        await store.writeAccount(
+          preserveAccountPlan(
+            refundServerAiQuota(
+              withEntitlementPlan(normalizeUsageMonth(account, date), context),
+              context.itemCount,
+            ),
+            account,
           ),
-          account,
-        ),
-      );
+        );
+      });
     },
   };
 }
@@ -681,4 +687,20 @@ function isPaidPlanActive(account: PictoryUsageAccount, date: Date) {
 function readIntegerEnv(value: string | undefined, fallback: number) {
   const parsed = Number.parseInt(value ?? "", 10);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+async function withUsageLedgerWriteLock<T>(work: () => MaybePromise<T>) {
+  const previous = usageLedgerWriteLock;
+  let release: () => void = () => undefined;
+  usageLedgerWriteLock = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+
+  await previous;
+  try {
+    return await work();
+  } finally {
+    // ponytail: process-local lock; use database transactions for multi-instance servers.
+    release();
+  }
 }

@@ -303,7 +303,11 @@ describe("handlePictoryClassifyRequest", () => {
 
   it("uses the default OpenAI classifier without storing responses", async () => {
     const fetch = vi.fn(async (_url: string, init?: RequestInit) => {
-      const body = JSON.parse(String(init?.body ?? "{}")) as {
+      const serializedBody = String(init?.body ?? "{}");
+      expect(serializedBody).not.toContain("receipt.jpg");
+      expect(serializedBody).not.toContain("2026-06-15T09:00:00.000Z");
+      expect(serializedBody).not.toContain("private-hash");
+      const body = JSON.parse(serializedBody) as {
         store?: boolean;
         text?: { format?: { type?: string; strict?: boolean } };
         input?: Array<{
@@ -413,6 +417,66 @@ describe("handlePictoryClassifyRequest", () => {
 describe("defaultClassifyItems", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it("caps OpenAI image attachments server-side and redacts overflow", async () => {
+    let serializedBody = "";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        serializedBody = String(init?.body ?? "{}");
+        return Response.json({
+          output_text: JSON.stringify({
+            items: Array.from({ length: 8 }, (_, index) => ({
+              id: `photo-${index}`,
+              categoryId: "food",
+              cleanBucketId: "keep",
+              confidence: 0.84,
+              privacy: "normal",
+              reasons: ["음식", "이미지", "보관"],
+              hints: ["food"],
+            })),
+          }),
+        });
+      }),
+    );
+
+    const items = Array.from({ length: 10 }, (_, index) => ({
+      ...imageBody.items[0],
+      id: `photo-${index}`,
+    })) as PictoryClassifyRequestItem[];
+    const result = await defaultClassifyItems(items, {
+      schemaVersion: 1,
+      itemCount: 10,
+      headers: {},
+      entitlement,
+      quota: { remaining: 40 },
+      env: { OPENAI_API_KEY: "sk-test" },
+    });
+    const body = JSON.parse(serializedBody) as {
+      input?: Array<{ content?: Array<{ type?: string }> }>;
+    };
+    const content = body.input?.[0]?.content ?? [];
+
+    expect(content.filter((entry) => entry.type === "input_image")).toHaveLength(
+      8,
+    );
+    expect(result).toHaveLength(10);
+    expect(result.slice(0, 8).every((entry) => entry.categoryId === "food")).toBe(
+      true,
+    );
+    expect(result[8]).toMatchObject({
+      id: "photo-8",
+      categoryId: "receipt",
+      cleanBucketId: "needsReview",
+      privacy: "review",
+    });
+    expect(result[9]).toMatchObject({
+      id: "photo-9",
+      categoryId: "receipt",
+      cleanBucketId: "needsReview",
+      privacy: "review",
+    });
   });
 
   it("parses output text content from the Responses API shape", async () => {

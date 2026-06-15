@@ -185,6 +185,54 @@ describe("pictoryUsageLedger", () => {
     ).toBe(0);
   });
 
+  it("serializes concurrent quota reservations for one server process", async () => {
+    const limitedEnv = {
+      ...env,
+      PICTORY_AI_DAILY_LIMIT_PER_USER: "3",
+      PICTORY_AI_DAILY_GLOBAL_LIMIT: "10",
+      PICTORY_AI_RATE_LIMIT_PER_MINUTE: "10",
+    };
+    const store = createMemoryStore(createNewUsageAccount("user-1", "plus"));
+    const deps = createPictoryUsageLedgerDeps({
+      store,
+      env: limitedEnv,
+      now,
+      resolveSubjectId: vi.fn(async () => "user-1"),
+    });
+    const requestContext = {
+      schemaVersion: 1 as const,
+      itemCount: 2,
+      headers: {},
+      requestId: "req-1",
+    };
+    const entitlement = await deps.verifyEntitlement(requestContext);
+    const quota = await deps.verifyQuota({
+      ...requestContext,
+      entitlement: entitlement!,
+    });
+
+    const reservations = await Promise.all([
+      deps.consumeQuota?.({
+        ...requestContext,
+        entitlement: entitlement!,
+        quota: quota!,
+      }),
+      deps.consumeQuota?.({
+        ...requestContext,
+        entitlement: entitlement!,
+        quota: quota!,
+      }),
+    ]);
+    const successful = reservations.filter(Boolean);
+
+    expect(successful).toHaveLength(1);
+    expect((await store.readAccount("user-1"))?.monthlyServerAiUsed).toBe(2);
+    expect((await store.readAccount("user-1"))?.serverAiDailyUsed).toBe(2);
+    expect(
+      (await store.readAccount(GLOBAL_USAGE_SUBJECT_ID))?.serverAiDailyUsed,
+    ).toBe(2);
+  });
+
   it("refunds reserved usage after a failed upstream classification", () => {
     const consumed = {
       ...createNewUsageAccount("user-1", "plus", now()),

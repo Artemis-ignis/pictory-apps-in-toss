@@ -137,6 +137,7 @@ export interface PictoryClassifyHandlerResult {
 
 const SCHEMA_VERSION = 1;
 const MAX_ITEMS = 40;
+const MAX_OPENAI_IMAGE_ITEMS = 8;
 const DEFAULT_MAX_BODY_BYTES = 4 * 1024 * 1024;
 const DEFAULT_OPENAI_MODEL = "gpt-4.1-mini";
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
@@ -281,8 +282,19 @@ export async function defaultClassifyItems(
     );
   }
 
-  const imageItems = items.filter(hasAttachedImage);
-  const redactedItems = items.filter((item) => !hasAttachedImage(item));
+  const attachedImageItems = items.filter(hasAttachedImage);
+  const imageItems = attachedImageItems.slice(0, MAX_OPENAI_IMAGE_ITEMS);
+  const overBudgetImageItems = attachedImageItems
+    .slice(MAX_OPENAI_IMAGE_ITEMS)
+    .map((item) => ({
+      ...item,
+      imageDataUri: undefined,
+      redacted: true as const,
+    }));
+  const redactedItems = [
+    ...items.filter((item) => !hasAttachedImage(item)),
+    ...overBudgetImageItems,
+  ];
   const redactedClassifications = redactedItems.map(classifyRedactedItem);
 
   if (imageItems.length === 0) {
@@ -365,10 +377,8 @@ function createOpenAiInputContent(
 ) {
   const manifest = items.map((item) => ({
     id: item.id,
-    fileName: item.fileName,
-    createdAt: item.createdAt,
     hints: item.hints,
-    signals: item.signals,
+    signals: withoutPerceptualHash(item.signals),
   }));
   const content: OpenAiInputContent[] = [
     {
@@ -619,6 +629,16 @@ function readImageDetail(
 ): "low" | "high" | "auto" {
   const detail = env.OPENAI_IMAGE_DETAIL ?? env.PICTORY_OPENAI_IMAGE_DETAIL;
   return detail === "high" || detail === "auto" ? detail : "low";
+}
+
+function withoutPerceptualHash(signals?: PictoryClassifySignals) {
+  if (!signals) {
+    return undefined;
+  }
+
+  const { perceptualHash, ...redactedSignals } = signals;
+  void perceptualHash;
+  return redactedSignals;
 }
 
 function hashSafetyIdentifier(subjectId: string) {
