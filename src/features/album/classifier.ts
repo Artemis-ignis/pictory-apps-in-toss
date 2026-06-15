@@ -74,9 +74,14 @@ const SENSITIVE_TOKENS = [
   "민감",
 ];
 
+interface ClassifyOptions {
+  refineWithServerAi?: boolean;
+}
+
 export async function classifyAlbumItems(
   items: AlbumItem[],
   existingStatuses = new Map<string, ClassifiedItem["status"]>(),
+  options: ClassifyOptions = {},
 ): Promise<ClassifiedItem[]> {
   const classified = await Promise.all(
     items.map(async (item) => {
@@ -119,7 +124,9 @@ export async function classifyAlbumItems(
     };
   });
 
-  return refineWithAiClassifier(locallyClassified);
+  return options.refineWithServerAi
+    ? refineWithAiClassifier(locallyClassified)
+    : locallyClassified;
 }
 
 export function classifyItem(item: AlbumItem): ClassifiedItem {

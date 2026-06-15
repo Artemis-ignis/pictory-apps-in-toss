@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canSaveMore,
+  canUseServerAiRefinement,
   consumeScanAllowance,
   getScanAllowance,
 } from "../src/features/billing/plans";
@@ -38,5 +39,29 @@ describe("usage plans", () => {
     expect(canSaveMore({ ...defaultPictoryState, planId: "pro" }, 999)).toBe(
       true,
     );
+  });
+
+  it("uses server AI only after ad revenue or paid plan entitlement exists", () => {
+    expect(
+      canUseServerAiRefinement({
+        ...defaultPictoryState,
+        planId: "free",
+        credits: 0,
+      }),
+    ).toBe(false);
+    expect(
+      canUseServerAiRefinement({
+        ...defaultPictoryState,
+        planId: "free",
+        credits: 100,
+      }),
+    ).toBe(true);
+    expect(
+      canUseServerAiRefinement({
+        ...defaultPictoryState,
+        planId: "plus",
+        credits: 0,
+      }),
+    ).toBe(true);
   });
 });

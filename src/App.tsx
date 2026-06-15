@@ -38,6 +38,7 @@ import {
 } from "./features/ads/rewardAd";
 import {
   canSaveMore,
+  canUseServerAiRefinement,
   consumeScanAllowance,
   getPlan,
   getScanAllowance,
@@ -120,7 +121,9 @@ function App() {
   async function analyzeIncoming(nextItems: AlbumItem[], message: string) {
     setIsScanning(true);
     setScanMessage("픽토리가 사진 신호를 읽고 있어요.");
-    const classified = await classifyAlbumItems(nextItems, statusMap);
+    const classified = await classifyAlbumItems(nextItems, statusMap, {
+      refineWithServerAi: canUseServerAiRefinement(state),
+    });
     const recentItems = await prepareRecentItemsForStorage(classified);
     const scannedAt = new Date().toISOString();
     setItems(classified);
