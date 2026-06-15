@@ -1,5 +1,6 @@
 import { refineWithAiClassifier } from "./aiClassifier";
 import { analyzeImageSource, emptySignals } from "./imageSignals";
+import { inferNativeDetectorHints } from "./nativeDetectors";
 import { inferVisualHints } from "./visualClassifier";
 import type {
   AlbumItem,
@@ -85,12 +86,13 @@ export async function classifyAlbumItems(
 ): Promise<ClassifiedItem[]> {
   const classified = await Promise.all(
     items.map(async (item) => {
-      const [signals, visualHints] = await Promise.all([
+      const [signals, nativeHints, visualHints] = await Promise.all([
         item.signals ?? analyzeImageSource(item.dataUri),
+        inferNativeDetectorHints(item.dataUri),
         inferVisualHints(item.dataUri),
       ]);
       const hints = Array.from(
-        new Set([...(item.hints ?? []), ...visualHints]),
+        new Set([...(item.hints ?? []), ...nativeHints, ...visualHints]),
       );
 
       return classifyItem({
