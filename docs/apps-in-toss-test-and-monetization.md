@@ -188,6 +188,12 @@ flowchart LR
 
 앱은 공개 클라이언트 값인 `VITE_PICTORY_CLASSIFY_ENDPOINT`가 있을 때만 서버 AI 분류를 호출한다. OpenAI 키, 서버 secret, quota 검증은 이 endpoint 뒤의 서버에서만 처리한다. 브라우저 앱은 `credentials: include`와 요청 ID만 보낸다. `x-pictory-server-secret` 같은 서버 간 secret은 프론트엔드 번들에 넣지 않고, 배포 게이트웨이/서버 어댑터가 내부에서 붙인다.
 
+`server/pictoryHttpAdapter.ts`는 배포 런타임용 HTTP 어댑터다. 기본값은
+`x-pictory-server-secret`과 `x-pictory-subject-id`를 같은 서버/게이트웨이
+안에서만 신뢰한다. 실제 서비스 인증을 붙일 때는 `resolveSubjectId`를 주입해
+토스 사용자 세션, 앱인토스 서버 토큰, 또는 자체 계정 DB 검증 결과로 subject를
+해결한다. 프론트엔드 번들에는 서버 secret을 넣지 않는다.
+
 운영 요청 헤더 예시:
 
 ```http
@@ -326,6 +332,7 @@ Pro:
 - 유료 월 quota를 먼저 쓰고, 부족분만 광고 크레딧에서 차감한다.
 - 광고 보상 이벤트 ID는 한 번만 지급해 중복 지급을 막는다.
 - 만료된 구독은 유료 quota를 받지 못하고, 남은 광고 크레딧이 있을 때만 credit 권한으로 서버 AI를 사용할 수 있다.
+- HTTP 어댑터는 `Cache-Control: no-store`를 반환해 분류 결과와 민감 힌트가 중간 캐시에 남지 않게 한다.
 
 ## 결제 권한 방어
 

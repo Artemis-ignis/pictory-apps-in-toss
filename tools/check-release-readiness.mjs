@@ -210,6 +210,14 @@ function checkPackageScripts() {
     "server usage ledger exists",
   );
   record(
+    existsSync(projectPath("server", "pictoryHttpAdapter.ts")),
+    "server classify HTTP adapter exists",
+  );
+  record(
+    existsSync(projectPath("tests", "httpAdapter.test.ts")),
+    "server classify HTTP adapter tests exist",
+  );
+  record(
     existsSync(projectPath("tests", "usageLedger.test.ts")),
     "server usage ledger tests exist",
   );
