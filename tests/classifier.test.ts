@@ -23,6 +23,10 @@ const baseItem: AlbumItem = {
     edgeDensity: 0.32,
     textLineScore: 0.35,
     colorVariance: 0.12,
+    whiteRatio: 0.62,
+    darkRatio: 0.02,
+    skinToneRatio: 0.01,
+    natureColorRatio: 0.04,
     perceptualHash:
       "1111000011110000111100001111000011110000111100001111000011110000",
   },
@@ -65,10 +69,47 @@ describe("classifier", () => {
         brightness: 0.12,
         textLineScore: 0.02,
         saturation: 0.25,
+        darkRatio: 0.72,
       },
     });
 
     expect(item.cleanBucketId).toBe("dark");
+  });
+
+  it("uses cheap pixel ratios to classify people and outdoor places", () => {
+    const person = classifyItem({
+      ...baseItem,
+      id: "person",
+      fileName: "daily-photo.jpg",
+      hints: [],
+      signals: {
+        ...baseItem.signals!,
+        textLineScore: 0.02,
+        saturation: 0.38,
+        whiteRatio: 0.1,
+        skinToneRatio: 0.18,
+        natureColorRatio: 0.04,
+      },
+    });
+    const place = classifyItem({
+      ...baseItem,
+      id: "place",
+      fileName: "walk-photo.jpg",
+      hints: [],
+      signals: {
+        ...baseItem.signals!,
+        textLineScore: 0.02,
+        saturation: 0.44,
+        whiteRatio: 0.08,
+        skinToneRatio: 0.01,
+        natureColorRatio: 0.4,
+      },
+    });
+
+    expect(person.categoryId).toBe("people");
+    expect(person.reasons).toContain("사람색 영역");
+    expect(place.categoryId).toBe("place");
+    expect(place.reasons).toContain("야외색 영역");
   });
 
   it("calculates hamming distance for duplicate grouping", () => {

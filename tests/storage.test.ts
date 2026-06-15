@@ -23,6 +23,10 @@ const baseItem: ClassifiedItem = {
     edgeDensity: 0.32,
     textLineScore: 0.35,
     colorVariance: 0.12,
+    whiteRatio: 0.62,
+    darkRatio: 0.02,
+    skinToneRatio: 0.01,
+    natureColorRatio: 0.04,
     perceptualHash:
       "1111000011110000111100001111000011110000111100001111000011110000",
   },

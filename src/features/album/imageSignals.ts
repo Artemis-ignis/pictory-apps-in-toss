@@ -9,6 +9,10 @@ const EMPTY_SIGNALS: ImageSignals = {
   edgeDensity: 0,
   textLineScore: 0,
   colorVariance: 0,
+  whiteRatio: 0,
+  darkRatio: 0,
+  skinToneRatio: 0,
+  natureColorRatio: 0,
   perceptualHash: "",
 };
 
@@ -84,6 +88,10 @@ export function calculateSignals(
   let varianceTotal = 0;
   let edgeHits = 0;
   let comparisons = 0;
+  let whitePixels = 0;
+  let darkPixels = 0;
+  let skinTonePixels = 0;
+  let natureColorPixels = 0;
 
   for (let y = 0; y < sampleHeight; y += 1) {
     for (let x = 0; x < sampleWidth; x += 1) {
@@ -100,6 +108,19 @@ export function calculateSignals(
       saturationTotal += saturation;
       varianceTotal += Math.abs(r - g) + Math.abs(g - b) + Math.abs(b - r);
       lumas.push(luma);
+
+      if (luma > 0.82 && saturation < 0.28) {
+        whitePixels += 1;
+      }
+      if (luma < 0.18) {
+        darkPixels += 1;
+      }
+      if (isSkinTone(r, g, b, saturation, luma)) {
+        skinTonePixels += 1;
+      }
+      if (isNatureColor(r, g, b, saturation, luma)) {
+        natureColorPixels += 1;
+      }
 
       if (x > 0) {
         const prev = lumas[lumas.length - 2];
@@ -127,6 +148,10 @@ export function calculateSignals(
     edgeDensity: comparisons === 0 ? 0 : clamp01(edgeHits / comparisons),
     textLineScore: clamp01(denseRows / sampleHeight),
     colorVariance: clamp01(varianceTotal / (pixelCount * 2)),
+    whiteRatio: clamp01(whitePixels / pixelCount),
+    darkRatio: clamp01(darkPixels / pixelCount),
+    skinToneRatio: clamp01(skinTonePixels / pixelCount),
+    natureColorRatio: clamp01(natureColorPixels / pixelCount),
     perceptualHash: buildPerceptualHash(lumas, sampleWidth, sampleHeight),
   };
 }
@@ -179,4 +204,37 @@ function buildPerceptualHash(
 
 function clamp01(value: number) {
   return Math.max(0, Math.min(1, value));
+}
+
+function isSkinTone(
+  r: number,
+  g: number,
+  b: number,
+  saturation: number,
+  luma: number,
+) {
+  return (
+    r > 0.36 &&
+    g > 0.22 &&
+    b > 0.14 &&
+    r > g &&
+    g > b &&
+    saturation > 0.12 &&
+    saturation < 0.62 &&
+    luma > 0.28 &&
+    luma < 0.86
+  );
+}
+
+function isNatureColor(
+  r: number,
+  g: number,
+  b: number,
+  saturation: number,
+  luma: number,
+) {
+  const greenDominant = g > r * 1.04 && g > b * 0.9;
+  const skyOrWater = b > r * 1.08 && b > g * 0.82;
+
+  return (greenDominant || skyOrWater) && saturation > 0.18 && luma > 0.2;
 }

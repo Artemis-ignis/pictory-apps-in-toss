@@ -132,7 +132,7 @@ export async function classifyAlbumItems(
 }
 
 export function classifyItem(item: AlbumItem): ClassifiedItem {
-  const signals = item.signals ?? emptySignals();
+  const signals = withSignalDefaults(item.signals);
   const tokens = tokenize(item);
   const scores = scoreCategories(tokens, signals);
   const [categoryId, rawScore] = Object.entries(scores).sort(
@@ -270,6 +270,10 @@ function tokenize(item: AlbumItem) {
     .filter(Boolean);
 }
 
+function withSignalDefaults(signals?: ImageSignals | null): ImageSignals {
+  return { ...emptySignals(), ...(signals ?? {}) };
+}
+
 function scoreCategories(tokens: string[], signals: ImageSignals) {
   const scores: Record<MapBucketId, number> = {
     capture: 0.24,
@@ -297,6 +301,20 @@ function scoreCategories(tokens: string[], signals: ImageSignals) {
     scores.capture += 0.16;
   }
 
+  if (signals.whiteRatio > 0.48 && signals.textLineScore > 0.18) {
+    scores.document += 0.18;
+    scores.receipt += 0.14;
+    scores.capture += 0.08;
+  }
+
+  if (
+    signals.whiteRatio > 0.6 &&
+    signals.saturation < 0.26 &&
+    signals.textLineScore > 0.24
+  ) {
+    scores.document += 0.14;
+  }
+
   if (signals.aspectRatio < 0.62 || signals.aspectRatio > 1.85) {
     scores.capture += 0.16;
     scores.coupon += 0.08;
@@ -322,6 +340,15 @@ function scoreCategories(tokens: string[], signals: ImageSignals) {
     scores.place += 0.11;
     scores.people += 0.08;
     scores.memory += 0.06;
+  }
+
+  if (signals.skinToneRatio > 0.08) {
+    scores.people += 0.22;
+  }
+
+  if (signals.natureColorRatio > 0.26 && signals.textLineScore < 0.12) {
+    scores.place += 0.22;
+    scores.memory += 0.05;
   }
 
   return scores;
@@ -448,6 +475,18 @@ function buildReasons(
 
   if (signals.brightness < 0.24) {
     reasons.push("어두운 사진");
+  }
+
+  if (signals.whiteRatio > 0.48 && signals.textLineScore > 0.18) {
+    reasons.push("문서형 배경");
+  }
+
+  if (signals.skinToneRatio > 0.08) {
+    reasons.push("사람색 영역");
+  }
+
+  if (signals.natureColorRatio > 0.26) {
+    reasons.push("야외색 영역");
   }
 
   if (cleanBucketId === "sensitive") {

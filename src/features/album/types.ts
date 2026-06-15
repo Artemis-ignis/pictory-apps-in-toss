@@ -36,6 +36,10 @@ export interface ImageSignals {
   edgeDensity: number;
   textLineScore: number;
   colorVariance: number;
+  whiteRatio: number;
+  darkRatio: number;
+  skinToneRatio: number;
+  natureColorRatio: number;
   perceptualHash: string;
 }
 

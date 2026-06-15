@@ -183,6 +183,10 @@ function sampleSignals(options: {
       edgeDensity: 0.18,
       textLineScore: 0.04,
       colorVariance: 0.18,
+      whiteRatio: 0.02,
+      darkRatio: 0.72,
+      skinToneRatio: 0.01,
+      natureColorRatio: 0.1,
       perceptualHash:
         "0000111100001111000011110000111100001111000011110000111100001111",
     };
@@ -198,6 +202,10 @@ function sampleSignals(options: {
       edgeDensity: 0.31,
       textLineScore: 0.34,
       colorVariance: 0.12,
+      whiteRatio: 0.68,
+      darkRatio: 0.02,
+      skinToneRatio: 0.01,
+      natureColorRatio: 0.04,
       perceptualHash: options.duplicate
         ? "1111000011110000111100001111000011110000111100001111000011110000"
         : "1111110011111100111111001111110011111100111111001111110011111100",
@@ -213,6 +221,10 @@ function sampleSignals(options: {
     edgeDensity: 0.17,
     textLineScore: 0.05,
     colorVariance: 0.42,
+    whiteRatio: 0.16,
+    darkRatio: 0.03,
+    skinToneRatio: options.portrait ? 0.18 : 0.03,
+    natureColorRatio: options.portrait ? 0.08 : 0.34,
     perceptualHash: options.duplicate
       ? "1010101010101010101010101010101010101010101010101010101010101010"
       : "1010100010101000101010001010100010101000101010001010100010101000",
