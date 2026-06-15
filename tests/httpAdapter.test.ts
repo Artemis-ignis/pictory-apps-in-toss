@@ -69,7 +69,7 @@ describe("pictoryHttpAdapter", () => {
 
   it("blocks server AI classification before upstream work when rate limit is exceeded", async () => {
     const store = createMemoryStore(createNewUsageAccount("user-1", "plus"));
-    const classifyItems = vi.fn(async () => []);
+    const classifyItems = successfulClassifyItems();
     const handler = createPictoryClassifyHttpHandler({
       store,
       classifyItems,
@@ -157,7 +157,7 @@ describe("pictoryHttpAdapter", () => {
     const store = createMemoryStore(createNewUsageAccount("user-1", "plus"));
     const handler = createPictoryClassifyHttpHandler({
       store,
-      classifyItems: vi.fn(async () => []),
+      classifyItems: successfulClassifyItems(),
       env: {
         NODE_ENV: "production",
         PICTORY_SESSION_SECRET: sessionSecret,
@@ -185,7 +185,7 @@ describe("pictoryHttpAdapter", () => {
     });
     const handler = createPictoryClassifyHttpHandler({
       store,
-      classifyItems: vi.fn(async () => []),
+      classifyItems: successfulClassifyItems(),
       resolveSubjectId: vi.fn(async (context) =>
         context.headers.authorization === "Bearer session-token"
           ? "auth-user"
@@ -242,4 +242,16 @@ function createMemoryStore(
       current = account;
     },
   };
+}
+
+function successfulClassifyItems() {
+  return vi.fn(async () => [
+    {
+      id: "photo-1",
+      categoryId: "receipt" as const,
+      cleanBucketId: "needsReview" as const,
+      confidence: 0.88,
+      privacy: "review" as const,
+    },
+  ]);
 }

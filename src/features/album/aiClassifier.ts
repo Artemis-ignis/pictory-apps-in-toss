@@ -109,10 +109,13 @@ export async function refineWithAiClassifier(
     );
 
     const refined = items.map((item) => applyAiClassificationPatch(item, patches));
+    const refinedCount = refined.filter((nextItem, index) =>
+      hasAiPatchChangedItem(items[index], nextItem),
+    ).length;
     options.onResult?.({
       status: "applied",
       candidateCount: candidates.length,
-      refinedCount: patches.size,
+      refinedCount,
       reason: "ok",
     });
     return refined;
@@ -270,6 +273,24 @@ function resolveCleanBucketPatch(
 
 function clampConfidence(value: number) {
   return Math.max(0.32, Math.min(0.99, value));
+}
+
+function hasAiPatchChangedItem(
+  previous: ClassifiedItem,
+  next: ClassifiedItem,
+) {
+  return (
+    previous.categoryId !== next.categoryId ||
+    previous.cleanBucketId !== next.cleanBucketId ||
+    previous.confidence !== next.confidence ||
+    previous.privacy !== next.privacy ||
+    !sameStringArray(previous.reasons, next.reasons) ||
+    !sameStringArray(previous.hints, next.hints)
+  );
+}
+
+function sameStringArray(left: string[] = [], right: string[] = []) {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 async function shrinkImageForAi(dataUri: string) {

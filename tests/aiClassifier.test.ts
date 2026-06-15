@@ -339,6 +339,52 @@ describe("aiClassifier", () => {
     });
   });
 
+  it("counts only matching patches that actually change local items", async () => {
+    const onResult = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                id: "unknown-photo",
+                categoryId: "food",
+                cleanBucketId: "keep",
+                confidence: 0.9,
+                privacy: "normal",
+              },
+              {
+                id: "photo-1",
+                categoryId: "memory",
+                cleanBucketId: "needsReview",
+                confidence: 0.42,
+                privacy: "review",
+                reasons: ["기록 패턴"],
+                hints: ["photo"],
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      }),
+    );
+
+    const [result] = await refineWithAiClassifier(
+      [item],
+      { VITE_PICTORY_CLASSIFY_ENDPOINT: "https://classify.example.com" },
+      { onResult },
+    );
+
+    expect(result).toEqual(item);
+    expect(onResult).toHaveBeenCalledWith({
+      status: "applied",
+      candidateCount: 1,
+      refinedCount: 0,
+      reason: "ok",
+    });
+  });
+
   it("reports failed server AI refinement without changing local results", async () => {
     const onResult = vi.fn();
     vi.stubGlobal(

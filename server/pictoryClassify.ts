@@ -229,21 +229,28 @@ export async function handlePictoryClassifyRequest(
 
     const env = deps.env ?? process.env;
     const classifyItems = deps.classifyItems ?? defaultClassifyItems;
-    let classified: readonly PictoryClassifyResponseItem[];
+    let classified: PictoryClassifyResponseItem[];
     try {
-      classified = await classifyItems(payload.items, {
-        ...requestContext,
-        entitlement,
-        quota: reservedQuota,
-        env,
-      });
+      classified = normalizeResponseItems(
+        await classifyItems(payload.items, {
+          ...requestContext,
+          entitlement,
+          quota: reservedQuota,
+          env,
+        }),
+        payload.items,
+      );
     } catch (error) {
       if (deps.refundQuota) {
-        await deps.refundQuota({
-          ...quotaContext,
-          quota: reservedQuota,
-          reason: "classification_failed",
-        });
+        try {
+          await deps.refundQuota({
+            ...quotaContext,
+            quota: reservedQuota,
+            reason: "classification_failed",
+          });
+        } catch {
+          // Keep returning the classification failure; operators reconcile from the ledger.
+        }
       }
       throw error;
     }
@@ -252,7 +259,7 @@ export async function handlePictoryClassifyRequest(
       status: 200,
       headers: { "Content-Type": "application/json" },
       body: {
-        items: normalizeResponseItems(classified, payload.items),
+        items: classified,
       },
     };
   } catch (error) {
@@ -759,9 +766,38 @@ function normalizeResponseItems(
   requestItems: readonly PictoryClassifyRequestItem[],
 ) {
   const requestIds = new Set(requestItems.map((item) => item.id));
-  return items
-    .map((item) => normalizeResponseItem(item, requestIds))
-    .filter((item): item is PictoryClassifyResponseItem => item !== null);
+  const seenIds = new Set<string>();
+  const normalized = items.map((item) => {
+    const normalizedItem = normalizeResponseItem(item, requestIds);
+    if (!normalizedItem) {
+      throw new PictoryClassifyHttpError(
+        502,
+        "classifier_invalid_response",
+        "Server AI response included an unknown or invalid item.",
+      );
+    }
+    if (seenIds.has(normalizedItem.id)) {
+      throw new PictoryClassifyHttpError(
+        502,
+        "classifier_invalid_response",
+        "Server AI response included duplicate item ids.",
+      );
+    }
+    seenIds.add(normalizedItem.id);
+    return normalizedItem;
+  });
+
+  for (const id of requestIds) {
+    if (!seenIds.has(id)) {
+      throw new PictoryClassifyHttpError(
+        502,
+        "classifier_invalid_response",
+        "Server AI response did not cover every requested item.",
+      );
+    }
+  }
+
+  return normalized;
 }
 
 function normalizeResponseItem(

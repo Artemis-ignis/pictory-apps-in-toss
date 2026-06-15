@@ -347,7 +347,7 @@ function App() {
       const allowance = getScanAllowance(entitledState);
       if (allowance.nextBatchLimit <= 0) {
         setScanMessage(
-          "이번 달 정리 가능 장수를 다 썼어요. 광고나 플랜으로 늘릴 수 있어요.",
+          "이번 달 정리 가능 장수를 다 썼어요. 광고나 플랜으로 늘린 뒤 사진을 선택할 수 있어요.",
         );
         setIsScanning(false);
         return;
@@ -370,7 +370,7 @@ function App() {
       const allowance = getScanAllowance(entitledState);
       if (allowance.nextBatchLimit <= 0) {
         setScanMessage(
-          "이번 달 정리 가능 장수를 다 썼어요. 광고나 플랜으로 늘릴 수 있어요.",
+          "이번 달 정리 가능 장수를 다 썼어요. 광고나 플랜으로 늘린 뒤 사진을 선택할 수 있어요.",
         );
         return;
       }
@@ -840,7 +840,7 @@ function formatScanMessage(
   }
 
   if (aiRefinementResult.status === "failed") {
-    return `${message} 서버 AI 보정은 플랜/크레딧 확인 후 다시 시도해요.`;
+    return `${message} 서버 AI 보정은 플랜, 크레딧, 서버 상태 확인 후 다시 시도해요.`;
   }
 
   return message;

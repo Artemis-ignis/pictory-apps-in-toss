@@ -93,7 +93,7 @@ describe("handlePictoryClassifyRequest", () => {
       {
         ...deps(),
         verifyEntitlement,
-        classifyItems: vi.fn(async () => []),
+        classifyItems: successfulClassifyItems(),
       },
     );
 
@@ -139,7 +139,7 @@ describe("handlePictoryClassifyRequest", () => {
   });
 
   it("accepts ad-credit server AI entitlement when quota is available", async () => {
-    const classifyItems = vi.fn(async () => []);
+    const classifyItems = successfulClassifyItems();
     const result = await handlePictoryClassifyRequest(redactedInput(), {
       ...deps({ classifyItems }),
       verifyEntitlement: vi.fn(async () => creditEntitlement),
@@ -159,7 +159,7 @@ describe("handlePictoryClassifyRequest", () => {
     const classifyItems = vi.fn(async (_items, context) => {
       calls.push("classify");
       expect(context.quota.remaining).toBe(39);
-      return [];
+      return [{ id: "sensitive-photo-id" }];
     });
     const result = await handlePictoryClassifyRequest(redactedInput(), {
       ...deps({ classifyItems }),
@@ -174,6 +174,31 @@ describe("handlePictoryClassifyRequest", () => {
         quota: { remaining: 40 },
       }),
     );
+  });
+
+  it("rejects malformed server AI responses and refunds reserved quota", async () => {
+    for (const items of [
+      [],
+      [{ id: "unknown-photo-id" }],
+      [{ id: "sensitive-photo-id" }, { id: "sensitive-photo-id" }],
+    ]) {
+      const refundQuota = vi.fn();
+      const result = await handlePictoryClassifyRequest(redactedInput(), {
+        ...deps({ classifyItems: vi.fn(async () => items) }),
+        consumeQuota: vi.fn(async () => ({ remaining: 39 })),
+        refundQuota,
+      });
+
+      expect(result.status).toBe(502);
+      expect(result.body.error?.code).toBe("classifier_invalid_response");
+      expect(refundQuota).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entitlement,
+          quota: { remaining: 39 },
+          reason: "classification_failed",
+        }),
+      );
+    }
   });
 
   it("rejects when server AI quota cannot be reserved", async () => {
@@ -539,6 +564,12 @@ function deps(
     env: {},
     ...overrides,
   };
+}
+
+function successfulClassifyItems() {
+  return vi.fn(async (items: readonly PictoryClassifyRequestItem[]) =>
+    items.map((item) => ({ id: item.id })),
+  );
 }
 
 function redactedInput(): PictoryClassifyRequestInput {
