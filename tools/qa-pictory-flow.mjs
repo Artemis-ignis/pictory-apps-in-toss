@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
+import { createServer } from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
@@ -8,7 +9,8 @@ const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "..",
 );
-const port = Number(process.env.PICTORY_QA_PORT ?? 5173);
+const requestedPort = Number(process.env.PICTORY_QA_PORT ?? 0);
+const port = requestedPort > 0 ? requestedPort : await findFreePort(5173);
 const baseUrl = `http://127.0.0.1:${port}`;
 const screenshotDir = path.join(
   projectRoot,
@@ -19,18 +21,22 @@ const screenshotDir = path.join(
 let serverProcess;
 
 try {
-  const alreadyRunning = await isServerReady();
-  if (!alreadyRunning) {
-    serverProcess = spawn(
-      process.platform === "win32" ? "npm.cmd" : "npm",
-      ["run", "web:dev", "--", "--host", "127.0.0.1", "--port", String(port)],
-      {
-        cwd: projectRoot,
-        stdio: ["ignore", "pipe", "pipe"],
-      },
-    );
-    await waitForServer();
-  }
+  serverProcess = spawn(
+    process.execPath,
+    [
+      path.join(projectRoot, "node_modules", "vite", "bin", "vite.js"),
+      "dev",
+      "--host",
+      "127.0.0.1",
+      "--port",
+      String(port),
+    ],
+    {
+      cwd: projectRoot,
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
+  await waitForServer();
 
   const report = await runQa();
   await mkdir(screenshotDir, { recursive: true });
@@ -104,6 +110,12 @@ async function runQa() {
     await clickBottomNav(page, "보관");
     await page.getByText("다시 볼 것만 보관").waitFor();
     await page.screenshot({ path: path.join(screenshotDir, "04-saved.png") });
+    await page.getByRole("button", { name: /음식/ }).click();
+    await page.getByText("보관 폴더").waitFor();
+    await page.locator(".folder-header").filter({ hasText: "음식" }).waitFor();
+    await page.screenshot({
+      path: path.join(screenshotDir, "05-saved-food-folder.png"),
+    });
 
     const state = await page.evaluate(() => {
       const raw = window.localStorage.getItem("pictory-state-v1");
@@ -114,6 +126,7 @@ async function runQa() {
         (image) => image.complete && image.naturalWidth === 0,
       ).length,
       bucketCards: document.querySelectorAll(".bucket-card").length,
+      folderHeaders: document.querySelectorAll(".folder-header").length,
       trayPhotos: document.querySelectorAll(".tray-photo").length,
       photoTiles: document.querySelectorAll(".photo-tile").length,
       navItems: Array.from(document.querySelectorAll(".bottom-nav-item")).map(
@@ -137,6 +150,8 @@ async function runQa() {
         (state?.savedIds?.length ?? 0) >= 1 &&
         categoryCoverage &&
         dom.brokenImages === 0 &&
+        dom.folderHeaders >= 1 &&
+        dom.photoTiles >= 1 &&
         dom.navItems.join(",") === "홈,지도,정리,보관",
       url: baseUrl,
       screenshots: screenshotDir,
@@ -171,6 +186,28 @@ function countBy(items, key) {
     summary[value] = (summary[value] ?? 0) + 1;
     return summary;
   }, {});
+}
+
+async function findFreePort(startPort) {
+  for (let candidate = startPort; candidate < startPort + 50; candidate += 1) {
+    if (await canListen(candidate)) {
+      return candidate;
+    }
+  }
+
+  throw new Error(`No free QA port found from ${startPort}`);
+}
+
+function canListen(portToCheck) {
+  return new Promise((resolve) => {
+    const server = createServer()
+      .once("error", () => resolve(false))
+      .once("listening", () => {
+        server.close(() => resolve(true));
+      });
+
+    server.listen(portToCheck, "127.0.0.1");
+  });
 }
 
 async function isServerReady() {

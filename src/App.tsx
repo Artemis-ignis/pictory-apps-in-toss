@@ -61,6 +61,9 @@ function App() {
   const [selectedCleanBucket, setSelectedCleanBucket] = useState<
     CleanBucketId | "all"
   >("all");
+  const [selectedSavedBucket, setSelectedSavedBucket] = useState<
+    MapBucketId | "all"
+  >("all");
 
   useEffect(() => {
     loadPictoryState()
@@ -80,7 +83,7 @@ function App() {
 
   useEffect(() => {
     screenFrameRef.current?.scrollTo({ top: 0 });
-  }, [activeTab, selectedCleanBucket, selectedMapBucket]);
+  }, [activeTab, selectedCleanBucket, selectedMapBucket, selectedSavedBucket]);
 
   useEffect(() => {
     preloadRewardedScanAd().catch(() => undefined);
@@ -259,6 +262,7 @@ function App() {
     setItems([]);
     setSelectedMapBucket("all");
     setSelectedCleanBucket("all");
+    setSelectedSavedBucket("all");
     setScanMessage("픽토리 내부 기록을 비웠어요.");
   }
 
@@ -268,6 +272,9 @@ function App() {
     }
     if (tabId === "clean") {
       setSelectedCleanBucket("all");
+    }
+    if (tabId === "saved") {
+      setSelectedSavedBucket("all");
     }
     setActiveTab(tabId);
   }
@@ -361,6 +368,8 @@ function App() {
             savedItems={savedItems}
             historyEntries={state.scanHistory}
             plan={currentPlan}
+            selectedBucket={selectedSavedBucket}
+            onSelectBucket={setSelectedSavedBucket}
             onClear={handleClear}
             onShare={handleShare}
           />

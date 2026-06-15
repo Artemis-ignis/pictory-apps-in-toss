@@ -562,9 +562,20 @@
   align-items: center;
   gap: 4px;
   align-self: start;
+  min-height: 34px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 999px;
   color: var(--blue);
+  background: rgba(47, 128, 255, 0.08);
+  font: inherit;
   font-size: 13px;
   font-weight: 900;
+}
+
+.folder-back:active {
+  transform: translateY(1px);
+  background: rgba(47, 128, 255, 0.14);
 }
 
 .folder-icon {
