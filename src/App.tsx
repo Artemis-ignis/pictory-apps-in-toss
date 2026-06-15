@@ -1,0 +1,240 @@
+import { useEffect, useMemo, useState } from "react";
+import "./App.css";
+import { AppHeader } from "./components/AppHeader";
+import { BottomNav, type TabId } from "./components/BottomNav";
+import { HomePage } from "./pages/HomePage";
+import { MapPage } from "./pages/MapPage";
+import { CleanPage } from "./pages/CleanPage";
+import { SavedPage } from "./pages/SavedPage";
+import {
+  pickAlbumItems,
+  requestAlbumScan,
+} from "./features/album/albumAdapter";
+import {
+  classifyAlbumItems,
+  getCategorySummary,
+  getCleanSummary,
+} from "./features/album/classifier";
+import {
+  clearPictoryState,
+  defaultPictoryState,
+  loadPictoryState,
+  savePictoryState,
+} from "./features/album/storage";
+import type {
+  AlbumItem,
+  ClassifiedItem,
+  CleanBucketId,
+  MapBucketId,
+  PersistedPictoryState,
+} from "./features/album/types";
+import { showRewardedScanAd } from "./features/ads/rewardAd";
+
+function App() {
+  const [activeTab, setActiveTab] = useState<TabId>("home");
+  const [items, setItems] = useState<ClassifiedItem[]>([]);
+  const [state, setState] =
+    useState<PersistedPictoryState>(defaultPictoryState);
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanMessage, setScanMessage] = useState(
+    "개발 환경이라도 실제 파일 선택으로 동작을 확인할 수 있어요.",
+  );
+  const [selectedMapBucket, setSelectedMapBucket] = useState<
+    MapBucketId | "all"
+  >("all");
+  const [selectedCleanBucket, setSelectedCleanBucket] = useState<
+    CleanBucketId | "all"
+  >("all");
+
+  useEffect(() => {
+    loadPictoryState()
+      .then(setState)
+      .catch(() => setState(defaultPictoryState));
+  }, []);
+
+  useEffect(() => {
+    savePictoryState(state).catch(() => undefined);
+  }, [state]);
+
+  const statusMap = useMemo(() => {
+    const map = new Map<string, ClassifiedItem["status"]>();
+    state.savedIds.forEach((id) => map.set(id, "saved"));
+    state.queuedIds.forEach((id) => map.set(id, "queued"));
+    state.ignoredIds.forEach((id) => map.set(id, "ignored"));
+    return map;
+  }, [state.ignoredIds, state.queuedIds, state.savedIds]);
+
+  const visibleItems = useMemo(
+    () =>
+      items.map((item) => ({
+        ...item,
+        status: statusMap.get(item.id) ?? item.status,
+      })),
+    [items, statusMap],
+  );
+
+  const summaries = useMemo(
+    () => ({
+      map: getCategorySummary(visibleItems),
+      clean: getCleanSummary(visibleItems),
+    }),
+    [visibleItems],
+  );
+
+  const savedItems = visibleItems.filter((item) => item.status === "saved");
+  const queuedCount = visibleItems.filter(
+    (item) => item.status === "queued",
+  ).length;
+
+  async function analyzeIncoming(nextItems: AlbumItem[], message: string) {
+    setIsScanning(true);
+    setScanMessage("픽토리가 사진 신호를 읽고 있어요.");
+    const classified = await classifyAlbumItems(nextItems, statusMap);
+    setItems(classified);
+    setState((previous) => ({
+      ...previous,
+      lastScanAt: new Date().toISOString(),
+      lastScanCount: classified.length,
+    }));
+    setScanMessage(message);
+    setIsScanning(false);
+  }
+
+  async function handleScan() {
+    try {
+      setIsScanning(true);
+      const result = await requestAlbumScan(Math.max(40, state.credits || 40));
+      await analyzeIncoming(result.items, result.message);
+      setActiveTab("map");
+    } catch {
+      setScanMessage("사진을 가져오지 못했어요. 다시 시도해주세요.");
+      setIsScanning(false);
+    }
+  }
+
+  async function handlePick() {
+    try {
+      const result = await pickAlbumItems(40);
+      if (result.items.length === 0) {
+        setScanMessage(result.message);
+        return;
+      }
+      await analyzeIncoming(result.items, result.message);
+      setActiveTab("map");
+    } catch {
+      setScanMessage("선택한 사진을 읽지 못했어요.");
+    }
+  }
+
+  async function handleReward() {
+    setScanMessage("광고 보상 확인 중이에요.");
+    const reward = await showRewardedScanAd();
+    setState((previous) => ({
+      ...previous,
+      credits: Math.min(500, previous.credits + reward),
+    }));
+    setScanMessage(`${reward}장 스캔권을 받았어요.`);
+  }
+
+  function updateItemStatus(id: string, status: ClassifiedItem["status"]) {
+    setState((previous) => {
+      const remove = (ids: string[]) => ids.filter((itemId) => itemId !== id);
+      return {
+        ...previous,
+        savedIds:
+          status === "saved"
+            ? [...remove(previous.savedIds), id]
+            : remove(previous.savedIds),
+        queuedIds:
+          status === "queued"
+            ? [...remove(previous.queuedIds), id]
+            : remove(previous.queuedIds),
+        ignoredIds:
+          status === "ignored"
+            ? [...remove(previous.ignoredIds), id]
+            : remove(previous.ignoredIds),
+      };
+    });
+  }
+
+  async function handleClear() {
+    await clearPictoryState();
+    setState(defaultPictoryState);
+    setItems((previous) =>
+      previous.map((item) => ({
+        ...item,
+        status: "inbox",
+      })),
+    );
+    setScanMessage("픽토리 내부 기록을 비웠어요.");
+  }
+
+  function handleShare() {
+    const text = `픽토리 요약: ${visibleItems.length}장, 종류 ${
+      Object.keys(summaries.map).length
+    }개, 정리 후보 ${Object.values(summaries.clean).reduce(
+      (sum, count) => sum + count,
+      0,
+    )}장`;
+
+    if (navigator.share) {
+      navigator.share({ title: "픽토리 요약", text }).catch(() => undefined);
+      return;
+    }
+
+    navigator.clipboard?.writeText(text).catch(() => undefined);
+    setScanMessage("요약을 클립보드에 복사했어요.");
+  }
+
+  return (
+    <div className="app-shell">
+      <AppHeader />
+      <div className="screen-frame">
+        {activeTab === "home" ? (
+          <HomePage
+            items={visibleItems}
+            credits={state.credits}
+            isScanning={isScanning}
+            scanMessage={scanMessage}
+            onScan={handleScan}
+            onPick={handlePick}
+            onReward={handleReward}
+            onViewAll={() => setActiveTab("map")}
+          />
+        ) : null}
+        {activeTab === "map" ? (
+          <MapPage
+            items={visibleItems}
+            selectedBucket={selectedMapBucket}
+            onSelectBucket={setSelectedMapBucket}
+            onSave={(id) => updateItemStatus(id, "saved")}
+            onQueue={(id) => updateItemStatus(id, "queued")}
+            onIgnore={(id) => updateItemStatus(id, "ignored")}
+          />
+        ) : null}
+        {activeTab === "clean" ? (
+          <CleanPage
+            items={visibleItems}
+            selectedBucket={selectedCleanBucket}
+            queuedCount={queuedCount}
+            onSelectBucket={setSelectedCleanBucket}
+            onQueue={(id) => updateItemStatus(id, "queued")}
+            onSave={(id) => updateItemStatus(id, "saved")}
+            onIgnore={(id) => updateItemStatus(id, "ignored")}
+          />
+        ) : null}
+        {activeTab === "saved" ? (
+          <SavedPage
+            savedItems={savedItems}
+            historyCount={state.lastScanCount ?? visibleItems.length}
+            onClear={handleClear}
+            onShare={handleShare}
+          />
+        ) : null}
+      </div>
+      <BottomNav activeTab={activeTab} onChange={setActiveTab} />
+    </div>
+  );
+}
+
+export default App;

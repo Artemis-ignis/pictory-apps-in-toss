@@ -1,0 +1,44 @@
+{
+  "name": "pictory",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "granite dev",
+    "web:dev": "vite dev",
+    "typecheck": "tsc -b",
+    "build": "ait build",
+    "web:build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@apps-in-toss/web-framework": "^2.7.0",
+    "@emotion/react": "^11.14.0",
+    "@toss/tds-colors": "^0.1.0",
+    "@toss/tds-mobile": "^2.4.1",
+    "@toss/tds-mobile-ait": "^2.4.1",
+    "lucide-react": "^1.18.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.21.0",
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^4.3.4",
+    "eslint": "^9.21.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-react-refresh": "^0.4.19",
+    "globals": "^15.15.0",
+    "playwright": "^1.60.0",
+    "prettier": "^3.4.2",
+    "typescript": "~5.7.2",
+    "typescript-eslint": "^8.24.1",
+    "vite": "^6.2.0",
+    "vitest": "^4.1.8"
+  }
+}
