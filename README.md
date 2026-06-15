@@ -23,6 +23,7 @@ npm run typecheck
 npm run lint
 npm run qa:server:built
 npm run check:production-env -- --file .env.production
+npm run check:device-evidence -- --file qa-evidence/device-smoke.json
 npm run build
 ```
 
@@ -34,6 +35,12 @@ npm run build
 테스트 광고 ID, placeholder endpoint, SKU 불일치, 짧은 secret, mTLS 파일 누락,
 원본 이미지 로그 설정 실수로 배포되지 않게 막습니다. `.env.production`은
 저장소에 커밋하지 않습니다.
+`npm run check:device-evidence -- --file qa-evidence/device-smoke.json`은
+앱인토스 콘솔 QR을 실제 토스 앱에서 스캔한 증거를 검사합니다. 증거 JSON에는
+현재 `pictory.ait` SHA-256, 토스 앱 버전, QR 시각, 사진 권한, 앨범 선택,
+분류 탭, 민감정보 흐림, 보상형 광고, 결제 지급, 미결 주문 복원, 계정 삭제
+스크린샷 경로가 있어야 합니다. 형식 예시는
+`docs/device-smoke-evidence.example.json`입니다.
 
 ## 운영 설정
 

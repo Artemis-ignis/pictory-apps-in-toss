@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "testedAt": "2026-06-15T13:05:00.000Z",
+  "release": {
+    "gitCommit": "현재_git_commit",
+    "aitSha256": "현재_pictory_ait_sha256"
+  },
+  "app": {
+    "appName": "pictory",
+    "consoleAppVersion": "앱인토스_콘솔_버전",
+    "qrGeneratedAt": "2026-06-15T13:00:00.000Z",
+    "qrScanned": true
+  },
+  "device": {
+    "os": "ios",
+    "osVersion": "18.5",
+    "tossAppVersion": "5.247.0",
+    "model": "실기기_모델명"
+  },
+  "scenarios": [
+    {
+      "id": "qr-scan",
+      "status": "passed",
+      "evidenceFiles": ["qa-evidence/screens/qr-scan.png"]
+    },
+    {
+      "id": "photos-permission",
+      "status": "passed",
+      "evidenceFiles": ["qa-evidence/screens/photos-permission.png"]
+    },
+    {
+      "id": "album-pick",
+      "status": "passed",
+      "evidenceFiles": ["qa-evidence/screens/album-pick.png"]
+    },
+    {
+      "id": "classification-tabs",
+      "status": "passed",
+      "evidenceFiles": ["qa-evidence/screens/classification-tabs.png"]
+    },
+    {
+      "id": "privacy-mask",
+      "status": "passed",
+      "evidenceFiles": ["qa-evidence/screens/privacy-mask.png"]
+    },
+    {
+      "id": "reward-ad-earned",
+      "status": "passed",
+      "evidenceFiles": ["qa-evidence/screens/reward-ad-earned.png"]
+    },
+    {
+      "id": "iap-purchase-grant",
+      "status": "passed",
+      "evidenceFiles": ["qa-evidence/screens/iap-purchase-grant.png"]
+    },
+    {
+      "id": "pending-order-restore",
+      "status": "passed",
+      "evidenceFiles": ["qa-evidence/screens/pending-order-restore.png"]
+    },
+    {
+      "id": "account-delete",
+      "status": "passed",
+      "evidenceFiles": ["qa-evidence/screens/account-delete.png"]
+    }
+  ]
+}
