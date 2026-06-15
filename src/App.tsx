@@ -67,6 +67,8 @@ interface PictoryViewState {
   photoId: string | null;
 }
 
+type MapViewMode = "category" | "period";
+
 const DEFAULT_VIEW_STATE: PictoryViewState = {
   scope: "pictory-view",
   tab: "home",
@@ -105,6 +107,7 @@ function App() {
   const [selectedMapFolder, setSelectedMapFolder] = useState<
     MapFolderId | "all"
   >(initialViewState.mapFolder);
+  const [mapViewMode, setMapViewMode] = useState<MapViewMode>("category");
   const [selectedCleanBucket, setSelectedCleanBucket] = useState<
     CleanBucketId | "all"
   >(initialViewState.cleanBucket);
@@ -412,7 +415,10 @@ function App() {
 
     setState((previous) => ({
       ...previous,
-      credits: Math.min(3000, previous.credits + grant.granted),
+      credits:
+        grant.serverAiCredits != null
+          ? Math.min(3000, grant.serverAiCredits)
+          : Math.min(3000, previous.credits + grant.granted),
     }));
     setScanMessage(
       grant.source === "localFallback"
@@ -641,7 +647,9 @@ function App() {
           <MapPage
             items={visibleItems}
             selectedFolder={selectedMapFolder}
+            viewMode={mapViewMode}
             onSelectFolder={handleSelectMapFolder}
+            onViewModeChange={setMapViewMode}
             onSave={(id) => updateItemStatus(id, "saved")}
             onQueue={(id) => updateItemStatus(id, "queued")}
             onIgnore={(id) => updateItemStatus(id, "ignored")}

@@ -34,6 +34,7 @@ export function buildReleaseSnapshot({
       "npm run check:production-env -- --file .env.production",
       "npm run check:device-evidence -- --file qa-evidence/device-smoke.json",
       "npm run build",
+      "npm run check:privacy",
       "npm run check:release",
     ],
   };

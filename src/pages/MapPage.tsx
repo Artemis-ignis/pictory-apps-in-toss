@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   ArrowLeft,
   Archive,
@@ -27,7 +26,9 @@ import {
 interface MapPageProps {
   items: ClassifiedItem[];
   selectedFolder: MapFolderId | "all";
+  viewMode: "category" | "period";
   onSelectFolder: (folder: MapFolderId | "all") => void;
+  onViewModeChange: (viewMode: "category" | "period") => void;
   onSave: (id: string) => void;
   onQueue: (id: string) => void;
   onIgnore: (id: string) => void;
@@ -52,14 +53,15 @@ const icons: Record<MapBucketId, JSX.Element> = {
 export function MapPage({
   items,
   selectedFolder,
+  viewMode,
   onSelectFolder,
+  onViewModeChange,
   onSave,
   onQueue,
   onIgnore,
   onOpenPhoto,
   onApplyFolderStatus,
 }: MapPageProps) {
-  const [viewMode, setViewMode] = useState<"category" | "period">("category");
   const categoryFolders = MAP_BUCKETS.map((bucket) => ({
     id: `category:${bucket.id}` as const,
     label: bucket.label,
@@ -178,7 +180,7 @@ export function MapPage({
           type="button"
           className={viewMode === "category" ? "is-active" : ""}
           aria-pressed={viewMode === "category"}
-          onClick={() => setViewMode("category")}
+          onClick={() => onViewModeChange("category")}
         >
           종류별
         </button>
@@ -186,7 +188,7 @@ export function MapPage({
           type="button"
           className={viewMode === "period" ? "is-active" : ""}
           aria-pressed={viewMode === "period"}
-          onClick={() => setViewMode("period")}
+          onClick={() => onViewModeChange("period")}
         >
           기간별
         </button>

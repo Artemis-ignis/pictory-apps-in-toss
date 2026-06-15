@@ -64,10 +64,11 @@ npm run qa:server:built
 npm run check:production-env -- --file .env.production
 npm run check:device-evidence -- --file qa-evidence/device-smoke.json
 npm run build
+npm run check:privacy
 npm run check:release
 ```
 
-`npm run build`가 만든 `pictory.ait`를 앱인토스 콘솔에 업로드한다. `npm run check:release`는 업로드 전 `.env.example`, `pictory.ait`, Granite 필수 설정, 테스트 스크립트 존재 여부, 최신 release snapshot의 `.ait` 해시와 archive 존재 여부를 읽기 전용으로 확인한다. `npm run check:production-env -- --file .env.production`은 실제 운영 후보 값에서 테스트 광고 ID, placeholder endpoint, endpoint origin/path 불일치, SKU 불일치, 짧은 secret, mTLS 인증서/키 누락 또는 빈 파일, 원본 이미지 로그 설정 오류를 차단한다. `npm run check:device-evidence -- --file qa-evidence/device-smoke.json`은 실제 QR 실기기 증거가 현재 Git commit과 `pictory.ait` 해시와 맞고, placeholder가 아닌 콘솔/단말 정보와 필수 시나리오 스크린샷이 모두 있는지 확인한다.
+`npm run build`가 만든 `pictory.ait`를 앱인토스 콘솔에 업로드한다. `npm run check:privacy`는 `pictory.ait`, `dist`, `dist-server`에 서버 전용 env 이름이나 실제 키/secret 할당값이 섞이지 않았는지 검사한다. `npm run check:release`는 업로드 전 `.env.example`, `pictory.ait`, Granite 필수 설정, 테스트 스크립트 존재 여부, 최신 release snapshot의 `.ait` 해시와 archive 존재 여부를 읽기 전용으로 확인한다. `npm run check:production-env -- --file .env.production`은 실제 운영 후보 값에서 테스트 광고 ID, placeholder endpoint, endpoint origin/path 불일치, SKU 불일치, 짧은 secret, mTLS 인증서/키 누락 또는 빈 파일, 원본 이미지 로그 설정 오류를 차단한다. `npm run check:device-evidence -- --file qa-evidence/device-smoke.json`은 실제 QR 실기기 증거가 현재 Git commit과 `pictory.ait` 해시와 맞고, placeholder가 아닌 콘솔/단말 정보와 필수 시나리오 스크린샷이 모두 있는지 확인한다.
 
 콘솔 경로:
 
@@ -81,7 +82,7 @@ npm run check:release
 
 - [ ] `.env`에 실제 비밀값이 없고, 클라이언트 값은 `VITE_` 공개 값만 들어 있다.
 - [ ] 서버 OpenAI 키와 `PICTORY_SERVER_SECRET`은 서버 배포 환경에만 설정했다.
-- [ ] `npm run test`, `npm run typecheck`, `npm run lint`, `npm run qa:server`, `npm run qa:server:built`, `npm run check:production-env -- --file .env.production`, `npm run check:device-evidence -- --file qa-evidence/device-smoke.json`, `npm run build`, `npm run check:release`가 통과했다.
+- [ ] `npm run test`, `npm run typecheck`, `npm run lint`, `npm run qa:server`, `npm run qa:server:built`, `npm run check:production-env -- --file .env.production`, `npm run check:device-evidence -- --file qa-evidence/device-smoke.json`, `npm run build`, `npm run check:privacy`, `npm run check:release`가 통과했다.
 - [ ] 업로드한 파일명이 최신 `pictory.ait`인지 확인했다.
 - [ ] 테스트 단말에서 토스 앱에 로그인했다.
 - [ ] 테스트 계정이 앱인토스 워크스페이스 멤버이고 만 19세 이상이다.

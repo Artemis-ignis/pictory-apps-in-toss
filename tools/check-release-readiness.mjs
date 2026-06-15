@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { scanReleasePrivacy } from "./check-release-privacy.mjs";
 
 const rootDir = fileURLToPath(new URL("..", import.meta.url));
 const results = [];
@@ -213,6 +214,18 @@ function checkReleaseSnapshot() {
   }
 }
 
+function checkReleasePrivacy() {
+  const result = scanReleasePrivacy({ cwd: rootDir });
+
+  for (const check of result.checks) {
+    record(check.ok, check.message);
+  }
+
+  for (const failure of result.failures) {
+    record(false, failure);
+  }
+}
+
 function checkGraniteConfig() {
   const graniteConfig = readText("granite.config.ts");
   const graniteApp = readText(".granite/app.json");
@@ -294,6 +307,7 @@ function checkPackageScripts() {
     "server:build",
     "server:start",
     "check:release",
+    "check:privacy",
     "check:production-env",
     "check:device-evidence",
     "snapshot:release",
@@ -359,6 +373,10 @@ function checkPackageScripts() {
     "production env preflight exists",
   );
   record(
+    existsSync(projectPath("tools", "check-release-privacy.mjs")),
+    "release privacy preflight exists",
+  );
+  record(
     existsSync(projectPath("tools", "check-device-evidence.mjs")),
     "device evidence preflight exists",
   );
@@ -415,6 +433,10 @@ function checkPackageScripts() {
     "release snapshot tests exist",
   );
   record(
+    existsSync(projectPath("tests", "releasePrivacy.test.mjs")),
+    "release privacy tests exist",
+  );
+  record(
     existsSync(projectPath("tests", "runtimeEnvGuard.test.ts")),
     "runtime env guard tests exist",
   );
@@ -425,6 +447,7 @@ checkAitBundle();
 checkGraniteConfig();
 checkPackageScripts();
 checkReleaseSnapshot();
+checkReleasePrivacy();
 
 const failures = results.filter((result) => !result.ok);
 
