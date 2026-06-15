@@ -86,10 +86,11 @@ export async function classifyAlbumItems(
 ): Promise<ClassifiedItem[]> {
   const classified = await Promise.all(
     items.map(async (item) => {
+      const useLiveDetectors = item.source !== "sample";
       const [signals, nativeHints, visualHints] = await Promise.all([
         item.signals ?? analyzeImageSource(item.dataUri),
-        inferNativeDetectorHints(item.dataUri),
-        inferVisualHints(item.dataUri),
+        useLiveDetectors ? inferNativeDetectorHints(item.dataUri) : [],
+        useLiveDetectors ? inferVisualHints(item.dataUri) : [],
       ]);
       const hints = Array.from(
         new Set([...(item.hints ?? []), ...nativeHints, ...visualHints]),
@@ -367,6 +368,15 @@ function boostFileNameToken(
     )
   ) {
     scores.capture += 0.38;
+  }
+  if (
+    tokens.some((value) =>
+      /food|meal|menu|음식|식당|메뉴|카페|맛집|brunch|dinner|dessert/.test(
+        value,
+      ),
+    )
+  ) {
+    scores.food += 0.22;
   }
 }
 

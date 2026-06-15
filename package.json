@@ -12,6 +12,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
+    "qa:flow": "node tools/qa-pictory-flow.mjs",
     "preview": "vite preview",
     "maker:create": "node tools/apps-in-toss-maker/create-app.mjs"
   },

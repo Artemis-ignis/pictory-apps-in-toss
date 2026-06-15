@@ -1,14 +1,14 @@
 import {
+  ArrowLeft,
   Camera,
   FileArchive,
+  FolderOpen,
   ImageOff,
   Moon,
   ShieldAlert,
   Sparkles,
 } from "lucide-react";
-import { Fragment } from "react";
 import { BucketCard } from "../components/BucketCard";
-import { BucketPhotoTray } from "../components/BucketPhotoTray";
 import { Mascot } from "../components/Mascot";
 import { PhotoTile } from "../components/PhotoTile";
 import {
@@ -50,15 +50,78 @@ export function CleanPage({
   onIgnore,
 }: CleanPageProps) {
   const candidates = items.filter(isCleanTabItem);
-  const filtered =
-    selectedBucket === "all"
-      ? candidates
-      : candidates.filter((item) => cleanBucketMatches(item, selectedBucket));
   const buckets = CLEAN_BUCKETS.map((bucket) => ({
     bucket,
     count: candidates.filter((item) => cleanBucketMatches(item, bucket.id))
       .length,
   }));
+  const selectedBucketMeta =
+    selectedBucket === "all"
+      ? null
+      : CLEAN_BUCKETS.find((bucket) => bucket.id === selectedBucket);
+  const selectedItems =
+    selectedBucketMeta == null
+      ? []
+      : candidates.filter((item) =>
+          cleanBucketMatches(item, selectedBucketMeta.id),
+        );
+
+  if (selectedBucketMeta != null) {
+    return (
+      <main className="screen folder-screen">
+        <section className="folder-header">
+          <button
+            type="button"
+            className="folder-back"
+            onClick={() => onSelectBucket("all")}
+          >
+            <ArrowLeft size={19} />
+            <span>후보별</span>
+          </button>
+          <div className={`folder-icon tone-${selectedBucketMeta.tone}`}>
+            {icons[selectedBucketMeta.id] ?? <FolderOpen size={22} />}
+          </div>
+          <div>
+            <p>정리 폴더</p>
+            <h1>{selectedBucketMeta.label}</h1>
+            <span>{selectedItems.length}장</span>
+          </div>
+        </section>
+
+        {queuedCount > 0 ? (
+          <div className="queue-banner">
+            <strong>{queuedCount}장</strong>
+            <span>
+              정리 후보로 표시했어요. 실제 삭제 전에는 앨범에서 다시 확인해야
+              해요.
+            </span>
+          </div>
+        ) : null}
+
+        {selectedItems.length > 0 ? (
+          <section className="photo-list folder-photo-list">
+            {selectedItems.map((item) => (
+              <PhotoTile
+                key={item.id}
+                item={item}
+                onQueue={onQueue}
+                onSave={onSave}
+                onIgnore={onIgnore}
+              />
+            ))}
+          </section>
+        ) : (
+          <section className="empty-mini">
+            <FolderOpen size={24} />
+            <div>
+              <strong>아직 사진이 없어요</strong>
+              <span>다른 폴더를 열어보세요.</span>
+            </div>
+          </section>
+        )}
+      </main>
+    );
+  }
 
   return (
     <main className="screen">
@@ -83,32 +146,16 @@ export function CleanPage({
       </div>
 
       <section className="bucket-list">
-        {buckets.map(({ bucket, count }) => {
-          const bucketItems = candidates.filter((item) =>
-            cleanBucketMatches(item, bucket.id),
-          );
-          return (
-            <Fragment key={bucket.id}>
-              <BucketCard
-                bucket={bucket}
-                count={count}
-                icon={icons[bucket.id]}
-                extraCount={Math.max(0, count - 3)}
-                selected={selectedBucket === bucket.id}
-                onClick={() => onSelectBucket(bucket.id)}
-              />
-              {selectedBucket === bucket.id ? (
-                <BucketPhotoTray
-                  items={bucketItems}
-                  title={bucket.label}
-                  onQueue={onQueue}
-                  onSave={onSave}
-                  onIgnore={onIgnore}
-                />
-              ) : null}
-            </Fragment>
-          );
-        })}
+        {buckets.map(({ bucket, count }) => (
+          <BucketCard
+            key={bucket.id}
+            bucket={bucket}
+            count={count}
+            icon={icons[bucket.id]}
+            extraCount={Math.max(0, count - 3)}
+            onClick={() => onSelectBucket(bucket.id)}
+          />
+        ))}
       </section>
 
       {queuedCount > 0 ? (
@@ -120,18 +167,6 @@ export function CleanPage({
           </span>
         </div>
       ) : null}
-
-      <section className="photo-list">
-        {filtered.slice(0, 10).map((item) => (
-          <PhotoTile
-            key={item.id}
-            item={item}
-            onQueue={onQueue}
-            onSave={onSave}
-            onIgnore={onIgnore}
-          />
-        ))}
-      </section>
     </main>
   );
 }

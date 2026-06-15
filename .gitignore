@@ -19,6 +19,7 @@ dist-ssr
 .granite
 playwright-report
 test-results
+temp_screenshots
 *.tsbuildinfo
 
 # Editor directories and files

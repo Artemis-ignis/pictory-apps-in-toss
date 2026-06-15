@@ -80,7 +80,7 @@ function App() {
 
   useEffect(() => {
     screenFrameRef.current?.scrollTo({ top: 0 });
-  }, [activeTab]);
+  }, [activeTab, selectedCleanBucket, selectedMapBucket]);
 
   useEffect(() => {
     preloadRewardedScanAd().catch(() => undefined);
@@ -161,6 +161,7 @@ function App() {
 
       const result = await requestAlbumScan(allowance.nextBatchLimit);
       await analyzeIncoming(result.items, result.message);
+      setSelectedMapBucket("all");
       setActiveTab("map");
     } catch {
       setScanMessage(
@@ -186,6 +187,7 @@ function App() {
         return;
       }
       await analyzeIncoming(result.items, result.message);
+      setSelectedMapBucket("all");
       setActiveTab("map");
     } catch {
       setScanMessage(
@@ -255,7 +257,24 @@ function App() {
     await clearPictoryState();
     setState(defaultPictoryState);
     setItems([]);
+    setSelectedMapBucket("all");
+    setSelectedCleanBucket("all");
     setScanMessage("픽토리 내부 기록을 비웠어요.");
+  }
+
+  function handleTabChange(tabId: TabId) {
+    if (tabId === "map") {
+      setSelectedMapBucket("all");
+    }
+    if (tabId === "clean") {
+      setSelectedCleanBucket("all");
+    }
+    setActiveTab(tabId);
+  }
+
+  function handleViewAll() {
+    setSelectedMapBucket("all");
+    setActiveTab("map");
   }
 
   function handleShare() {
@@ -313,7 +332,7 @@ function App() {
             onPick={handlePick}
             onReward={handleReward}
             onSelectPlan={handleSelectPlan}
-            onViewAll={() => setActiveTab("map")}
+            onViewAll={handleViewAll}
           />
         ) : null}
         {activeTab === "map" ? (
@@ -347,7 +366,7 @@ function App() {
           />
         ) : null}
       </div>
-      <BottomNav activeTab={activeTab} onChange={setActiveTab} />
+      <BottomNav activeTab={activeTab} onChange={handleTabChange} />
     </div>
   );
 }

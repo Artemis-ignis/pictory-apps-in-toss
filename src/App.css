@@ -539,6 +539,73 @@
   margin-right: -6px;
 }
 
+.folder-screen {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.folder-header {
+  display: grid;
+  grid-template-columns: auto 54px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 112px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: #f8fbff;
+}
+
+.folder-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: start;
+  color: var(--blue);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.folder-icon {
+  display: grid;
+  width: 54px;
+  height: 54px;
+  place-items: center;
+  border-radius: 18px;
+}
+
+.folder-header p,
+.folder-header h1,
+.folder-header span {
+  margin: 0;
+}
+
+.folder-header p {
+  color: #667386;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.folder-header h1 {
+  margin-top: 5px;
+  font-size: 28px;
+  line-height: 1.08;
+  font-weight: 950;
+}
+
+.folder-header span {
+  display: block;
+  margin-top: 6px;
+  color: #667386;
+  font-size: 14px;
+  font-weight: 850;
+}
+
+.folder-photo-list {
+  margin-top: 2px;
+}
+
 .bucket-list {
   display: grid;
   gap: 8px;
@@ -546,10 +613,10 @@
 
 .bucket-card {
   display: grid;
-  grid-template-columns: 48px minmax(0, 1fr) 98px 38px;
+  grid-template-columns: 42px minmax(72px, 1fr) 72px minmax(34px, auto);
   min-height: 72px;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
   padding: 10px 12px;
   border: 1px solid var(--line);
@@ -584,13 +651,13 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  min-width: 94px;
+  min-width: 70px;
 }
 
 .bucket-previews i,
 .bucket-previews em {
   display: block;
-  width: 31px;
+  width: 25px;
   height: 38px;
   margin-left: -6px;
   border-radius: 6px;
@@ -632,7 +699,23 @@
 .bucket-card b {
   color: #667386;
   font-size: 17px;
+  white-space: nowrap;
   text-align: right;
+}
+
+@media (max-width: 430px) {
+  .bucket-card {
+    grid-template-columns: 42px minmax(0, 1fr) minmax(34px, auto);
+  }
+
+  .bucket-previews {
+    display: none;
+  }
+
+  .bucket-card b {
+    grid-column: 3;
+    grid-row: 1;
+  }
 }
 
 .bucket-photo-tray {
@@ -741,38 +824,47 @@
 }
 
 .tone-violet .bucket-icon,
-.tone-purple .bucket-icon {
+.tone-purple .bucket-icon,
+.folder-icon.tone-violet,
+.folder-icon.tone-purple {
   color: var(--purple);
   background: #f0ecff;
 }
 
 .tone-slate .bucket-icon,
-.tone-dark .bucket-icon {
+.tone-dark .bucket-icon,
+.folder-icon.tone-slate,
+.folder-icon.tone-dark {
   color: #4b5563;
   background: #f1f3f7;
 }
 
-.tone-cyan .bucket-icon {
+.tone-cyan .bucket-icon,
+.folder-icon.tone-cyan {
   color: #0eb7ce;
   background: #e8fbff;
 }
 
-.tone-orange .bucket-icon {
+.tone-orange .bucket-icon,
+.folder-icon.tone-orange {
   color: var(--orange);
   background: #fff0df;
 }
 
-.tone-green .bucket-icon {
+.tone-green .bucket-icon,
+.folder-icon.tone-green {
   color: var(--green);
   background: #e9fbf3;
 }
 
-.tone-blue .bucket-icon {
+.tone-blue .bucket-icon,
+.folder-icon.tone-blue {
   color: var(--blue);
   background: #eaf3ff;
 }
 
-.tone-red .bucket-icon {
+.tone-red .bucket-icon,
+.folder-icon.tone-red {
   color: var(--red);
   background: #fff0f2;
 }

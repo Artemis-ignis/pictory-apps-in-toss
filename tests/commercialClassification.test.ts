@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { classifyItem } from "../src/features/album/classifier";
+import { sampleAlbumItems } from "../src/data/sampleAlbum";
+import {
+  classifyAlbumItems,
+  classifyItem,
+  getCategorySummary,
+} from "../src/features/album/classifier";
 import type {
   AlbumItem,
   CleanBucketId,
@@ -163,4 +168,18 @@ describe("commercial classification fixtures", () => {
       expect(item.confidence).toBeGreaterThan(0.55);
     },
   );
+
+  it("keeps sample album useful across core map buckets", async () => {
+    const classified = await classifyAlbumItems(sampleAlbumItems);
+    const summary = getCategorySummary(classified);
+
+    expect(classified).toHaveLength(20);
+    expect(summary.capture).toBeGreaterThanOrEqual(3);
+    expect(summary.document).toBeGreaterThanOrEqual(2);
+    expect(summary.receipt).toBeGreaterThanOrEqual(1);
+    expect(summary.food).toBeGreaterThanOrEqual(3);
+    expect(summary.place).toBeGreaterThanOrEqual(1);
+    expect(summary.people).toBeGreaterThanOrEqual(2);
+    expect(summary.coupon).toBeGreaterThanOrEqual(1);
+  });
 });
