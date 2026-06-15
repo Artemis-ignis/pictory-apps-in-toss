@@ -246,6 +246,7 @@ function checkPackageScripts() {
     "check:release",
     "check:production-env",
     "check:device-evidence",
+    "snapshot:release",
     "qa:server",
     "qa:server:built",
   ]) {
@@ -308,6 +309,14 @@ function checkPackageScripts() {
     "device evidence preflight exists",
   );
   record(
+    existsSync(projectPath("tools", "write-release-snapshot.mjs")),
+    "release snapshot writer exists",
+  );
+  record(
+    listFiles("docs/release-snapshots").some((file) => /\.json$/.test(file)),
+    "release snapshot archive exists",
+  );
+  record(
     existsSync(projectPath("tests", "httpAdapter.test.ts")),
     "server classify HTTP adapter tests exist",
   );
@@ -346,6 +355,10 @@ function checkPackageScripts() {
   record(
     existsSync(projectPath("tests", "deviceEvidenceCheck.test.mjs")),
     "device evidence preflight tests exist",
+  );
+  record(
+    existsSync(projectPath("tests", "releaseSnapshot.test.mjs")),
+    "release snapshot tests exist",
   );
 }
 

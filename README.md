@@ -25,6 +25,7 @@ npm run qa:server:built
 npm run check:production-env -- --file .env.production
 npm run check:device-evidence -- --file qa-evidence/device-smoke.json
 npm run build
+npm run snapshot:release
 ```
 
 `npm run build`는 `pictory.ait`를 생성합니다.
@@ -41,6 +42,10 @@ npm run build
 분류 탭, 민감정보 흐림, 보상형 광고, 결제 지급, 미결 주문 복원, 계정 삭제
 스크린샷 경로가 있어야 합니다. 형식 예시는
 `docs/device-smoke-evidence.example.json`입니다.
+`npm run snapshot:release`는 현재 Git commit, GitHub private repo 상태,
+`pictory.ait` SHA-256, 필수 검증 명령을 로컬 최신본
+`docs/release-snapshot.json`과 Git 보존용 `docs/release-snapshots/*.json`에
+남깁니다. 이 파일에는 secret이나 실제 운영 env 값을 넣지 않습니다.
 
 ## 운영 설정
 

@@ -23,6 +23,7 @@ playwright-report
 test-results
 temp_screenshots
 qa-evidence
+docs/release-snapshot.json
 *.tsbuildinfo
 .pictory-ledger*.json
 server-data
