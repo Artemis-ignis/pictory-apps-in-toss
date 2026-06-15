@@ -343,7 +343,7 @@ function scoreCategories(tokens: string[], signals: ImageSignals) {
   }
 
   if (signals.skinToneRatio > 0.08) {
-    scores.people += 0.22;
+    scores.people += 0.25;
   }
 
   if (signals.natureColorRatio > 0.26 && signals.textLineScore < 0.12) {
@@ -376,7 +376,7 @@ function scoreSensitivity(
   categoryId: MapBucketId,
 ) {
   let score = SENSITIVE_TOKENS.some((token) =>
-    tokens.some((value) => value.includes(token) || token.includes(value)),
+    tokens.some((value) => isSensitiveTokenMatch(value, token)),
   )
     ? 0.82
     : 0.16;
@@ -407,6 +407,10 @@ function initialCleanBucket(
   }
 
   if (score < 0.56) {
+    return "needsReview";
+  }
+
+  if (categoryId === "coupon") {
     return "needsReview";
   }
 
@@ -512,6 +516,14 @@ function labelForCategory(categoryId: MapBucketId) {
     memory: "기록",
   };
   return labels[categoryId];
+}
+
+function isSensitiveTokenMatch(value: string, token: string) {
+  if (value.length <= 2 || token.length <= 2) {
+    return value === token;
+  }
+
+  return value.includes(token) || token.includes(value);
 }
 
 function getPeriod(isoDate: string) {
