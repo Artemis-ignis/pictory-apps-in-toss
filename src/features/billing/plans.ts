@@ -17,6 +17,10 @@ export interface ScanAllowance {
   nextBatchLimit: number;
 }
 
+export interface BillingRuntime {
+  hostname?: string;
+}
+
 export const USAGE_PLANS: UsagePlan[] = [
   {
     id: "free",
@@ -53,6 +57,42 @@ export function currentUsageMonth(date = new Date()) {
 
 export function getPlan(planId: PlanId) {
   return USAGE_PLANS.find((plan) => plan.id === planId) ?? USAGE_PLANS[0];
+}
+
+export function getBillingRuntime(): BillingRuntime {
+  return {
+    hostname:
+      typeof window === "undefined" ? undefined : window.location.hostname,
+  };
+}
+
+export function canUseLocalPaidPlanPreview(runtime = getBillingRuntime()) {
+  return (
+    runtime.hostname === "localhost" ||
+    runtime.hostname === "127.0.0.1" ||
+    runtime.hostname === "::1"
+  );
+}
+
+export function getEntitledPlanId(
+  requestedPlanId: PlanId,
+  runtime = getBillingRuntime(),
+): PlanId {
+  if (requestedPlanId === "free" || canUseLocalPaidPlanPreview(runtime)) {
+    return requestedPlanId;
+  }
+
+  return "free";
+}
+
+export function getEntitledBillingState(
+  state: PersistedPictoryState,
+  runtime = getBillingRuntime(),
+): PersistedPictoryState {
+  return {
+    ...state,
+    planId: getEntitledPlanId(state.planId, runtime),
+  };
 }
 
 export function normalizeBillingState(

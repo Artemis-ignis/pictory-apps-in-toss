@@ -39,7 +39,10 @@ import {
 import {
   canSaveMore,
   canUseServerAiRefinement,
+  canUseLocalPaidPlanPreview,
   consumeScanAllowance,
+  getBillingRuntime,
+  getEntitledBillingState,
   getPlan,
   getScanAllowance,
 } from "./features/billing/plans";
@@ -64,6 +67,7 @@ function App() {
   const [selectedSavedBucket, setSelectedSavedBucket] = useState<
     MapBucketId | "all"
   >("all");
+  const billingRuntime = useMemo(() => getBillingRuntime(), []);
 
   useEffect(() => {
     loadPictoryState()
@@ -118,34 +122,46 @@ function App() {
   const queuedCount = visibleItems.filter(
     (item) => item.status === "queued",
   ).length;
-  const scanAllowance = getScanAllowance(state);
-  const currentPlan = getPlan(state.planId);
+  const entitledState = useMemo(
+    () => getEntitledBillingState(state, billingRuntime),
+    [billingRuntime, state],
+  );
+  const scanAllowance = getScanAllowance(entitledState);
+  const currentPlan = getPlan(entitledState.planId);
 
   async function analyzeIncoming(nextItems: AlbumItem[], message: string) {
     setIsScanning(true);
     setScanMessage("픽토리가 사진 신호를 읽고 있어요.");
     const classified = await classifyAlbumItems(nextItems, statusMap, {
-      refineWithServerAi: canUseServerAiRefinement(state),
+      refineWithServerAi: canUseServerAiRefinement(entitledState),
     });
     const recentItems = await prepareRecentItemsForStorage(classified);
     const scannedAt = new Date().toISOString();
     setItems(classified);
-    setState((previous) => ({
-      ...consumeScanAllowance(previous, classified.length),
-      recentItems,
-      scanHistory: [
-        {
-          id: scannedAt,
-          scannedAt,
-          totalCount: classified.length,
-          cleanCandidateCount: countCleanCandidates(classified),
-          mapBucketCount: Object.keys(getCategorySummary(classified)).length,
-        },
-        ...previous.scanHistory,
-      ].slice(0, 8),
-      lastScanAt: scannedAt,
-      lastScanCount: classified.length,
-    }));
+    setState((previous) => {
+      const consumedState = consumeScanAllowance(
+        getEntitledBillingState(previous, billingRuntime),
+        classified.length,
+      );
+
+      return {
+        ...previous,
+        ...consumedState,
+        recentItems,
+        scanHistory: [
+          {
+            id: scannedAt,
+            scannedAt,
+            totalCount: classified.length,
+            cleanCandidateCount: countCleanCandidates(classified),
+            mapBucketCount: Object.keys(getCategorySummary(classified)).length,
+          },
+          ...previous.scanHistory,
+        ].slice(0, 8),
+        lastScanAt: scannedAt,
+        lastScanCount: classified.length,
+      };
+    });
     setScanMessage(message);
     setIsScanning(false);
   }
@@ -153,7 +169,7 @@ function App() {
   async function handleScan() {
     try {
       setIsScanning(true);
-      const allowance = getScanAllowance(state);
+      const allowance = getScanAllowance(entitledState);
       if (allowance.nextBatchLimit <= 0) {
         setScanMessage(
           "이번 달 정리 가능 장수를 다 썼어요. 광고나 플랜으로 늘릴 수 있어요.",
@@ -176,7 +192,7 @@ function App() {
 
   async function handlePick() {
     try {
-      const allowance = getScanAllowance(state);
+      const allowance = getScanAllowance(entitledState);
       if (allowance.nextBatchLimit <= 0) {
         setScanMessage(
           "이번 달 정리 가능 장수를 다 썼어요. 광고나 플랜으로 늘릴 수 있어요.",
@@ -227,7 +243,7 @@ function App() {
     if (
       status === "saved" &&
       !state.savedIds.includes(id) &&
-      !canSaveMore(state, state.savedIds.length)
+      !canSaveMore(entitledState, state.savedIds.length)
     ) {
       setScanMessage(`${currentPlan.label} 플랜의 보관 한도에 도달했어요.`);
       return;
@@ -302,13 +318,9 @@ function App() {
   }
 
   function handleSelectPlan(planId: PlanId) {
-    const isLocalPreview =
-      window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1";
-
-    if (planId !== "free" && !isLocalPreview) {
+    if (planId !== "free" && !canUseLocalPaidPlanPreview(billingRuntime)) {
       setScanMessage(
-        `${getPlan(planId).label} 플랜은 결제 서버 연동 후 활성화돼요.`,
+        `${getPlan(planId).label} 플랜은 인앱결제 지급·복원 검증이 붙은 뒤에만 활성화돼요.`,
       );
       return;
     }
@@ -332,7 +344,7 @@ function App() {
             plan={currentPlan}
             scanAllowance={scanAllowance}
             savedCount={savedItems.length}
-            selectedPlanId={state.planId}
+            selectedPlanId={entitledState.planId}
             isScanning={isScanning}
             scanMessage={scanMessage}
             onScan={handleScan}

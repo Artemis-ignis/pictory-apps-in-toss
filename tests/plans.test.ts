@@ -3,6 +3,8 @@ import {
   canSaveMore,
   canUseServerAiRefinement,
   consumeScanAllowance,
+  getEntitledBillingState,
+  getEntitledPlanId,
   getScanAllowance,
 } from "../src/features/billing/plans";
 import { defaultPictoryState } from "../src/features/album/storage";
@@ -63,5 +65,22 @@ describe("usage plans", () => {
         credits: 0,
       }),
     ).toBe(true);
+  });
+
+  it("does not treat a stored paid plan as entitlement in production", () => {
+    const productionRuntime = { hostname: "pictory.apps.tossmini.com" };
+
+    expect(getEntitledPlanId("plus", productionRuntime)).toBe("free");
+    expect(
+      getEntitledBillingState(
+        { ...defaultPictoryState, planId: "pro" },
+        productionRuntime,
+      ).planId,
+    ).toBe("free");
+  });
+
+  it("allows paid plan previews only on local development hosts", () => {
+    expect(getEntitledPlanId("plus", { hostname: "localhost" })).toBe("plus");
+    expect(getEntitledPlanId("pro", { hostname: "127.0.0.1" })).toBe("pro");
   });
 });
