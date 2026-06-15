@@ -15,6 +15,7 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "check:release": "node tools/check-release-readiness.mjs",
+    "check:launch": "node tools/check-launch-readiness.mjs",
     "check:production-env": "node tools/check-production-env.mjs",
     "check:device-evidence": "node tools/check-device-evidence.mjs",
     "env:production:draft": "node tools/write-production-env-draft.mjs",

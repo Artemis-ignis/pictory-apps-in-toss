@@ -28,6 +28,7 @@ npm run evidence:device:draft
 npm run check:device-evidence -- --file qa-evidence/device-smoke.json
 npm run build
 npm run snapshot:release
+npm run check:launch
 ```
 
 `npm run build`는 `pictory.ait`를 생성합니다.
@@ -56,6 +57,9 @@ placeholder 값은 그대로 통과하지 않습니다. 형식 예시는
 `docs/release-snapshot.json`과 Git 보존용 `docs/release-snapshots/*.json`에
 남깁니다. `npm run check:release`는 최신 스냅샷의 `.ait` 해시와 archive 존재도
 확인합니다. 이 파일에는 secret이나 실제 운영 env 값을 넣지 않습니다.
+`npm run check:launch`는 release package, `.env.production`,
+`qa-evidence/device-smoke.json`을 한 번에 읽고 실패 메시지만 요약합니다. 실제
+secret, OpenAI 키, mTLS 값은 출력하지 않습니다.
 
 ## 운영 설정
 

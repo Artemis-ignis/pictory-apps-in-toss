@@ -285,6 +285,7 @@ function checkPackageScripts() {
     "typecheck",
     "lint",
     "build",
+    "check:launch",
     "server:build",
     "server:start",
     "check:release",
