@@ -75,11 +75,21 @@ export interface ScanResult {
   message: string;
 }
 
+export interface ScanHistoryEntry {
+  id: string;
+  scannedAt: string;
+  totalCount: number;
+  cleanCandidateCount: number;
+  mapBucketCount: number;
+}
+
 export interface PersistedPictoryState {
   savedIds: string[];
   queuedIds: string[];
   ignoredIds: string[];
   credits: number;
+  recentItems: ClassifiedItem[];
+  scanHistory: ScanHistoryEntry[];
   lastScanAt?: string;
   lastScanCount?: number;
 }

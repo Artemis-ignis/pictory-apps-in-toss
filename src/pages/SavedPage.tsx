@@ -1,18 +1,18 @@
 import { Share2, Trash2 } from "lucide-react";
 import { Mascot } from "../components/Mascot";
 import { PhotoTile } from "../components/PhotoTile";
-import type { ClassifiedItem } from "../features/album/types";
+import type { ClassifiedItem, ScanHistoryEntry } from "../features/album/types";
 
 interface SavedPageProps {
   savedItems: ClassifiedItem[];
-  historyCount: number;
+  historyEntries: ScanHistoryEntry[];
   onClear: () => void;
   onShare: () => void;
 }
 
 export function SavedPage({
   savedItems,
-  historyCount,
+  historyEntries,
   onClear,
   onShare,
 }: SavedPageProps) {
@@ -50,21 +50,28 @@ export function SavedPage({
 
       <div className="section-heading">
         <h2>최근 지도 기록</h2>
-        <button type="button">{historyCount > 0 ? "2개" : "0개"}</button>
+        <button type="button">{historyEntries.length}개</button>
       </div>
 
       <section className="history-list">
-        {historyCount > 0
-          ? ["2026. 6. 13.", "2026. 6. 12."].map((date) => (
-              <article className="history-card" key={date}>
-                <strong>{date}</strong>
-                <div>
-                  <b>{historyCount}장</b>
-                  <span>정리후보 {historyCount}장</span>
-                </div>
-              </article>
-            ))
-          : null}
+        {historyEntries.map((entry) => (
+          <article className="history-card" key={entry.id}>
+            <strong>{formatHistoryDate(entry.scannedAt)}</strong>
+            <div>
+              <b>{entry.totalCount}장</b>
+              <span>정리후보 {entry.cleanCandidateCount}장</span>
+            </div>
+          </article>
+        ))}
+        {historyEntries.length === 0 ? (
+          <article className="history-card history-empty">
+            <strong>기록 없음</strong>
+            <div>
+              <b>0장</b>
+              <span>지도 만들기 전</span>
+            </div>
+          </article>
+        ) : null}
       </section>
 
       <div className="saved-actions">
@@ -79,4 +86,13 @@ export function SavedPage({
       </div>
     </main>
   );
+}
+
+function formatHistoryDate(isoDate: string) {
+  const date = new Date(isoDate);
+  if (Number.isNaN(date.getTime())) {
+    return "날짜 없음";
+  }
+
+  return `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}.`;
 }

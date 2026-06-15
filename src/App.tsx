@@ -19,6 +19,8 @@ import {
   clearPictoryState,
   defaultPictoryState,
   loadPictoryState,
+  mergeStoredItemStatuses,
+  prepareRecentItemsForStorage,
   savePictoryState,
 } from "./features/album/storage";
 import type {
@@ -35,6 +37,7 @@ function App() {
   const [items, setItems] = useState<ClassifiedItem[]>([]);
   const [state, setState] =
     useState<PersistedPictoryState>(defaultPictoryState);
+  const [isHydrated, setIsHydrated] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [scanMessage, setScanMessage] = useState(
     "개발 환경이라도 실제 파일 선택으로 동작을 확인할 수 있어요.",
@@ -48,13 +51,19 @@ function App() {
 
   useEffect(() => {
     loadPictoryState()
-      .then(setState)
-      .catch(() => setState(defaultPictoryState));
+      .then((storedState) => {
+        setState(storedState);
+        setItems(mergeStoredItemStatuses(storedState.recentItems, storedState));
+      })
+      .catch(() => setState(defaultPictoryState))
+      .finally(() => setIsHydrated(true));
   }, []);
 
   useEffect(() => {
-    savePictoryState(state).catch(() => undefined);
-  }, [state]);
+    if (isHydrated) {
+      savePictoryState(state).catch(() => undefined);
+    }
+  }, [isHydrated, state]);
 
   const statusMap = useMemo(() => {
     const map = new Map<string, ClassifiedItem["status"]>();
@@ -90,10 +99,23 @@ function App() {
     setIsScanning(true);
     setScanMessage("픽토리가 사진 신호를 읽고 있어요.");
     const classified = await classifyAlbumItems(nextItems, statusMap);
+    const recentItems = await prepareRecentItemsForStorage(classified);
+    const scannedAt = new Date().toISOString();
     setItems(classified);
     setState((previous) => ({
       ...previous,
-      lastScanAt: new Date().toISOString(),
+      recentItems,
+      scanHistory: [
+        {
+          id: scannedAt,
+          scannedAt,
+          totalCount: classified.length,
+          cleanCandidateCount: countCleanCandidates(classified),
+          mapBucketCount: Object.keys(getCategorySummary(classified)).length,
+        },
+        ...previous.scanHistory,
+      ].slice(0, 8),
+      lastScanAt: scannedAt,
       lastScanCount: classified.length,
     }));
     setScanMessage(message);
@@ -167,6 +189,9 @@ function App() {
           status === "ignored"
             ? [...remove(previous.ignoredIds), id]
             : remove(previous.ignoredIds),
+        recentItems: previous.recentItems.map((item) =>
+          item.id === id ? { ...item, status } : item,
+        ),
       };
     });
   }
@@ -174,12 +199,7 @@ function App() {
   async function handleClear() {
     await clearPictoryState();
     setState(defaultPictoryState);
-    setItems((previous) =>
-      previous.map((item) => ({
-        ...item,
-        status: "inbox",
-      })),
-    );
+    setItems([]);
     setScanMessage("픽토리 내부 기록을 비웠어요.");
   }
 
@@ -240,7 +260,7 @@ function App() {
         {activeTab === "saved" ? (
           <SavedPage
             savedItems={savedItems}
-            historyCount={state.lastScanCount ?? visibleItems.length}
+            historyEntries={state.scanHistory}
             onClear={handleClear}
             onShare={handleShare}
           />
@@ -249,6 +269,15 @@ function App() {
       <BottomNav activeTab={activeTab} onChange={setActiveTab} />
     </div>
   );
+}
+
+function countCleanCandidates(items: ClassifiedItem[]) {
+  return items.filter(
+    (item) =>
+      item.cleanBucketId !== "keep" ||
+      item.privacy !== "normal" ||
+      item.status === "queued",
+  ).length;
 }
 
 export default App;
