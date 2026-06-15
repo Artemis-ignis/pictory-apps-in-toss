@@ -87,6 +87,7 @@ PICTORY_AI_AD_CREDIT_QUOTA=100
 PICTORY_AI_PLUS_MONTHLY_QUOTA=500
 PICTORY_AI_PRO_MONTHLY_QUOTA=2000
 PICTORY_AI_DAILY_LIMIT_PER_USER=300
+PICTORY_AI_DAILY_GLOBAL_LIMIT=5000
 PICTORY_AI_RATE_LIMIT_PER_MINUTE=30
 PICTORY_AI_LOG_RAW_IMAGES=false
 ```
@@ -101,7 +102,7 @@ PICTORY_AI_LOG_RAW_IMAGES=false
 - 운영 서버 AI 분류 endpoint 연결부와 OpenAI Responses API 기본 분류기
 - 서버 권위 광고 크레딧/유료 월 quota 원장 모듈
 - 서명 세션 쿠키/Authorization 토큰 기반 서버 subject 검증
-- 사용자별 서버 AI 일일/분당 이미지 수 제한
+- 사용자별/서비스 전체 서버 AI 일일 한도와 사용자별 분당 이미지 수 제한
 - 배포 런타임에 붙일 수 있는 `POST /pictory/classify` HTTP 어댑터
 - 앱인토스 주문 상태 조회 결과로 구독 권한을 서버 원장에 반영하는 `POST /pictory/entitlement` HTTP 어댑터
 - 광고 보상 크레딧을 원장에 지급하는 `POST /pictory/reward` HTTP 어댑터

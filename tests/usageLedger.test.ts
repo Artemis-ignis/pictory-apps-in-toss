@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  GLOBAL_USAGE_SUBJECT_ID,
   createNewUsageAccount,
   createPictoryUsageLedgerDeps,
   deleteUsageAccount,
@@ -19,6 +20,7 @@ const env = {
   PICTORY_AI_PLUS_MONTHLY_QUOTA: "500",
   PICTORY_AI_PRO_MONTHLY_QUOTA: "2000",
   PICTORY_AI_DAILY_LIMIT_PER_USER: "1000",
+  PICTORY_AI_DAILY_GLOBAL_LIMIT: "5000",
 };
 
 describe("pictoryUsageLedger", () => {
@@ -113,6 +115,74 @@ describe("pictoryUsageLedger", () => {
     expect(blocked).toBeNull();
     expect(nextDay?.account.serverAiDailyWindowStartedAt).toBe("2026-06-16");
     expect(nextDay?.account.serverAiDailyUsed).toBe(2);
+  });
+
+  it("enforces service-wide server AI daily limits across accounts", async () => {
+    const limitedEnv = {
+      ...env,
+      PICTORY_AI_DAILY_GLOBAL_LIMIT: "3",
+      PICTORY_AI_DAILY_LIMIT_PER_USER: "10",
+      PICTORY_AI_RATE_LIMIT_PER_MINUTE: "10",
+    };
+    const store = createMemoryStore(createNewUsageAccount("user-1", "plus"));
+    await store.writeAccount(createNewUsageAccount("user-2", "plus"));
+    const requestContext = {
+      schemaVersion: 1 as const,
+      itemCount: 2,
+      headers: {},
+      requestId: "req-1",
+    };
+    const firstDeps = createPictoryUsageLedgerDeps({
+      store,
+      env: limitedEnv,
+      now,
+      resolveSubjectId: vi.fn(async () => "user-1"),
+    });
+    const secondDeps = createPictoryUsageLedgerDeps({
+      store,
+      env: limitedEnv,
+      now,
+      resolveSubjectId: vi.fn(async () => "user-2"),
+    });
+
+    const firstEntitlement = await firstDeps.verifyEntitlement(requestContext);
+    const firstQuota = await firstDeps.verifyQuota({
+      ...requestContext,
+      entitlement: firstEntitlement!,
+    });
+    const firstReserved = await firstDeps.consumeQuota?.({
+      ...requestContext,
+      entitlement: firstEntitlement!,
+      quota: firstQuota!,
+    });
+    const secondEntitlement = await secondDeps.verifyEntitlement(requestContext);
+    const secondQuota = await secondDeps.verifyQuota({
+      ...requestContext,
+      entitlement: secondEntitlement!,
+    });
+    const secondReserved = await secondDeps.consumeQuota?.({
+      ...requestContext,
+      entitlement: secondEntitlement!,
+      quota: secondQuota!,
+    });
+
+    expect(firstQuota?.remaining).toBe(3);
+    expect(firstReserved?.remaining).toBe(1);
+    expect(secondQuota?.remaining).toBe(1);
+    expect(secondReserved).toBeNull();
+    expect(
+      (await store.readAccount(GLOBAL_USAGE_SUBJECT_ID))?.serverAiDailyUsed,
+    ).toBe(2);
+
+    await firstDeps.refundQuota?.({
+      ...requestContext,
+      entitlement: firstEntitlement!,
+      quota: firstReserved!,
+      reason: "classification_failed",
+    });
+    expect(
+      (await store.readAccount(GLOBAL_USAGE_SUBJECT_ID))?.serverAiDailyUsed,
+    ).toBe(0);
   });
 
   it("refunds reserved usage after a failed upstream classification", () => {
@@ -226,19 +296,16 @@ describe("pictoryUsageLedger", () => {
 function createMemoryStore(
   account: PictoryUsageAccount,
 ): PictoryUsageLedgerStore {
-  let current = account;
+  const accounts = new Map<string, PictoryUsageAccount>([
+    [account.subjectId, account],
+  ]);
   return {
-    readAccount: async (subjectId) =>
-      current.subjectId === subjectId ? current : null,
+    readAccount: async (subjectId) => accounts.get(subjectId) ?? null,
     writeAccount: async (account) => {
-      current = account;
+      accounts.set(account.subjectId, account);
     },
     deleteAccount: async (subjectId) => {
-      if (current.subjectId !== subjectId) {
-        return false;
-      }
-      current = createNewUsageAccount("__deleted__");
-      return true;
+      return accounts.delete(subjectId);
     },
   };
 }

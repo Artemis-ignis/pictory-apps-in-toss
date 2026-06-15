@@ -9,6 +9,8 @@ import type {
 type MaybePromise<T> = T | Promise<T>;
 type PictoryPlanId = "free" | "plus" | "pro";
 
+export const GLOBAL_USAGE_SUBJECT_ID = "__pictory_global__";
+
 export interface PictoryUsageAccount {
   subjectId: string;
   planId: PictoryPlanId;
@@ -62,6 +64,7 @@ export const DEFAULT_SERVER_AI_CREDITS = {
   proMonthlyQuota: 2000,
   maxStoredCredits: 3000,
   dailyLimitPerUser: 300,
+  dailyGlobalLimit: 5000,
   rateLimitPerMinute: 40,
 } as const;
 
@@ -93,13 +96,22 @@ export function createPictoryUsageLedgerDeps({
         store,
         context.entitlement,
       );
-      return account
-        ? toQuota(
-          withEntitlementPlan(normalizeUsageMonth(account, now()), context),
-          env,
-          now(),
-        )
-        : null;
+      if (!account) {
+        return null;
+      }
+
+      const date = now();
+      const userQuota = toQuota(
+        withEntitlementPlan(normalizeUsageMonth(account, date), context),
+        env,
+        date,
+      );
+      const globalQuota = toGlobalQuota(
+        await readGlobalUsageAccount(store, date),
+        env,
+        date,
+      );
+      return minQuota(userQuota, globalQuota);
     },
     consumeQuota: async (context) => {
       const account = await readAccountByEntitlement(
@@ -110,19 +122,31 @@ export function createPictoryUsageLedgerDeps({
         return null;
       }
 
-      const normalized = normalizeUsageMonth(account, now());
+      const date = now();
+      const normalized = normalizeUsageMonth(account, date);
       const next = debitServerAiQuota(
         withEntitlementPlan(normalized, context),
         context.itemCount,
         env,
-        now(),
+        date,
       );
       if (!next) {
         return null;
       }
 
+      const nextGlobal = debitGlobalServerAiQuota(
+        await readGlobalUsageAccount(store, date),
+        context.itemCount,
+        env,
+        date,
+      );
+      if (!nextGlobal) {
+        return null;
+      }
+
+      await store.writeAccount(nextGlobal.account);
       await store.writeAccount(preserveAccountPlan(next.account, normalized));
-      return next.quota;
+      return minQuota(next.quota, nextGlobal.quota);
     },
     refundQuota: async (context) => {
       const account = await readAccountByEntitlement(
@@ -133,10 +157,15 @@ export function createPictoryUsageLedgerDeps({
         return;
       }
 
+      const date = now();
+      const globalAccount = await readGlobalUsageAccount(store, date);
+      await store.writeAccount(
+        refundGlobalServerAiQuota(globalAccount, context.itemCount),
+      );
       await store.writeAccount(
         preserveAccountPlan(
           refundServerAiQuota(
-            withEntitlementPlan(normalizeUsageMonth(account, now()), context),
+            withEntitlementPlan(normalizeUsageMonth(account, date), context),
             context.itemCount,
           ),
           account,
@@ -159,6 +188,10 @@ export function createNewUsageAccount(
     serverAiCredits: 0,
     grantedRewardIds: [],
   };
+}
+
+export function createGlobalUsageAccount(date = new Date()): PictoryUsageAccount {
+  return createNewUsageAccount(GLOBAL_USAGE_SUBJECT_ID, "free", date);
 }
 
 export async function deleteUsageAccount(
@@ -320,6 +353,28 @@ export function debitServerAiQuota(
   };
 }
 
+export function debitGlobalServerAiQuota(
+  account: PictoryUsageAccount,
+  count: number,
+  env: Record<string, string | undefined> = process.env,
+  date = new Date(),
+) {
+  const nextAccount = reserveServerAiGlobalDailyLimit(
+    account,
+    Math.max(0, count),
+    env,
+    date,
+  );
+  if (!nextAccount) {
+    return null;
+  }
+
+  return {
+    account: nextAccount,
+    quota: toGlobalQuota(nextAccount, env, date),
+  };
+}
+
 export function refundServerAiQuota(
   account: PictoryUsageAccount,
   count: number,
@@ -340,6 +395,20 @@ export function refundServerAiQuota(
         ? undefined
         : Math.max(0, account.serverAiDailyUsed - requested),
     usageMonth: account.usageMonth || currentUsageMonth(),
+  };
+}
+
+export function refundGlobalServerAiQuota(
+  account: PictoryUsageAccount,
+  count: number,
+) {
+  const requested = Math.max(0, count);
+  return {
+    ...account,
+    serverAiDailyUsed:
+      account.serverAiDailyUsed == null
+        ? undefined
+        : Math.max(0, account.serverAiDailyUsed - requested),
   };
 }
 
@@ -384,6 +453,15 @@ export function getServerAiDailyLimitPerUser(
   );
 }
 
+export function getServerAiDailyGlobalLimit(
+  env: Record<string, string | undefined> = process.env,
+) {
+  return readIntegerEnv(
+    env.PICTORY_AI_DAILY_GLOBAL_LIMIT,
+    DEFAULT_SERVER_AI_CREDITS.dailyGlobalLimit,
+  );
+}
+
 export function currentUsageMonth(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
@@ -414,6 +492,16 @@ async function readAccountByEntitlement(
   return store.readAccount(entitlement.subjectId);
 }
 
+async function readGlobalUsageAccount(
+  store: PictoryUsageLedgerStore,
+  date: Date,
+) {
+  return (
+    (await store.readAccount(GLOBAL_USAGE_SUBJECT_ID)) ??
+    createGlobalUsageAccount(date)
+  );
+}
+
 function withEntitlementPlan(
   account: PictoryUsageAccount,
   context: PictoryClassifyQuotaContext,
@@ -442,6 +530,39 @@ function getServerAiDailyLimitLeft(
   date = new Date(),
 ) {
   const limit = getServerAiDailyLimitPerUser(env);
+  const windowStartedAt = currentDayWindow(date);
+  const used =
+    account.serverAiDailyWindowStartedAt === windowStartedAt
+      ? account.serverAiDailyUsed ?? 0
+      : 0;
+  return Math.max(0, limit - used);
+}
+
+function toGlobalQuota(
+  account: PictoryUsageAccount,
+  env: Record<string, string | undefined>,
+  date: Date,
+): PictoryClassifyQuota {
+  return {
+    remaining: getServerAiGlobalDailyLimitLeft(account, env, date),
+  };
+}
+
+function minQuota(
+  left: PictoryClassifyQuota,
+  right: PictoryClassifyQuota,
+): PictoryClassifyQuota {
+  return {
+    remaining: Math.min(left.remaining, right.remaining),
+  };
+}
+
+function getServerAiGlobalDailyLimitLeft(
+  account: PictoryUsageAccount,
+  env: Record<string, string | undefined>,
+  date: Date,
+) {
+  const limit = getServerAiDailyGlobalLimit(env);
   const windowStartedAt = currentDayWindow(date);
   const used =
     account.serverAiDailyWindowStartedAt === windowStartedAt
@@ -505,6 +626,36 @@ function reserveServerAiRateLimit(
     serverAiRateWindowUsed: windowUsed + count,
   };
 }
+
+function reserveServerAiGlobalDailyLimit(
+  account: PictoryUsageAccount,
+  count: number,
+  env: Record<string, string | undefined>,
+  date: Date,
+): PictoryUsageAccount | null {
+  if (count <= 0) {
+    return account;
+  }
+
+  const limit = getServerAiDailyGlobalLimit(env);
+  const windowStartedAt = currentDayWindow(date);
+  const windowUsed =
+    account.serverAiDailyWindowStartedAt === windowStartedAt
+      ? account.serverAiDailyUsed ?? 0
+      : 0;
+
+  if (windowUsed + count > limit) {
+    return null;
+  }
+
+  return {
+    ...account,
+    subjectId: GLOBAL_USAGE_SUBJECT_ID,
+    serverAiDailyWindowStartedAt: windowStartedAt,
+    serverAiDailyUsed: windowUsed + count,
+  };
+}
+
 
 function currentDayWindow(date: Date) {
   return date.toISOString().slice(0, 10);
