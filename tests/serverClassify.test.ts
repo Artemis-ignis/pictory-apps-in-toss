@@ -13,6 +13,13 @@ const entitlement = {
   active: true,
 };
 
+const creditEntitlement = {
+  subjectId: "user-1",
+  planId: "free",
+  active: true,
+  serverAiAccess: "credit" as const,
+};
+
 const redactedBody = {
   schemaVersion: 1,
   items: [
@@ -129,6 +136,79 @@ describe("handlePictoryClassifyRequest", () => {
     expect(result.status).toBe(429);
     expect(result.body.error?.code).toBe("quota_exceeded");
     expect(classifyItems).not.toHaveBeenCalled();
+  });
+
+  it("accepts ad-credit server AI entitlement when quota is available", async () => {
+    const classifyItems = vi.fn(async () => []);
+    const result = await handlePictoryClassifyRequest(redactedInput(), {
+      ...deps({ classifyItems }),
+      verifyEntitlement: vi.fn(async () => creditEntitlement),
+    });
+
+    expect(result.status).toBe(200);
+    expect(classifyItems).toHaveBeenCalled();
+  });
+
+  it("reserves quota before classifying paid server AI batches", async () => {
+    const calls: string[] = [];
+    const consumeQuota = vi.fn(async (context) => {
+      calls.push("consume");
+      expect(context.quota.remaining).toBe(40);
+      return { remaining: 39 };
+    });
+    const classifyItems = vi.fn(async (_items, context) => {
+      calls.push("classify");
+      expect(context.quota.remaining).toBe(39);
+      return [];
+    });
+    const result = await handlePictoryClassifyRequest(redactedInput(), {
+      ...deps({ classifyItems }),
+      consumeQuota,
+    });
+
+    expect(result.status).toBe(200);
+    expect(calls).toEqual(["consume", "classify"]);
+    expect(consumeQuota).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entitlement,
+        quota: { remaining: 40 },
+      }),
+    );
+  });
+
+  it("rejects when server AI quota cannot be reserved", async () => {
+    const classifyItems = vi.fn(async () => []);
+    const result = await handlePictoryClassifyRequest(redactedInput(), {
+      ...deps({ classifyItems }),
+      consumeQuota: vi.fn(async () => null),
+    });
+
+    expect(result.status).toBe(429);
+    expect(result.body.error?.code).toBe("quota_exceeded");
+    expect(classifyItems).not.toHaveBeenCalled();
+  });
+
+  it("refunds reserved quota when server AI classification fails", async () => {
+    const refundQuota = vi.fn();
+    const result = await handlePictoryClassifyRequest(redactedInput(), {
+      ...deps({
+        classifyItems: vi.fn(async () => {
+          throw new Error("upstream failed");
+        }),
+      }),
+      consumeQuota: vi.fn(async () => ({ remaining: 39 })),
+      refundQuota,
+    });
+
+    expect(result.status).toBe(500);
+    expect(result.body.error?.code).toBe("classification_failed");
+    expect(refundQuota).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entitlement,
+        quota: { remaining: 39 },
+        reason: "classification_failed",
+      }),
+    );
   });
 
   it("allows redacted items without image bodies", async () => {

@@ -69,6 +69,7 @@ export interface PictoryClassifyEntitlement {
   subjectId: string;
   planId: string;
   active: boolean;
+  serverAiAccess?: "paid" | "credit";
 }
 
 export interface PictoryClassifyQuota {
@@ -82,6 +83,12 @@ export interface PictoryClassifyDeps {
   verifyQuota: (
     context: PictoryClassifyQuotaContext,
   ) => MaybePromise<PictoryClassifyQuota | null | undefined>;
+  consumeQuota?: (
+    context: PictoryClassifyConsumeQuotaContext,
+  ) => MaybePromise<PictoryClassifyQuota | null | undefined>;
+  refundQuota?: (
+    context: PictoryClassifyRefundQuotaContext,
+  ) => MaybePromise<void>;
   classifyItems?: PictoryClassifyItems;
   env?: Record<string, string | undefined>;
   maxBodyBytes?: number;
@@ -96,6 +103,14 @@ export interface PictoryClassifyRequestContext {
 
 export interface PictoryClassifyQuotaContext extends PictoryClassifyRequestContext {
   entitlement: PictoryClassifyEntitlement;
+}
+
+export interface PictoryClassifyConsumeQuotaContext extends PictoryClassifyQuotaContext {
+  quota: PictoryClassifyQuota;
+}
+
+export interface PictoryClassifyRefundQuotaContext extends PictoryClassifyConsumeQuotaContext {
+  reason: string;
 }
 
 export interface PictoryClassifyItemsContext extends PictoryClassifyQuotaContext {
@@ -190,12 +205,9 @@ export async function handlePictoryClassifyRequest(
       );
     }
 
-    const quota = await deps.verifyQuota({ ...requestContext, entitlement });
-    if (
-      !quota ||
-      !Number.isFinite(quota.remaining) ||
-      quota.remaining < payload.items.length
-    ) {
+    const quotaContext = { ...requestContext, entitlement };
+    const quota = await deps.verifyQuota(quotaContext);
+    if (!hasEnoughQuota(quota, payload.items.length)) {
       return errorResponse(
         429,
         "quota_exceeded",
@@ -203,14 +215,37 @@ export async function handlePictoryClassifyRequest(
       );
     }
 
+    const reservedQuota = deps.consumeQuota
+      ? await deps.consumeQuota({ ...quotaContext, quota })
+      : quota;
+    if (!hasEnoughQuota(reservedQuota, 0)) {
+      return errorResponse(
+        429,
+        "quota_exceeded",
+        "Server AI classification quota could not be reserved.",
+      );
+    }
+
     const env = deps.env ?? process.env;
     const classifyItems = deps.classifyItems ?? defaultClassifyItems;
-    const classified = await classifyItems(payload.items, {
-      ...requestContext,
-      entitlement,
-      quota,
-      env,
-    });
+    let classified: readonly PictoryClassifyResponseItem[];
+    try {
+      classified = await classifyItems(payload.items, {
+        ...requestContext,
+        entitlement,
+        quota: reservedQuota,
+        env,
+      });
+    } catch (error) {
+      if (deps.refundQuota) {
+        await deps.refundQuota({
+          ...quotaContext,
+          quota: reservedQuota,
+          reason: "classification_failed",
+        });
+      }
+      throw error;
+    }
 
     return {
       status: 200,
@@ -750,13 +785,23 @@ function normalizeResponseItem(
   return item;
 }
 
+function hasEnoughQuota(
+  quota: PictoryClassifyQuota | null | undefined,
+  required: number,
+) {
+  return (
+    !!quota && Number.isFinite(quota.remaining) && quota.remaining >= required
+  );
+}
+
 function hasPaidEntitlement(
   entitlement: PictoryClassifyEntitlement | null | undefined,
 ) {
   return (
     entitlement?.active === true &&
     typeof entitlement.subjectId === "string" &&
-    PAID_PLAN_IDS.has(entitlement.planId) &&
+    (PAID_PLAN_IDS.has(entitlement.planId) ||
+      entitlement.serverAiAccess === "credit") &&
     entitlement.subjectId.trim().length > 0
   );
 }

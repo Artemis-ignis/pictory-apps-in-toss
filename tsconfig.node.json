@@ -19,5 +19,10 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["vite.config.ts", "server", "tests/serverClassify.test.ts"]
+  "include": [
+    "vite.config.ts",
+    "server",
+    "tests/serverClassify.test.ts",
+    "tests/usageLedger.test.ts"
+  ]
 }

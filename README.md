@@ -68,6 +68,7 @@ PICTORY_AI_LOG_RAW_IMAGES=false
 - 브라우저 개발 환경용 실제 이미지 파일 선택
 - 캔버스 기반 이미지 신호 분석과 종류/정리 후보 분류
 - 운영 서버 AI 분류 endpoint 연결부와 OpenAI Responses API 기본 분류기
+- 서버 권위 광고 크레딧/유료 월 quota 원장 모듈
 - 홈, 지도, 정리, 보관 4개 화면
 - 보상형 광고 연결부와 브라우저 fallback
 - 민감/확인 필요 후보 흐림 처리와 로컬 저장 상태 관리

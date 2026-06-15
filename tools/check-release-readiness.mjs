@@ -205,6 +205,14 @@ function checkPackageScripts() {
     listFiles("tests").some((file) => /\.test\.[cm]?[jt]sx?$/.test(file)),
     "tests directory contains test files",
   );
+  record(
+    existsSync(projectPath("server", "pictoryUsageLedger.ts")),
+    "server usage ledger exists",
+  );
+  record(
+    existsSync(projectPath("tests", "usageLedger.test.ts")),
+    "server usage ledger tests exist",
+  );
 }
 
 checkEnvExample();
