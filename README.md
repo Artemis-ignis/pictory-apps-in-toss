@@ -22,6 +22,7 @@ npm run test
 npm run typecheck
 npm run lint
 npm run qa:server:built
+npm run env:production:draft
 npm run check:production-env -- --file .env.production
 npm run evidence:device:draft
 npm run check:device-evidence -- --file qa-evidence/device-smoke.json
@@ -37,7 +38,9 @@ npm run snapshot:release
 테스트 광고 ID, placeholder endpoint, SKU 불일치, 짧은 secret, mTLS 파일 누락,
 비어 있는 mTLS 파일, endpoint origin/path 불일치, 원본 이미지 로그 설정 실수로
 배포되지 않게 막습니다. `.env.production`은
-저장소에 커밋하지 않습니다.
+저장소에 커밋하지 않습니다. `npm run env:production:draft`는 강한 랜덤
+server/session secret을 넣은 로컬 초안을 만들지만, Toss 광고 ID, SKU, 운영
+API endpoint, OpenAI 키, mTLS 인증서/키 경로는 실제 값으로 교체해야 합니다.
 `npm run check:device-evidence -- --file qa-evidence/device-smoke.json`은
 앱인토스 콘솔 QR을 실제 토스 앱에서 스캔한 증거를 검사합니다. 증거 JSON에는
 현재 `pictory.ait` SHA-256, 토스 앱 버전, QR 시각, 사진 권한, 앨범 선택,
