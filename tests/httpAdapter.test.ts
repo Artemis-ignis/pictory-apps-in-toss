@@ -65,6 +65,39 @@ describe("pictoryHttpAdapter", () => {
     expect(response.body).not.toContain("imageDataUri");
   });
 
+  it("blocks server AI classification before upstream work when rate limit is exceeded", async () => {
+    const store = createMemoryStore(createNewUsageAccount("user-1", "plus"));
+    const classifyItems = vi.fn(async () => []);
+    const handler = createPictoryClassifyHttpHandler({
+      store,
+      classifyItems,
+      env: {
+        PICTORY_SERVER_SECRET: "server-secret",
+        PICTORY_AI_PLUS_MONTHLY_QUOTA: "500",
+        PICTORY_AI_RATE_LIMIT_PER_MINUTE: "1",
+      },
+      now: () => new Date("2026-06-15T00:00:30.000Z"),
+    });
+    const request = {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-pictory-server-secret": "server-secret",
+        "x-pictory-subject-id": "user-1",
+      },
+      body: JSON.stringify(classifyBody),
+    };
+
+    const first = await handler(request);
+    const second = await handler(request);
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(429);
+    expect(JSON.parse(second.body).error.code).toBe("quota_exceeded");
+    expect(classifyItems).toHaveBeenCalledOnce();
+    expect((await store.readAccount("user-1"))?.monthlyServerAiUsed).toBe(1);
+  });
+
   it("rejects classify requests without the server secret", async () => {
     const handler = createPictoryClassifyHttpHandler({
       store: createMemoryStore({

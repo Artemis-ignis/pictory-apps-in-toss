@@ -73,6 +73,7 @@ PICTORY_AI_LOG_RAW_IMAGES=false
 - 운영 서버 AI 분류 endpoint 연결부와 OpenAI Responses API 기본 분류기
 - 서버 권위 광고 크레딧/유료 월 quota 원장 모듈
 - 서명 세션 쿠키/Authorization 토큰 기반 서버 subject 검증
+- 사용자별 서버 AI 분당 이미지 수 제한
 - 배포 런타임에 붙일 수 있는 `POST /pictory/classify` HTTP 어댑터
 - 광고 보상 크레딧을 원장에 지급하는 `POST /pictory/reward` HTTP 어댑터
 - 서버 원장 계정을 지우는 `DELETE /pictory/account` HTTP 어댑터

@@ -16,6 +16,8 @@ export interface PictoryUsageAccount {
   usageMonth: string;
   monthlyServerAiUsed: number;
   serverAiCredits: number;
+  serverAiRateWindowStartedAt?: string;
+  serverAiRateWindowUsed?: number;
   grantedRewardIds: string[];
 }
 
@@ -49,6 +51,7 @@ export const DEFAULT_SERVER_AI_CREDITS = {
   plusMonthlyQuota: 500,
   proMonthlyQuota: 2000,
   maxStoredCredits: 3000,
+  rateLimitPerMinute: 40,
 } as const;
 
 export function createPictoryUsageLedgerDeps({
@@ -100,6 +103,7 @@ export function createPictoryUsageLedgerDeps({
         withEntitlementPlan(normalized, context),
         context.itemCount,
         env,
+        now(),
       );
       if (!next) {
         return null;
@@ -236,6 +240,7 @@ export function debitServerAiQuota(
   account: PictoryUsageAccount,
   count: number,
   env: Record<string, string | undefined> = process.env,
+  date = new Date(),
 ) {
   const requested = Math.max(0, count);
   const monthlyQuota = getMonthlyServerAiQuota(account.planId, env);
@@ -247,11 +252,20 @@ export function debitServerAiQuota(
     return null;
   }
 
-  const nextAccount = {
+  const debitedAccount = {
     ...account,
     monthlyServerAiUsed: account.monthlyServerAiUsed + monthlyUse,
     serverAiCredits: account.serverAiCredits - creditUse,
   };
+  const nextAccount = reserveServerAiRateLimit(
+    debitedAccount,
+    requested,
+    env,
+    date,
+  );
+  if (!nextAccount) {
+    return null;
+  }
 
   return {
     account: nextAccount,
@@ -298,6 +312,15 @@ export function getMonthlyServerAiQuota(
   return readIntegerEnv(
     env.PICTORY_AI_FREE_MONTHLY_QUOTA,
     DEFAULT_SERVER_AI_CREDITS.freeMonthlyQuota,
+  );
+}
+
+export function getServerAiRateLimitPerMinute(
+  env: Record<string, string | undefined> = process.env,
+) {
+  return readIntegerEnv(
+    env.PICTORY_AI_RATE_LIMIT_PER_MINUTE,
+    DEFAULT_SERVER_AI_CREDITS.rateLimitPerMinute,
   );
 }
 
@@ -351,6 +374,40 @@ function preserveAccountPlan(
     planId: original.planId,
     subscriptionExpiresAt: original.subscriptionExpiresAt,
   };
+}
+
+function reserveServerAiRateLimit(
+  account: PictoryUsageAccount,
+  count: number,
+  env: Record<string, string | undefined>,
+  date: Date,
+): PictoryUsageAccount | null {
+  if (count <= 0) {
+    return account;
+  }
+
+  const limit = getServerAiRateLimitPerMinute(env);
+  const windowStartedAt = currentRateWindow(date);
+  const windowUsed =
+    account.serverAiRateWindowStartedAt === windowStartedAt
+      ? account.serverAiRateWindowUsed ?? 0
+      : 0;
+
+  if (windowUsed + count > limit) {
+    return null;
+  }
+
+  return {
+    ...account,
+    serverAiRateWindowStartedAt: windowStartedAt,
+    serverAiRateWindowUsed: windowUsed + count,
+  };
+}
+
+function currentRateWindow(date: Date) {
+  const windowStart = new Date(date);
+  windowStart.setUTCSeconds(0, 0);
+  return windowStart.toISOString();
 }
 
 function isPaidPlanActive(account: PictoryUsageAccount, date: Date) {

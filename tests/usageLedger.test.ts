@@ -73,6 +73,24 @@ describe("pictoryUsageLedger", () => {
     expect(debitServerAiQuota(account, 1, env)).toBeNull();
   });
 
+  it("enforces per-user server AI rate limits by minute", () => {
+    const limitedEnv = { ...env, PICTORY_AI_RATE_LIMIT_PER_MINUTE: "3" };
+    const account = createNewUsageAccount("user-1", "plus", now());
+    const first = debitServerAiQuota(account, 2, limitedEnv, now());
+    const blocked = debitServerAiQuota(first!.account, 2, limitedEnv, now());
+    const nextMinute = debitServerAiQuota(
+      first!.account,
+      2,
+      limitedEnv,
+      new Date("2026-06-15T00:01:00.000Z"),
+    );
+
+    expect(first?.account.serverAiRateWindowUsed).toBe(2);
+    expect(blocked).toBeNull();
+    expect(nextMinute?.account.serverAiRateWindowUsed).toBe(2);
+    expect(nextMinute?.account.monthlyServerAiUsed).toBe(4);
+  });
+
   it("refunds reserved usage after a failed upstream classification", () => {
     const consumed = {
       ...createNewUsageAccount("user-1", "plus", now()),
