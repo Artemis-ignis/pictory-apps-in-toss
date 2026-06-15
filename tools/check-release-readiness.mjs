@@ -214,8 +214,16 @@ function checkPackageScripts() {
     "server classify HTTP adapter exists",
   );
   record(
+    existsSync(projectPath("server", "pictoryRewardHttpAdapter.ts")),
+    "server reward HTTP adapter exists",
+  );
+  record(
     existsSync(projectPath("tests", "httpAdapter.test.ts")),
     "server classify HTTP adapter tests exist",
+  );
+  record(
+    existsSync(projectPath("tests", "rewardHttpAdapter.test.ts")),
+    "server reward HTTP adapter tests exist",
   );
   record(
     existsSync(projectPath("tests", "usageLedger.test.ts")),

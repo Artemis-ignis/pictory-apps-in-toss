@@ -23,6 +23,7 @@
     "vite.config.ts",
     "server",
     "tests/httpAdapter.test.ts",
+    "tests/rewardHttpAdapter.test.ts",
     "tests/serverClassify.test.ts",
     "tests/usageLedger.test.ts"
   ]

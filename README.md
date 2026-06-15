@@ -70,6 +70,7 @@ PICTORY_AI_LOG_RAW_IMAGES=false
 - 운영 서버 AI 분류 endpoint 연결부와 OpenAI Responses API 기본 분류기
 - 서버 권위 광고 크레딧/유료 월 quota 원장 모듈
 - 배포 런타임에 붙일 수 있는 `POST /pictory/classify` HTTP 어댑터
+- 광고 보상 크레딧을 원장에 지급하는 `POST /pictory/reward` HTTP 어댑터
 - 홈, 지도, 정리, 보관 4개 화면
 - 보상형 광고 연결부와 브라우저 fallback
 - 민감/확인 필요 후보 흐림 처리와 로컬 저장 상태 관리
