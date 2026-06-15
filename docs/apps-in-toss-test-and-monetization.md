@@ -58,11 +58,12 @@ npm run typecheck
 npm run lint
 npm run qa:server
 npm run qa:server:built
+npm run check:production-env -- --file .env.production
 npm run build
 npm run check:release
 ```
 
-`npm run build`가 만든 `pictory.ait`를 앱인토스 콘솔에 업로드한다. `npm run check:release`는 업로드 전 `.env.example`, `pictory.ait`, Granite 필수 설정, 테스트 스크립트 존재 여부를 읽기 전용으로 확인한다.
+`npm run build`가 만든 `pictory.ait`를 앱인토스 콘솔에 업로드한다. `npm run check:release`는 업로드 전 `.env.example`, `pictory.ait`, Granite 필수 설정, 테스트 스크립트 존재 여부를 읽기 전용으로 확인한다. `npm run check:production-env -- --file .env.production`은 실제 운영 후보 값에서 테스트 광고 ID, placeholder endpoint, SKU 불일치, 짧은 secret, mTLS 인증서/키 누락, 원본 이미지 로그 설정 오류를 차단한다.
 
 콘솔 경로:
 
@@ -76,7 +77,7 @@ npm run check:release
 
 - [ ] `.env`에 실제 비밀값이 없고, 클라이언트 값은 `VITE_` 공개 값만 들어 있다.
 - [ ] 서버 OpenAI 키와 `PICTORY_SERVER_SECRET`은 서버 배포 환경에만 설정했다.
-- [ ] `npm run test`, `npm run typecheck`, `npm run lint`, `npm run qa:server`, `npm run qa:server:built`, `npm run build`, `npm run check:release`가 통과했다.
+- [ ] `npm run test`, `npm run typecheck`, `npm run lint`, `npm run qa:server`, `npm run qa:server:built`, `npm run check:production-env -- --file .env.production`, `npm run build`, `npm run check:release`가 통과했다.
 - [ ] 업로드한 파일명이 최신 `pictory.ait`인지 확인했다.
 - [ ] 테스트 단말에서 토스 앱에 로그인했다.
 - [ ] 테스트 계정이 앱인토스 워크스페이스 멤버이고 만 19세 이상이다.

@@ -22,6 +22,7 @@ npm run test
 npm run typecheck
 npm run lint
 npm run qa:server:built
+npm run check:production-env -- --file .env.production
 npm run build
 ```
 
@@ -29,6 +30,10 @@ npm run build
 `npm run qa:server:built`는 서버 API를 `dist-server`로 빌드한 뒤 실제 Node
 프로세스로 띄워 `/healthz`, `/pictory/entitlement`, `/pictory/classify`,
 `/pictory/account`를 smoke 검증합니다.
+`npm run check:production-env -- --file .env.production`은 운영 후보 환경값이
+테스트 광고 ID, placeholder endpoint, SKU 불일치, 짧은 secret, mTLS 파일 누락,
+원본 이미지 로그 설정 실수로 배포되지 않게 막습니다. `.env.production`은
+저장소에 커밋하지 않습니다.
 
 ## 운영 설정
 

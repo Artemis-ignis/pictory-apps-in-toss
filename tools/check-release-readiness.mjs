@@ -244,6 +244,7 @@ function checkPackageScripts() {
     "server:build",
     "server:start",
     "check:release",
+    "check:production-env",
     "qa:server",
     "qa:server:built",
   ]) {
@@ -298,6 +299,10 @@ function checkPackageScripts() {
     "built server smoke QA exists",
   );
   record(
+    existsSync(projectPath("tools", "check-production-env.mjs")),
+    "production env preflight exists",
+  );
+  record(
     existsSync(projectPath("tests", "httpAdapter.test.ts")),
     "server classify HTTP adapter tests exist",
   );
@@ -328,6 +333,10 @@ function checkPackageScripts() {
   record(
     existsSync(projectPath("tests", "fileUsageStore.test.ts")),
     "server file usage store tests exist",
+  );
+  record(
+    existsSync(projectPath("tests", "productionEnvCheck.test.mjs")),
+    "production env preflight tests exist",
   );
 }
 
