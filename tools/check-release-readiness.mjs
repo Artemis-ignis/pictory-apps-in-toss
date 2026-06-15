@@ -54,6 +54,7 @@ function checkEnvExample() {
   ];
   const requiredServerEnv = [
     "PICTORY_SERVER_SECRET",
+    "PICTORY_SESSION_SECRET",
     "OPENAI_API_KEY",
     "OPENAI_MODEL",
     "OPENAI_IMAGE_DETAIL",
@@ -95,6 +96,10 @@ function checkEnvExample() {
   record(
     /^replace_with_/.test(env.get("PICTORY_SERVER_SECRET") ?? ""),
     ".env.example server secret is a placeholder",
+  );
+  record(
+    /^replace_with_/.test(env.get("PICTORY_SESSION_SECRET") ?? ""),
+    ".env.example session secret is a placeholder",
   );
   record(
     /^replace_with_/.test(env.get("OPENAI_API_KEY") ?? "") &&
@@ -245,6 +250,10 @@ function checkPackageScripts() {
     "server file usage store exists",
   );
   record(
+    existsSync(projectPath("server", "pictorySessionAuth.ts")),
+    "server session auth helper exists",
+  );
+  record(
     existsSync(projectPath("tests", "httpAdapter.test.ts")),
     "server classify HTTP adapter tests exist",
   );
@@ -255,6 +264,10 @@ function checkPackageScripts() {
   record(
     existsSync(projectPath("tests", "accountHttpAdapter.test.ts")),
     "server account HTTP adapter tests exist",
+  );
+  record(
+    existsSync(projectPath("tests", "pictorySessionAuth.test.ts")),
+    "server session auth tests exist",
   );
   record(
     existsSync(projectPath("tests", "usageLedger.test.ts")),

@@ -3,6 +3,7 @@ import {
   type PictoryClassifyDeps,
   type PictoryClassifyRequestContext,
 } from "./pictoryClassify";
+import { resolveSubjectIdFromSignedSession } from "./pictorySessionAuth";
 import {
   createPictoryUsageLedgerDeps,
   type PictoryUsageLedgerStore,
@@ -38,7 +39,8 @@ export function createPictoryClassifyHttpHandler({
   store,
   env = process.env,
   classifyItems,
-  resolveSubjectId = (context) => resolveSubjectIdFromHeaders(context, env),
+  resolveSubjectId = (context) =>
+    resolveSubjectIdFromTrustedRequest(context, env),
   corsOrigin,
   now,
 }: PictoryClassifyHttpHandlerOptions) {
@@ -103,6 +105,16 @@ export function resolveSubjectIdFromHeaders(
 
   const subjectId = context.headers["x-pictory-subject-id"]?.trim();
   return subjectId || null;
+}
+
+export function resolveSubjectIdFromTrustedRequest(
+  context: PictoryClassifyRequestContext,
+  env: Record<string, string | undefined> = process.env,
+) {
+  return (
+    resolveSubjectIdFromSignedSession(context, env) ??
+    resolveSubjectIdFromHeaders(context, env)
+  );
 }
 
 function createResponseHeaders(corsOrigin: string | undefined) {

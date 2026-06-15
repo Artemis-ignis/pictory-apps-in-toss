@@ -1,6 +1,6 @@
 import type { PictoryClassifyRequestContext } from "./pictoryClassify";
 import {
-  resolveSubjectIdFromHeaders,
+  resolveSubjectIdFromTrustedRequest,
   type PictoryHttpRequest,
   type PictoryHttpResponse,
 } from "./pictoryHttpAdapter";
@@ -31,7 +31,8 @@ interface RewardRequestBody {
 export function createPictoryRewardHttpHandler({
   store,
   env = process.env,
-  resolveSubjectId = (context) => resolveSubjectIdFromHeaders(context, env),
+  resolveSubjectId = (context) =>
+    resolveSubjectIdFromTrustedRequest(context, env),
   corsOrigin,
   now = () => new Date(),
 }: PictoryRewardHttpHandlerOptions) {

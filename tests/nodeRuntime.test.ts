@@ -6,6 +6,7 @@ import {
   type PictoryUsageAccount,
   type PictoryUsageLedgerStore,
 } from "../server/pictoryUsageLedger";
+import { createSignedPictorySessionToken } from "../server/pictorySessionAuth";
 
 const classifyBody = {
   schemaVersion: 1,
@@ -137,6 +138,61 @@ describe("pictoryNodeRuntime", () => {
     });
     expect(await store.readAccount("session-user")).toBeNull();
     expect(resolveSubjectId).toHaveBeenCalledTimes(3);
+  });
+
+  it("uses signed session cookies without exposing server subject headers", async () => {
+    const store = createMemoryStore(
+      createNewUsageAccount("signed-user", "plus"),
+    );
+    const token = createSignedPictorySessionToken(
+      { sub: "signed-user", exp: 4_000_000_000, aud: "pictory" },
+      "session-secret",
+    );
+    const baseUrl = await listen({
+      store,
+      classifyItems: vi.fn(async () => [
+        {
+          id: "photo-1",
+          categoryId: "receipt" as const,
+          cleanBucketId: "needsReview" as const,
+          confidence: 0.9,
+          privacy: "review" as const,
+        },
+      ]),
+      env: {
+        PICTORY_SESSION_SECRET: "session-secret",
+        PICTORY_SESSION_AUDIENCE: "pictory",
+        PICTORY_AI_PLUS_MONTHLY_QUOTA: "500",
+        PICTORY_AI_AD_CREDIT_QUOTA: "100",
+      },
+    });
+    const headers = {
+      Cookie: `pictory_session=${token}`,
+      "Content-Type": "application/json",
+    };
+
+    const reward = await fetch(`${baseUrl}/pictory/reward`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ rewardId: "ad-event-1" }),
+    });
+    const classify = await fetch(`${baseUrl}/pictory/classify`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(classifyBody),
+    });
+    const accountDelete = await fetch(`${baseUrl}/pictory/account`, {
+      method: "DELETE",
+      headers,
+    });
+
+    expect(reward.status).toBe(200);
+    expect(classify.status).toBe(200);
+    expect(accountDelete.status).toBe(200);
+    expect(await accountDelete.json()).toMatchObject({
+      subjectId: "signed-user",
+      deleted: true,
+    });
   });
 
   it("rejects unknown routes and oversized bodies", async () => {

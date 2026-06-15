@@ -30,6 +30,7 @@ VITE_PICTORY_DELETE_ENDPOINT=https://your-api.example.com/pictory/account
 
 ```env
 PICTORY_SERVER_SECRET=replace_with_long_random_server_secret
+PICTORY_SESSION_SECRET=replace_with_long_random_session_secret
 OPENAI_API_KEY=replace_with_openai_api_key_server_only
 OPENAI_MODEL=gpt-4.1-mini
 OPENAI_IMAGE_DETAIL=low
@@ -218,6 +219,12 @@ flowchart LR
 `/pictory/classify`, `/pictory/reward`, `/pictory/account`에 공통으로
 전달한다. 따라서 운영에서는 한 곳에서 세션을 검증하고 세 endpoint가 같은
 사용자 원장을 보게 해야 한다.
+기본 런타임은 `PICTORY_SESSION_SECRET`이 있으면 `Authorization: Bearer ...`
+또는 `pictory_session` 쿠키의 HMAC 서명 토큰을 먼저 검증한다. 토큰 payload의
+`sub`가 서버 원장의 subject가 되며, `exp` 만료와 선택값인
+`PICTORY_SESSION_AUDIENCE`도 확인한다. 기존 `x-pictory-server-secret` +
+`x-pictory-subject-id` 방식은 같은 서버/게이트웨이 안의 내부 호출 fallback으로만
+사용한다.
 
 운영 요청 헤더 예시:
 

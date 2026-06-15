@@ -13,7 +13,7 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "check:release": "node tools/check-release-readiness.mjs",
-    "qa:server": "vitest run tests/nodeRuntime.test.ts tests/fileUsageStore.test.ts tests/httpAdapter.test.ts tests/rewardHttpAdapter.test.ts tests/accountHttpAdapter.test.ts tests/usageLedger.test.ts tests/serverClassify.test.ts",
+    "qa:server": "vitest run tests/nodeRuntime.test.ts tests/fileUsageStore.test.ts tests/httpAdapter.test.ts tests/rewardHttpAdapter.test.ts tests/accountHttpAdapter.test.ts tests/pictorySessionAuth.test.ts tests/usageLedger.test.ts tests/serverClassify.test.ts",
     "qa:flow": "node tools/qa-pictory-flow.mjs",
     "preview": "vite preview",
     "maker:create": "node tools/apps-in-toss-maker/create-app.mjs"

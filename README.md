@@ -51,6 +51,7 @@ VITE_PICTORY_DELETE_ENDPOINT=https://your-api.example.com/pictory/account
 
 ```bash
 PICTORY_SERVER_SECRET=replace_with_long_random_server_secret
+PICTORY_SESSION_SECRET=replace_with_long_random_session_secret
 OPENAI_API_KEY=replace_with_openai_api_key_server_only
 OPENAI_MODEL=gpt-4.1-mini
 OPENAI_IMAGE_DETAIL=low
@@ -71,6 +72,7 @@ PICTORY_AI_LOG_RAW_IMAGES=false
 - 캔버스 기반 이미지 신호 분석과 종류/정리 후보 분류
 - 운영 서버 AI 분류 endpoint 연결부와 OpenAI Responses API 기본 분류기
 - 서버 권위 광고 크레딧/유료 월 quota 원장 모듈
+- 서명 세션 쿠키/Authorization 토큰 기반 서버 subject 검증
 - 배포 런타임에 붙일 수 있는 `POST /pictory/classify` HTTP 어댑터
 - 광고 보상 크레딧을 원장에 지급하는 `POST /pictory/reward` HTTP 어댑터
 - 서버 원장 계정을 지우는 `DELETE /pictory/account` HTTP 어댑터
@@ -91,9 +93,10 @@ npm run qa:server
 `/pictory/classify`, `/pictory/account`를 실제 포트에서 호출하고, 파일 원장
 저장소가 이미지 본문 없이 사용량만 저장하며 계정 삭제가 되는지 확인합니다.
 브라우저 앱은 서버 secret을 보내지 않으므로 운영 배포에서는 Node 런타임의
-`resolveSubjectId` 옵션이나 게이트웨이 미들웨어로 동일 출처 세션 쿠키/토스
-세션을 검증해 subject를 주입해야 합니다. 기본 헤더 secret 방식은 서버 간
-호출 검증용입니다.
+`PICTORY_SESSION_SECRET`으로 검증되는 `pictory_session` 쿠키/Authorization
+토큰, `resolveSubjectId` 옵션, 또는 게이트웨이 미들웨어로 동일 출처 세션
+쿠키/토스 세션을 검증해 subject를 주입해야 합니다. 기본 헤더 secret 방식은
+서버 간 호출 검증용입니다.
 
 ## 앨범 fallback 정책
 

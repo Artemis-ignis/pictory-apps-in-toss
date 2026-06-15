@@ -26,6 +26,7 @@
     "tests/fileUsageStore.test.ts",
     "tests/httpAdapter.test.ts",
     "tests/nodeRuntime.test.ts",
+    "tests/pictorySessionAuth.test.ts",
     "tests/rewardHttpAdapter.test.ts",
     "tests/serverClassify.test.ts",
     "tests/usageLedger.test.ts"
