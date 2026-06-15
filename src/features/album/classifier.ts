@@ -40,24 +40,86 @@ const TOKEN_RULES: Record<MapBucketId, string[]> = {
     "결제",
     "카드",
     "승인",
+    "승인번호",
+    "합계",
+    "금액",
+    "매출",
+    "사업자",
+    "상호",
+    "total",
+    "amount",
+    "payment",
+    "approved",
     "마트",
     "편의점",
     "invoice",
   ],
-  food: ["food", "menu", "meal", "음식", "식당", "메뉴", "카페", "맛집"],
+  food: [
+    "food",
+    "menu",
+    "meal",
+    "dish",
+    "plate",
+    "pizza",
+    "burger",
+    "coffee",
+    "espresso",
+    "dessert",
+    "cake",
+    "bowl",
+    "bakery",
+    "음식",
+    "식당",
+    "메뉴",
+    "카페",
+    "맛집",
+    "디저트",
+  ],
   place: [
     "place",
     "travel",
     "trip",
     "map",
     "landscape",
+    "mountain",
+    "beach",
+    "lake",
+    "street",
+    "building",
+    "bridge",
     "장소",
     "여행",
     "풍경",
     "산책",
   ],
-  people: ["people", "person", "portrait", "face", "selfie", "사람", "친구"],
-  coupon: ["coupon", "barcode", "qr", "쿠폰", "할인", "마감"],
+  people: [
+    "people",
+    "person",
+    "portrait",
+    "face",
+    "selfie",
+    "family",
+    "group",
+    "사람",
+    "친구",
+    "가족",
+  ],
+  coupon: [
+    "coupon",
+    "barcode",
+    "qr",
+    "ticket",
+    "voucher",
+    "boarding",
+    "pass",
+    "쿠폰",
+    "할인",
+    "마감",
+    "예매",
+    "예약",
+    "입장권",
+    "탑승권",
+  ],
   memory: ["memory", "record", "note", "기록", "메모", "일상"],
 };
 
@@ -68,6 +130,13 @@ const SENSITIVE_TOKENS = [
   "여권",
   "계좌",
   "카드번호",
+  "전화번호",
+  "휴대폰",
+  "주소",
+  "생년월일",
+  "주문번호",
+  "거래",
+  "입금",
   "비밀번호",
   "otp",
   "인증",
@@ -320,6 +389,15 @@ function scoreCategories(tokens: string[], signals: ImageSignals) {
     scores.document += 0.14;
   }
 
+  if (
+    signals.aspectRatio < 0.56 &&
+    signals.whiteRatio > 0.42 &&
+    signals.textLineScore > 0.18
+  ) {
+    scores.receipt += 0.24;
+    scores.document += 0.06;
+  }
+
   if (signals.aspectRatio < 0.62 || signals.aspectRatio > 1.85) {
     scores.capture += 0.16;
     scores.coupon += 0.08;
@@ -333,6 +411,14 @@ function scoreCategories(tokens: string[], signals: ImageSignals) {
     )
   ) {
     scores.coupon += 0.5;
+  }
+
+  if (
+    tokens.some((value) =>
+      /ticket|voucher|boarding|pass|예매|예약|입장권|탑승권/.test(value),
+    )
+  ) {
+    scores.coupon += 0.32;
   }
 
   if (signals.saturation > 0.42 && signals.colorVariance > 0.32) {
@@ -365,6 +451,15 @@ function boostFileNameToken(
 ) {
   if (tokens.some((value) => /receipt|영수증|invoice/.test(value))) {
     scores.receipt += 0.38;
+  }
+  if (
+    tokens.some((value) =>
+      /total|amount|payment|approved|승인번호|합계|금액|매출|사업자|상호/.test(
+        value,
+      ),
+    )
+  ) {
+    scores.receipt += 0.24;
   }
   if (
     tokens.some((value) =>

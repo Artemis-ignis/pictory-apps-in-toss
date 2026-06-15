@@ -146,6 +146,67 @@ const fixtures: Array<{
     cleanBucketId: "sensitive",
     privacy: "sensitive",
   },
+  {
+    name: "tall receipt without explicit receipt hint",
+    input: {
+      fileName: "IMG_2042.jpg",
+      hints: ["approved", "total", "amount"],
+      signals: {
+        ...baseItem.signals!,
+        width: 720,
+        height: 1600,
+        aspectRatio: 0.45,
+        whiteRatio: 0.58,
+        textLineScore: 0.28,
+        saturation: 0.16,
+      },
+    },
+    categoryId: "receipt",
+  },
+  {
+    name: "boarding pass or ticket",
+    input: {
+      fileName: "booking-pass.png",
+      hints: ["ticket", "boarding", "qr"],
+      signals: {
+        ...baseItem.signals!,
+        aspectRatio: 1.9,
+        textLineScore: 0.22,
+      },
+    },
+    categoryId: "coupon",
+    cleanBucketId: "needsReview",
+  },
+  {
+    name: "food visual hint without generic food token",
+    input: {
+      fileName: "IMG_3010.jpg",
+      hints: ["pizza", "plate"],
+      signals: {
+        ...baseItem.signals!,
+        textLineScore: 0.02,
+        saturation: 0.5,
+        colorVariance: 0.42,
+        whiteRatio: 0.08,
+      },
+    },
+    categoryId: "food",
+  },
+  {
+    name: "city travel visual hint",
+    input: {
+      fileName: "IMG_4010.jpg",
+      hints: ["street", "building"],
+      signals: {
+        ...baseItem.signals!,
+        textLineScore: 0.03,
+        saturation: 0.36,
+        whiteRatio: 0.08,
+        natureColorRatio: 0.08,
+      },
+    },
+    categoryId: "place",
+  },
 ];
 
 describe("commercial classification fixtures", () => {
