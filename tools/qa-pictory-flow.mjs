@@ -122,9 +122,19 @@ async function runQa() {
     await waitForScreenTop(page);
     const mapPhotoDetailOpened =
       (await page.locator(".detail-actions button").count()) >= 3;
+    const photoDetailHashSynced = page.url().includes("photo=");
     await page.screenshot({
       path: path.join(screenshotDir, "04-map-photo-detail.png"),
     });
+    await page.goBack();
+    await page.locator(".folder-header").filter({ hasText: "음식" }).waitFor();
+    const browserBackReturnedToMapFolder =
+      (await page
+        .locator(".folder-header")
+        .filter({ hasText: "종류 폴더" })
+        .count()) > 0;
+    await page.locator(".folder-photo-list .photo-open").first().click();
+    await page.locator(".photo-detail-screen").waitFor();
     await page
       .locator(".detail-actions")
       .getByRole("button", { name: /^보관$/ })
@@ -275,6 +285,8 @@ async function runQa() {
         savedPhotoDetailOpened &&
         savedDetailHasUnsave &&
         detailProtectedMask &&
+        photoDetailHashSynced &&
+        browserBackReturnedToMapFolder &&
         dom.brokenImages === 0 &&
         dom.detailScreens >= 1 &&
         dom.navItems.join(",") === "홈,지도,정리,보관",
@@ -300,6 +312,8 @@ async function runQa() {
         savedPhotoDetailOpened,
         savedDetailHasUnsave,
         detailProtectedMask,
+        photoDetailHashSynced,
+        browserBackReturnedToMapFolder,
       },
       dom,
       consoleIssues,

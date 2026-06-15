@@ -26,15 +26,17 @@ import {
   prepareRecentItemsForStorage,
   savePictoryState,
 } from "./features/album/storage";
-import type {
-  AlbumItem,
-  AiRefinementResult,
-  ClassifiedItem,
-  CleanBucketId,
-  MapFolderId,
-  MapBucketId,
-  PersistedPictoryState,
-  PlanId,
+import {
+  CLEAN_BUCKETS,
+  MAP_BUCKETS,
+  type AlbumItem,
+  type AiRefinementResult,
+  type ClassifiedItem,
+  type CleanBucketId,
+  type MapFolderId,
+  type MapBucketId,
+  type PersistedPictoryState,
+  type PlanId,
 } from "./features/album/types";
 import {
   preloadRewardedScanAd,
@@ -56,9 +58,40 @@ import {
 } from "./features/billing/iap";
 import { deletePictoryServerData } from "./features/privacy/pictoryDataDelete";
 
+interface PictoryViewState {
+  scope: "pictory-view";
+  tab: TabId;
+  mapFolder: MapFolderId | "all";
+  cleanBucket: CleanBucketId | "all";
+  savedBucket: MapBucketId | "all";
+  photoId: string | null;
+}
+
+const DEFAULT_VIEW_STATE: PictoryViewState = {
+  scope: "pictory-view",
+  tab: "home",
+  mapFolder: "all",
+  cleanBucket: "all",
+  savedBucket: "all",
+  photoId: null,
+};
+
+const TAB_IDS = new Set<TabId>(["home", "map", "clean", "saved"]);
+const MAP_BUCKET_IDS = new Set(MAP_BUCKETS.map((bucket) => bucket.id));
+const CLEAN_BUCKET_IDS = new Set(CLEAN_BUCKETS.map((bucket) => bucket.id));
+
 function App() {
   const screenFrameRef = useRef<HTMLDivElement>(null);
-  const [activeTab, setActiveTab] = useState<TabId>("home");
+  const initialViewStateRef = useRef<PictoryViewState | null>(null);
+  if (initialViewStateRef.current == null) {
+    initialViewStateRef.current = getInitialViewState();
+  }
+  const initialViewState = initialViewStateRef.current;
+  const skipNextHistoryWriteRef = useRef(false);
+  const replaceNextHistoryRef = useRef(false);
+  const didWriteInitialHistoryRef = useRef(false);
+  const lastHistoryKeyRef = useRef("");
+  const [activeTab, setActiveTab] = useState<TabId>(initialViewState.tab);
   const [items, setItems] = useState<ClassifiedItem[]>([]);
   const [state, setState] =
     useState<PersistedPictoryState>(defaultPictoryState);
@@ -71,14 +104,16 @@ function App() {
   );
   const [selectedMapFolder, setSelectedMapFolder] = useState<
     MapFolderId | "all"
-  >("all");
+  >(initialViewState.mapFolder);
   const [selectedCleanBucket, setSelectedCleanBucket] = useState<
     CleanBucketId | "all"
-  >("all");
+  >(initialViewState.cleanBucket);
   const [selectedSavedBucket, setSelectedSavedBucket] = useState<
     MapBucketId | "all"
-  >("all");
-  const [selectedPhotoId, setSelectedPhotoId] = useState<string | null>(null);
+  >(initialViewState.savedBucket);
+  const [selectedPhotoId, setSelectedPhotoId] = useState<string | null>(
+    initialViewState.photoId,
+  );
   const billingRuntime = useMemo(() => getBillingRuntime(), []);
 
   useEffect(() => {
@@ -186,6 +221,77 @@ function App() {
   );
   const scanAllowance = getScanAllowance(entitledState);
   const currentPlan = getPlan(entitledState.planId);
+  const viewState = useMemo<PictoryViewState>(
+    () => ({
+      scope: "pictory-view",
+      tab: activeTab,
+      mapFolder: selectedMapFolder,
+      cleanBucket: selectedCleanBucket,
+      savedBucket: selectedSavedBucket,
+      photoId: selectedPhotoId,
+    }),
+    [
+      activeTab,
+      selectedCleanBucket,
+      selectedMapFolder,
+      selectedPhotoId,
+      selectedSavedBucket,
+    ],
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    function handlePopState() {
+      const nextView = readBrowserViewState() ?? DEFAULT_VIEW_STATE;
+      skipNextHistoryWriteRef.current = true;
+      replaceNextHistoryRef.current = false;
+      setActiveTab(nextView.tab);
+      setSelectedMapFolder(nextView.mapFolder);
+      setSelectedCleanBucket(nextView.cleanBucket);
+      setSelectedSavedBucket(nextView.savedBucket);
+      setSelectedPhotoId(nextView.photoId);
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const nextKey = serializeViewState(viewState);
+    if (skipNextHistoryWriteRef.current) {
+      skipNextHistoryWriteRef.current = false;
+      lastHistoryKeyRef.current = nextKey;
+      return;
+    }
+
+    if (lastHistoryKeyRef.current === nextKey) {
+      replaceNextHistoryRef.current = false;
+      return;
+    }
+
+    const method =
+      !didWriteInitialHistoryRef.current || replaceNextHistoryRef.current
+        ? "replaceState"
+        : "pushState";
+    window.history[method](viewState, "", buildViewUrl(viewState));
+    didWriteInitialHistoryRef.current = true;
+    replaceNextHistoryRef.current = false;
+    lastHistoryKeyRef.current = nextKey;
+  }, [viewState]);
+
+  useEffect(() => {
+    if (isHydrated && selectedPhotoId != null && selectedPhoto == null) {
+      replaceNextHistoryRef.current = true;
+      setSelectedPhotoId(null);
+    }
+  }, [isHydrated, selectedPhoto, selectedPhotoId]);
 
   async function analyzeIncoming(nextItems: AlbumItem[], message: string) {
     setIsScanning(true);
@@ -362,6 +468,7 @@ function App() {
   async function handleClear() {
     const serverDelete = await deletePictoryServerData();
     await clearPictoryState();
+    replaceNextHistoryRef.current = true;
     setState(defaultPictoryState);
     setItems([]);
     setSelectedPhotoId(null);
@@ -376,6 +483,9 @@ function App() {
   }
 
   function handleTabChange(tabId: TabId) {
+    if (tabId === activeTab) {
+      replaceNextHistoryRef.current = true;
+    }
     setSelectedPhotoId(null);
     if (tabId === activeTab) {
       if (tabId === "map") {
@@ -401,6 +511,39 @@ function App() {
     setSelectedPhotoId(null);
     setSelectedMapFolder(folderId);
     setActiveTab("map");
+  }
+
+  function handleSelectMapFolder(folderId: MapFolderId | "all") {
+    if (folderId === "all") {
+      replaceNextHistoryRef.current = true;
+    }
+    setSelectedPhotoId(null);
+    setSelectedMapFolder(folderId);
+  }
+
+  function handleSelectCleanBucket(bucketId: CleanBucketId | "all") {
+    if (bucketId === "all") {
+      replaceNextHistoryRef.current = true;
+    }
+    setSelectedPhotoId(null);
+    setSelectedCleanBucket(bucketId);
+  }
+
+  function handleSelectSavedBucket(bucketId: MapBucketId | "all") {
+    if (bucketId === "all") {
+      replaceNextHistoryRef.current = true;
+    }
+    setSelectedPhotoId(null);
+    setSelectedSavedBucket(bucketId);
+  }
+
+  function handleOpenPhoto(photoId: string) {
+    setSelectedPhotoId(photoId);
+  }
+
+  function handleClosePhoto() {
+    replaceNextHistoryRef.current = true;
+    setSelectedPhotoId(null);
   }
 
   function handleNotify() {
@@ -469,7 +612,7 @@ function App() {
         {selectedPhoto != null ? (
           <PhotoDetailPage
             item={selectedPhoto}
-            onBack={() => setSelectedPhotoId(null)}
+            onBack={handleClosePhoto}
             onSave={(id) => updateItemStatus(id, "saved")}
             onUnsave={(id) => updateItemStatus(id, "inbox")}
             onQueue={(id) => updateItemStatus(id, "queued")}
@@ -498,11 +641,11 @@ function App() {
           <MapPage
             items={visibleItems}
             selectedFolder={selectedMapFolder}
-            onSelectFolder={setSelectedMapFolder}
+            onSelectFolder={handleSelectMapFolder}
             onSave={(id) => updateItemStatus(id, "saved")}
             onQueue={(id) => updateItemStatus(id, "queued")}
             onIgnore={(id) => updateItemStatus(id, "ignored")}
-            onOpenPhoto={setSelectedPhotoId}
+            onOpenPhoto={handleOpenPhoto}
             onApplyFolderStatus={updateItemsStatus}
           />
         ) : null}
@@ -511,11 +654,11 @@ function App() {
             items={visibleItems}
             selectedBucket={selectedCleanBucket}
             queuedCount={queuedCount}
-            onSelectBucket={setSelectedCleanBucket}
+            onSelectBucket={handleSelectCleanBucket}
             onQueue={(id) => updateItemStatus(id, "queued")}
             onSave={(id) => updateItemStatus(id, "saved")}
             onIgnore={(id) => updateItemStatus(id, "ignored")}
-            onOpenPhoto={setSelectedPhotoId}
+            onOpenPhoto={handleOpenPhoto}
             onApplyFolderStatus={updateItemsStatus}
           />
         ) : null}
@@ -525,8 +668,8 @@ function App() {
             historyEntries={state.scanHistory}
             plan={currentPlan}
             selectedBucket={selectedSavedBucket}
-            onSelectBucket={setSelectedSavedBucket}
-            onOpenPhoto={setSelectedPhotoId}
+            onSelectBucket={handleSelectSavedBucket}
+            onOpenPhoto={handleOpenPhoto}
             onUnsave={(ids) => updateItemsStatus(ids, "inbox")}
             onClear={handleClear}
             onShare={handleShare}
@@ -535,6 +678,131 @@ function App() {
       </div>
       <BottomNav activeTab={activeTab} onChange={handleTabChange} />
     </div>
+  );
+}
+
+function getInitialViewState() {
+  if (typeof window === "undefined") {
+    return DEFAULT_VIEW_STATE;
+  }
+
+  return readBrowserViewState() ?? DEFAULT_VIEW_STATE;
+}
+
+function readBrowserViewState() {
+  const historyState = window.history.state;
+  if (isPictoryViewState(historyState)) {
+    return historyState;
+  }
+
+  return parseViewHash(window.location.hash);
+}
+
+function isPictoryViewState(value: unknown): value is PictoryViewState {
+  if (typeof value !== "object" || value == null) {
+    return false;
+  }
+
+  const candidate = value as Partial<PictoryViewState>;
+  return (
+    candidate.scope === "pictory-view" &&
+    isTabId(candidate.tab) &&
+    isMapFolder(candidate.mapFolder) &&
+    isCleanBucket(candidate.cleanBucket) &&
+    isSavedBucket(candidate.savedBucket) &&
+    (typeof candidate.photoId === "string" || candidate.photoId == null)
+  );
+}
+
+function parseViewHash(hash: string) {
+  if (!hash.startsWith("#tab=")) {
+    return null;
+  }
+
+  const params = new URLSearchParams(hash.slice(1));
+  const tab = params.get("tab");
+  const mapFolder = params.get("map");
+  const cleanBucket = params.get("clean");
+  const savedBucket = params.get("saved");
+  const photoId = params.get("photo");
+
+  return {
+    scope: "pictory-view",
+    tab: isTabId(tab) ? tab : DEFAULT_VIEW_STATE.tab,
+    mapFolder: isMapFolder(mapFolder)
+      ? mapFolder
+      : DEFAULT_VIEW_STATE.mapFolder,
+    cleanBucket: isCleanBucket(cleanBucket)
+      ? cleanBucket
+      : DEFAULT_VIEW_STATE.cleanBucket,
+    savedBucket: isSavedBucket(savedBucket)
+      ? savedBucket
+      : DEFAULT_VIEW_STATE.savedBucket,
+    photoId: photoId && photoId.length > 0 ? photoId : null,
+  } satisfies PictoryViewState;
+}
+
+function buildViewUrl(viewState: PictoryViewState) {
+  const params = new URLSearchParams({
+    tab: viewState.tab,
+    map: viewState.mapFolder,
+    clean: viewState.cleanBucket,
+    saved: viewState.savedBucket,
+  });
+
+  if (viewState.photoId != null) {
+    params.set("photo", viewState.photoId);
+  }
+
+  return `${window.location.pathname}${window.location.search}#${params.toString()}`;
+}
+
+function serializeViewState(viewState: PictoryViewState) {
+  return [
+    viewState.tab,
+    viewState.mapFolder,
+    viewState.cleanBucket,
+    viewState.savedBucket,
+    viewState.photoId ?? "",
+  ].join("|");
+}
+
+function isTabId(value: unknown): value is TabId {
+  return typeof value === "string" && TAB_IDS.has(value as TabId);
+}
+
+function isMapFolder(value: unknown): value is MapFolderId | "all" {
+  if (value === "all") {
+    return true;
+  }
+
+  if (typeof value !== "string") {
+    return false;
+  }
+
+  if (value.startsWith("period:")) {
+    return value.length > "period:".length;
+  }
+
+  if (!value.startsWith("category:")) {
+    return false;
+  }
+
+  return MAP_BUCKET_IDS.has(value.slice("category:".length) as MapBucketId);
+}
+
+function isCleanBucket(value: unknown): value is CleanBucketId | "all" {
+  return (
+    value === "all" ||
+    (typeof value === "string" &&
+      CLEAN_BUCKET_IDS.has(value as CleanBucketId))
+  );
+}
+
+function isSavedBucket(value: unknown): value is MapBucketId | "all" {
+  return (
+    value === "all" ||
+    (typeof value === "string" && MAP_BUCKET_IDS.has(value as MapBucketId))
   );
 }
 
