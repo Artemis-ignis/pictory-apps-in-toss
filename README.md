@@ -21,10 +21,14 @@ npm run web:dev
 npm run test
 npm run typecheck
 npm run lint
+npm run qa:server:built
 npm run build
 ```
 
 `npm run build`는 `pictory.ait`를 생성합니다.
+`npm run qa:server:built`는 서버 API를 `dist-server`로 빌드한 뒤 실제 Node
+프로세스로 띄워 `/healthz`, `/pictory/entitlement`, `/pictory/classify`,
+`/pictory/account`를 smoke 검증합니다.
 
 ## 운영 설정
 
@@ -89,11 +93,14 @@ PICTORY_AI_LOG_RAW_IMAGES=false
 
 ```bash
 npm run qa:server
+npm run qa:server:built
 ```
 
 `qa:server`는 Node HTTP 런타임으로 `/healthz`, `/pictory/reward`,
 `/pictory/classify`, `/pictory/account`, `/pictory/entitlement`를 실제 포트에서 호출하고, 파일 원장
 저장소가 이미지 본문 없이 사용량만 저장하며 계정 삭제가 되는지 확인합니다.
+`qa:server:built`는 배포용 서버 bundle을 실제 `node dist-server/pictoryNodeRuntime.js`로
+기동 가능한지 확인합니다.
 브라우저 앱은 서버 secret을 보내지 않으므로 운영 배포에서는 Node 런타임의
 `PICTORY_SESSION_SECRET`으로 검증되는 `pictory_session` 쿠키/Authorization
 토큰, `resolveSubjectId` 옵션, 또는 게이트웨이 미들웨어로 동일 출처 세션

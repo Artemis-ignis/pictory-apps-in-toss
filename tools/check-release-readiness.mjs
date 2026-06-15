@@ -212,8 +212,11 @@ function checkPackageScripts() {
     "typecheck",
     "lint",
     "build",
+    "server:build",
+    "server:start",
     "check:release",
     "qa:server",
+    "qa:server:built",
   ]) {
     record(
       Boolean(scripts[scriptName]),
@@ -256,6 +259,10 @@ function checkPackageScripts() {
   record(
     existsSync(projectPath("server", "pictorySessionAuth.ts")),
     "server session auth helper exists",
+  );
+  record(
+    existsSync(projectPath("tools", "qa-built-server.mjs")),
+    "built server smoke QA exists",
   );
   record(
     existsSync(projectPath("tests", "httpAdapter.test.ts")),

@@ -51,6 +51,7 @@ npm run test
 npm run typecheck
 npm run lint
 npm run qa:server
+npm run qa:server:built
 npm run build
 npm run check:release
 ```
@@ -69,7 +70,7 @@ npm run check:release
 
 - [ ] `.env`에 실제 비밀값이 없고, 클라이언트 값은 `VITE_` 공개 값만 들어 있다.
 - [ ] 서버 OpenAI 키와 `PICTORY_SERVER_SECRET`은 서버 배포 환경에만 설정했다.
-- [ ] `npm run test`, `npm run typecheck`, `npm run lint`, `npm run qa:server`, `npm run build`, `npm run check:release`가 통과했다.
+- [ ] `npm run test`, `npm run typecheck`, `npm run lint`, `npm run qa:server`, `npm run qa:server:built`, `npm run build`, `npm run check:release`가 통과했다.
 - [ ] 업로드한 파일명이 최신 `pictory.ait`인지 확인했다.
 - [ ] 테스트 단말에서 토스 앱에 로그인했다.
 - [ ] 테스트 계정이 앱인토스 워크스페이스 멤버이고 만 19세 이상이다.
@@ -248,6 +249,10 @@ x-request-id: req_20260615_001
 동일 출처 세션 쿠키로 사용자 식별, 유료 권한, 광고 크레딧, 월간 quota를
 검증해야 하며, 클라이언트 `planId`나 로컬 상태만으로 entitlement/quota를
 승인하지 않는다.
+
+서버 배포 후보는 앱 `.ait`와 별개로 `npm run qa:server:built`를 통과해야 한다.
+이 명령은 `dist-server/pictoryNodeRuntime.js`를 만든 뒤 실제 Node 프로세스로
+기동해 health, entitlement, classify, account delete smoke를 확인한다.
 
 요청:
 

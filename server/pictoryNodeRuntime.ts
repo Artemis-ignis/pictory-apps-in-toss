@@ -183,6 +183,6 @@ function writeResponse(
 
 class BodyTooLargeError extends Error {}
 
-if (process.argv[1]?.endsWith("pictoryNodeRuntime.ts")) {
+if (/pictoryNodeRuntime\.(ts|js)$/.test(process.argv[1] ?? "")) {
   startPictoryNodeServer();
 }
