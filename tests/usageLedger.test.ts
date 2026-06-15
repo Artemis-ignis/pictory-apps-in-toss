@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createNewUsageAccount,
   createPictoryUsageLedgerDeps,
+  deleteUsageAccount,
   debitServerAiQuota,
   grantRewardCredits,
   normalizeUsageMonth,
@@ -152,6 +153,29 @@ describe("pictoryUsageLedger", () => {
       serverAiAccess: "credit",
     });
   });
+
+  it("deletes usage accounts only when the store supports deletion", async () => {
+    const store = createMemoryStore(createNewUsageAccount("user-1", "plus"));
+    const unsupportedStore: PictoryUsageLedgerStore = {
+      readAccount: async () => null,
+      writeAccount: async () => undefined,
+    };
+
+    await expect(deleteUsageAccount(store, "user-1")).resolves.toEqual({
+      supported: true,
+      deleted: true,
+    });
+    await expect(deleteUsageAccount(store, "missing")).resolves.toEqual({
+      supported: true,
+      deleted: false,
+    });
+    await expect(
+      deleteUsageAccount(unsupportedStore, "user-1"),
+    ).resolves.toEqual({
+      supported: false,
+      deleted: false,
+    });
+  });
 });
 
 function createMemoryStore(
@@ -163,6 +187,13 @@ function createMemoryStore(
       current.subjectId === subjectId ? current : null,
     writeAccount: async (account) => {
       current = account;
+    },
+    deleteAccount: async (subjectId) => {
+      if (current.subjectId !== subjectId) {
+        return false;
+      }
+      current = createNewUsageAccount("__deleted__");
+      return true;
     },
   };
 }

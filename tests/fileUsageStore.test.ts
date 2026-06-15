@@ -46,4 +46,21 @@ describe("PictoryFileUsageLedgerStore", () => {
 
     await expect(store.readAccount("user-1")).resolves.toBeNull();
   });
+
+  it("deletes only the requested usage account", async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "pictory-ledger-"));
+    const filePath = join(tempDir, "ledger.json");
+    const store = new PictoryFileUsageLedgerStore(filePath);
+    await store.writeAccount(createNewUsageAccount("user-1", "plus"));
+    await store.writeAccount(createNewUsageAccount("user-2", "free"));
+
+    await expect(store.deleteAccount("user-1")).resolves.toBe(true);
+    await expect(store.deleteAccount("missing")).resolves.toBe(false);
+
+    expect(await store.readAccount("user-1")).toBeNull();
+    expect(await store.readAccount("user-2")).toMatchObject({
+      subjectId: "user-2",
+    });
+    expect(await readFile(filePath, "utf8")).not.toContain("user-1");
+  });
 });

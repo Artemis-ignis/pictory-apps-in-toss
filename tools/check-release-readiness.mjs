@@ -50,6 +50,7 @@ function checkEnvExample() {
     "VITE_PICTORY_PRO_SUBSCRIPTION_SKU",
     "VITE_PICTORY_CLASSIFY_ENDPOINT",
     "VITE_PICTORY_REWARD_ENDPOINT",
+    "VITE_PICTORY_DELETE_ENDPOINT",
   ];
   const requiredServerEnv = [
     "PICTORY_SERVER_SECRET",
@@ -84,6 +85,12 @@ function checkEnvExample() {
       env.get("VITE_PICTORY_REWARD_ENDPOINT") ?? "",
     ),
     ".env.example reward endpoint is a placeholder URL",
+  );
+  record(
+    /your-api\.example\.com/.test(
+      env.get("VITE_PICTORY_DELETE_ENDPOINT") ?? "",
+    ),
+    ".env.example delete endpoint is a placeholder URL",
   );
   record(
     /^replace_with_/.test(env.get("PICTORY_SERVER_SECRET") ?? ""),
@@ -226,6 +233,10 @@ function checkPackageScripts() {
     "server reward HTTP adapter exists",
   );
   record(
+    existsSync(projectPath("server", "pictoryAccountHttpAdapter.ts")),
+    "server account HTTP adapter exists",
+  );
+  record(
     existsSync(projectPath("server", "pictoryNodeRuntime.ts")),
     "server Node runtime exists",
   );
@@ -240,6 +251,10 @@ function checkPackageScripts() {
   record(
     existsSync(projectPath("tests", "rewardHttpAdapter.test.ts")),
     "server reward HTTP adapter tests exist",
+  );
+  record(
+    existsSync(projectPath("tests", "accountHttpAdapter.test.ts")),
+    "server account HTTP adapter tests exist",
   );
   record(
     existsSync(projectPath("tests", "usageLedger.test.ts")),

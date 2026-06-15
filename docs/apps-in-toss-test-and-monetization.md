@@ -23,6 +23,7 @@ VITE_PICTORY_PLUS_SUBSCRIPTION_SKU=replace_with_toss_plus_subscription_sku
 VITE_PICTORY_PRO_SUBSCRIPTION_SKU=replace_with_toss_pro_subscription_sku
 VITE_PICTORY_CLASSIFY_ENDPOINT=https://your-api.example.com/pictory/classify
 VITE_PICTORY_REWARD_ENDPOINT=https://your-api.example.com/pictory/reward
+VITE_PICTORY_DELETE_ENDPOINT=https://your-api.example.com/pictory/account
 ```
 
 서버 AI 런타임 환경 변수는 서버 배포 환경에만 설정한다. OpenAI 키, 서버 secret, 사용자별 quota 값에는 `VITE_` 접두사를 붙이지 않는다.
@@ -76,6 +77,7 @@ npm run check:release
 - [ ] 선택 취소 시 실패가 아니라 빈 결과/대기 상태로 돌아온다.
 - [ ] 실제 사진 선택 후 지도, 정리, 보관 화면의 분류 결과와 민감정보 흐림 처리를 확인했다.
 - [ ] 앱 재실행 후 최근 분류 지도, 보관 항목, 스캔 기록이 복원된다.
+- [ ] `픽토리 데이터 삭제` 후 앱 내부 기록이 비워지고, 운영 서버 원장도 `DELETE /pictory/account`로 삭제된다.
 - [ ] 실패가 있으면 단말 OS, 토스 앱 버전, 콘솔 앱 버전, QR 생성 시각, 재현 화면을 기록했다.
 
 ## 광고 운영
@@ -98,6 +100,12 @@ npm run check:release
 앱은 `VITE_PICTORY_REWARD_ENDPOINT`가 설정된 운영 환경에서는 서버 응답의
 `granted` 값만 로컬 표시 크레딧에 반영한다. 서버 지급이 실패하면 로컬에서
 임의로 크레딧을 올리지 않는다.
+
+사용자가 `픽토리 데이터 삭제`를 누르면 앱 내부 저장소를 지우고, 운영에서는
+`VITE_PICTORY_DELETE_ENDPOINT`로 `DELETE /pictory/account`도 호출한다. 이
+엔드포인트는 광고 크레딧, 월간 서버 AI 사용량, 지급된 rewardId 같은 서버
+원장 계정 데이터를 삭제한다. 실제 서비스에서는 토스 세션 또는 게이트웨이
+검증으로 subject를 해결하고, 프론트엔드 번들에 서버 secret을 넣지 않는다.
 
 개발 중에는 반드시 테스트 광고 ID를 사용한다.
 
@@ -206,6 +214,10 @@ flowchart LR
 안에서만 신뢰한다. 실제 서비스 인증을 붙일 때는 `resolveSubjectId`를 주입해
 토스 사용자 세션, 앱인토스 서버 토큰, 또는 자체 계정 DB 검증 결과로 subject를
 해결한다. 프론트엔드 번들에는 서버 secret을 넣지 않는다.
+`server/pictoryNodeRuntime.ts`도 같은 `resolveSubjectId` 옵션을
+`/pictory/classify`, `/pictory/reward`, `/pictory/account`에 공통으로
+전달한다. 따라서 운영에서는 한 곳에서 세션을 검증하고 세 endpoint가 같은
+사용자 원장을 보게 해야 한다.
 
 운영 요청 헤더 예시:
 

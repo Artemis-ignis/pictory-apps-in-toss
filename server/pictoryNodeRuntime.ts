@@ -7,16 +7,24 @@ import { join } from "node:path";
 import { cwd, env as processEnv } from "node:process";
 import { createPictoryClassifyHttpHandler } from "./pictoryHttpAdapter";
 import { createPictoryRewardHttpHandler } from "./pictoryRewardHttpAdapter";
+import { createPictoryAccountHttpHandler } from "./pictoryAccountHttpAdapter";
 import { PictoryFileUsageLedgerStore } from "./pictoryFileUsageStore";
-import type { PictoryClassifyDeps } from "./pictoryClassify";
+import type {
+  PictoryClassifyDeps,
+  PictoryClassifyRequestContext,
+} from "./pictoryClassify";
 import type { PictoryUsageLedgerStore } from "./pictoryUsageLedger";
 
 const DEFAULT_BODY_LIMIT_BYTES = 4 * 1024 * 1024;
+type MaybePromise<T> = T | Promise<T>;
 
 export interface PictoryNodeRuntimeOptions {
   store?: PictoryUsageLedgerStore;
   env?: Record<string, string | undefined>;
   classifyItems?: PictoryClassifyDeps["classifyItems"];
+  resolveSubjectId?: (
+    context: PictoryClassifyRequestContext,
+  ) => MaybePromise<string | null | undefined>;
   bodyLimitBytes?: number;
 }
 
@@ -24,6 +32,7 @@ export function createPictoryNodeRequestListener({
   store,
   env = processEnv,
   classifyItems,
+  resolveSubjectId,
   bodyLimitBytes = DEFAULT_BODY_LIMIT_BYTES,
 }: PictoryNodeRuntimeOptions = {}) {
   const usageStore = store ?? createDefaultFileStore(env);
@@ -32,11 +41,19 @@ export function createPictoryNodeRequestListener({
     store: usageStore,
     env,
     classifyItems,
+    resolveSubjectId,
     corsOrigin,
   });
   const rewardHandler = createPictoryRewardHttpHandler({
     store: usageStore,
     env,
+    resolveSubjectId,
+    corsOrigin,
+  });
+  const accountHandler = createPictoryAccountHttpHandler({
+    store: usageStore,
+    env,
+    resolveSubjectId,
     corsOrigin,
   });
 
@@ -51,7 +68,11 @@ export function createPictoryNodeRequestListener({
         return;
       }
 
-      if (path !== "/pictory/classify" && path !== "/pictory/reward") {
+      if (
+        path !== "/pictory/classify" &&
+        path !== "/pictory/reward" &&
+        path !== "/pictory/account"
+      ) {
         writeJson(response, 404, {
           error: { code: "not_found", message: "Endpoint not found." },
         });
@@ -59,20 +80,18 @@ export function createPictoryNodeRequestListener({
       }
 
       const body = await readBody(request, bodyLimitBytes);
+      const httpRequest = {
+        method: request.method ?? "GET",
+        headers: request.headers,
+        body,
+        bodySizeBytes: Buffer.byteLength(body, "utf8"),
+      };
       const result =
         path === "/pictory/classify"
-          ? await classifyHandler({
-              method: request.method ?? "GET",
-              headers: request.headers,
-              body,
-              bodySizeBytes: Buffer.byteLength(body, "utf8"),
-            })
-          : await rewardHandler({
-              method: request.method ?? "GET",
-              headers: request.headers,
-              body,
-              bodySizeBytes: Buffer.byteLength(body, "utf8"),
-            });
+          ? await classifyHandler(httpRequest)
+          : path === "/pictory/reward"
+            ? await rewardHandler(httpRequest)
+            : await accountHandler(httpRequest);
 
       writeResponse(response, result.status, result.headers, result.body);
     } catch (error) {

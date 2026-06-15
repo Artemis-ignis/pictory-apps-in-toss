@@ -42,6 +42,7 @@ VITE_PICTORY_PLUS_SUBSCRIPTION_SKU=replace_with_toss_plus_subscription_sku
 VITE_PICTORY_PRO_SUBSCRIPTION_SKU=replace_with_toss_pro_subscription_sku
 VITE_PICTORY_CLASSIFY_ENDPOINT=https://your-api.example.com/pictory/classify
 VITE_PICTORY_REWARD_ENDPOINT=https://your-api.example.com/pictory/reward
+VITE_PICTORY_DELETE_ENDPOINT=https://your-api.example.com/pictory/account
 ```
 
 출시 빌드에서는 앱인토스 콘솔에서 발급받은 보상형 광고 그룹 ID와 구독 SKU로 바꿉니다. 개발 단계에서는 반드시 테스트 ID(`ait-ad-test-rewarded-id`)를 사용합니다. 실제 광고 ID로 개발 테스트를 반복하면 광고 정책 위반으로 간주될 수 있습니다.
@@ -72,6 +73,7 @@ PICTORY_AI_LOG_RAW_IMAGES=false
 - 서버 권위 광고 크레딧/유료 월 quota 원장 모듈
 - 배포 런타임에 붙일 수 있는 `POST /pictory/classify` HTTP 어댑터
 - 광고 보상 크레딧을 원장에 지급하는 `POST /pictory/reward` HTTP 어댑터
+- 서버 원장 계정을 지우는 `DELETE /pictory/account` HTTP 어댑터
 - `health/classify/reward`를 실제 HTTP로 검증하는 Node 서버 런타임
 - 홈, 지도, 정리, 보관 4개 화면
 - 보상형 광고 연결부와 브라우저 fallback
@@ -86,8 +88,12 @@ npm run qa:server
 ```
 
 `qa:server`는 Node HTTP 런타임으로 `/healthz`, `/pictory/reward`,
-`/pictory/classify`를 실제 포트에서 호출하고, 파일 원장 저장소가 이미지
-본문 없이 사용량만 저장하는지 확인합니다.
+`/pictory/classify`, `/pictory/account`를 실제 포트에서 호출하고, 파일 원장
+저장소가 이미지 본문 없이 사용량만 저장하며 계정 삭제가 되는지 확인합니다.
+브라우저 앱은 서버 secret을 보내지 않으므로 운영 배포에서는 Node 런타임의
+`resolveSubjectId` 옵션이나 게이트웨이 미들웨어로 동일 출처 세션 쿠키/토스
+세션을 검증해 subject를 주입해야 합니다. 기본 헤더 secret 방식은 서버 간
+호출 검증용입니다.
 
 ## 앨범 fallback 정책
 
@@ -101,6 +107,7 @@ npm run qa:server
 - 최근 분류 결과는 앱 안의 로컬 저장소에 작은 썸네일과 분류 메타데이터만 보관합니다.
 - 민감정보 후보는 실제 이미지 썸네일 대신 차단용 대체 이미지를 저장합니다.
 - `픽토리 데이터 삭제`를 누르면 저장된 보관 상태, 정리 후보, 최근 분류 결과, 스캔 기록을 모두 삭제합니다.
+- `VITE_PICTORY_DELETE_ENDPOINT`가 설정된 운영 환경에서는 `픽토리 데이터 삭제`가 서버 원장 삭제도 함께 요청합니다.
 - 운영 환경에서는 로컬 저장소의 유료 플랜 값을 실제 권한으로 믿지 않습니다. 인앱결제 지급·복원·주문 상태 검증이 붙기 전까지 Plus/Pro는 로컬 개발 미리보기에서만 한도로 적용됩니다.
 - 운영 Plus/Pro 활성화는 앱인토스 구독 결제 성공, 상품 지급 콜백, 구독 정보 복원 또는 미결 주문 복원 이후에만 적용됩니다.
 

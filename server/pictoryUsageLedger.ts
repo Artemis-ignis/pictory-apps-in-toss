@@ -24,6 +24,7 @@ export interface PictoryUsageLedgerStore {
     subjectId: string,
   ) => MaybePromise<PictoryUsageAccount | null | undefined>;
   writeAccount: (account: PictoryUsageAccount) => MaybePromise<void>;
+  deleteAccount?: (subjectId: string) => MaybePromise<boolean | void>;
 }
 
 export interface PictoryUsageLedgerDeps {
@@ -142,6 +143,18 @@ export function createNewUsageAccount(
     serverAiCredits: 0,
     grantedRewardIds: [],
   };
+}
+
+export async function deleteUsageAccount(
+  store: PictoryUsageLedgerStore,
+  subjectId: string,
+) {
+  if (!store.deleteAccount) {
+    return { supported: false, deleted: false };
+  }
+
+  const deleted = await store.deleteAccount(subjectId);
+  return { supported: true, deleted: deleted !== false };
 }
 
 export function grantRewardCredits({

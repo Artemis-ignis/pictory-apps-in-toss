@@ -31,7 +31,7 @@ describe("pictoryNodeRuntime", () => {
     }
   });
 
-  it("serves health, reward, and classify routes over HTTP", async () => {
+  it("serves health, reward, classify, and account delete routes over HTTP", async () => {
     const store = createMemoryStore(createNewUsageAccount("user-1", "plus"));
     const classifyItems = vi.fn(async () => [
       {
@@ -71,7 +71,72 @@ describe("pictoryNodeRuntime", () => {
       items: [{ id: "photo-1", categoryId: "receipt" }],
     });
     expect((await store.readAccount("user-1"))?.monthlyServerAiUsed).toBe(1);
+    const accountDelete = await deleteAccount(`${baseUrl}/pictory/account`);
+    expect(accountDelete.status).toBe(200);
+    expect(await accountDelete.json()).toMatchObject({
+      subjectId: "user-1",
+      deleted: true,
+    });
+    expect(await store.readAccount("user-1")).toBeNull();
     expect(classifyItems).toHaveBeenCalledOnce();
+  });
+
+  it("uses one injected session resolver for reward, classify, and account delete", async () => {
+    const store = createMemoryStore(
+      createNewUsageAccount("session-user", "plus"),
+    );
+    const classifyItems = vi.fn(async () => [
+      {
+        id: "photo-1",
+        categoryId: "receipt" as const,
+        cleanBucketId: "needsReview" as const,
+        confidence: 0.9,
+        privacy: "review" as const,
+      },
+    ]);
+    const resolveSubjectId = vi.fn(async (context) =>
+      context.headers.cookie?.includes("pictory_session=session-token")
+        ? "session-user"
+        : null,
+    );
+    const baseUrl = await listen({
+      store,
+      classifyItems,
+      resolveSubjectId,
+      env: {
+        PICTORY_AI_PLUS_MONTHLY_QUOTA: "500",
+        PICTORY_AI_AD_CREDIT_QUOTA: "100",
+      },
+    });
+    const headers = {
+      Cookie: "pictory_session=session-token",
+      "Content-Type": "application/json",
+    };
+
+    const reward = await fetch(`${baseUrl}/pictory/reward`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ rewardId: "ad-event-1" }),
+    });
+    const classify = await fetch(`${baseUrl}/pictory/classify`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(classifyBody),
+    });
+    const accountDelete = await fetch(`${baseUrl}/pictory/account`, {
+      method: "DELETE",
+      headers,
+    });
+
+    expect(reward.status).toBe(200);
+    expect(classify.status).toBe(200);
+    expect(accountDelete.status).toBe(200);
+    expect(await accountDelete.json()).toMatchObject({
+      subjectId: "session-user",
+      deleted: true,
+    });
+    expect(await store.readAccount("session-user")).toBeNull();
+    expect(resolveSubjectId).toHaveBeenCalledTimes(3);
   });
 
   it("rejects unknown routes and oversized bodies", async () => {
@@ -117,6 +182,16 @@ function postJson(url: string, { body }: { body: unknown }) {
   });
 }
 
+function deleteAccount(url: string) {
+  return fetch(url, {
+    method: "DELETE",
+    headers: {
+      "x-pictory-server-secret": "server-secret",
+      "x-pictory-subject-id": "user-1",
+    },
+  });
+}
+
 function createMemoryStore(
   account: PictoryUsageAccount,
 ): PictoryUsageLedgerStore {
@@ -126,6 +201,13 @@ function createMemoryStore(
       current.subjectId === subjectId ? current : null,
     writeAccount: async (account) => {
       current = account;
+    },
+    deleteAccount: async (subjectId) => {
+      if (current.subjectId !== subjectId) {
+        return false;
+      }
+      current = createNewUsageAccount("__deleted__");
+      return true;
     },
   };
 }

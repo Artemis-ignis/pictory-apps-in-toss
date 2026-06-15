@@ -24,6 +24,15 @@ export class PictoryFileUsageLedgerStore implements PictoryUsageLedgerStore {
     await this.writeLedger({ accounts });
   }
 
+  async deleteAccount(subjectId: string) {
+    const ledger = await this.readLedger();
+    const accounts = { ...(ledger.accounts ?? {}) };
+    const deleted = Object.prototype.hasOwnProperty.call(accounts, subjectId);
+    delete accounts[subjectId];
+    await this.writeLedger({ accounts });
+    return deleted;
+  }
+
   private async readLedger(): Promise<LedgerFile> {
     try {
       const raw = await readFile(this.filePath, "utf8");

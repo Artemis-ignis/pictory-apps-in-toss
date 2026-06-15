@@ -53,6 +53,7 @@ import {
   purchaseSubscriptionPlan,
   restoreIapEntitlement,
 } from "./features/billing/iap";
+import { deletePictoryServerData } from "./features/privacy/pictoryDataDelete";
 
 function App() {
   const screenFrameRef = useRef<HTMLDivElement>(null);
@@ -353,6 +354,7 @@ function App() {
   }
 
   async function handleClear() {
+    const serverDelete = await deletePictoryServerData();
     await clearPictoryState();
     setState(defaultPictoryState);
     setItems([]);
@@ -360,7 +362,11 @@ function App() {
     setSelectedMapFolder("all");
     setSelectedCleanBucket("all");
     setSelectedSavedBucket("all");
-    setScanMessage("픽토리 내부 기록을 비웠어요.");
+    setScanMessage(
+      serverDelete.status === "serverFailed"
+        ? "기기 안 기록은 비웠어요. 서버 기록 삭제 확인은 실패했어요."
+        : "픽토리 기록을 비웠어요.",
+    );
   }
 
   function handleTabChange(tabId: TabId) {
