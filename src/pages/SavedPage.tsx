@@ -139,7 +139,7 @@ export function SavedPage({
         <div>
           <p>보관</p>
           <h1>다시 볼 것만 보관</h1>
-          <span>지도 기록도 같이 저장</span>
+          <span>정리 내역도 같이 저장</span>
         </div>
         <Mascot variant="saved" />
       </section>
@@ -194,7 +194,7 @@ export function SavedPage({
       ) : null}
 
       <div className="section-heading">
-        <h2>최근 지도 기록</h2>
+        <h2>최근 정리 내역</h2>
         <span className="section-count">{historyEntries.length}개</span>
       </div>
 
@@ -213,7 +213,7 @@ export function SavedPage({
             <strong>기록 없음</strong>
             <div>
               <b>0장</b>
-              <span>지도 만들기 전</span>
+              <span>아직 만든 지도 없음</span>
             </div>
           </article>
         ) : null}

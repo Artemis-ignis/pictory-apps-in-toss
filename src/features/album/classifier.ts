@@ -21,6 +21,10 @@ const TOKEN_RULES: Record<MapBucketId, string[]> = {
     "카톡",
     "chat",
     "송금",
+    "이체",
+    "login",
+    "로그인",
+    "알림",
   ],
   document: [
     "document",
@@ -33,6 +37,16 @@ const TOKEN_RULES: Record<MapBucketId, string[]> = {
     "증명",
     "수납",
     "청구",
+    "고지서",
+    "명세서",
+    "세금계산서",
+    "진단서",
+    "처방전",
+    "보험",
+    "bill",
+    "statement",
+    "tax",
+    "medical",
   ],
   receipt: [
     "receipt",
@@ -87,10 +101,23 @@ const TOKEN_RULES: Record<MapBucketId, string[]> = {
     "street",
     "building",
     "bridge",
+    "city",
+    "museum",
+    "hotel",
+    "airport",
+    "station",
+    "road",
     "장소",
     "여행",
     "풍경",
     "산책",
+    "도시",
+    "건물",
+    "거리",
+    "공항",
+    "호텔",
+    "전시",
+    "박물관",
   ],
   people: [
     "people",
@@ -100,9 +127,18 @@ const TOKEN_RULES: Record<MapBucketId, string[]> = {
     "selfie",
     "family",
     "group",
+    "profile",
+    "wedding",
+    "party",
+    "baby",
+    "child",
     "사람",
     "친구",
     "가족",
+    "프로필",
+    "웨딩",
+    "아기",
+    "아이",
   ],
   coupon: [
     "coupon",
@@ -137,11 +173,27 @@ const SENSITIVE_TOKENS = [
   "주문번호",
   "거래",
   "입금",
+  "송금",
+  "이체",
+  "은행",
+  "bank",
+  "account",
+  "transfer",
   "비밀번호",
+  "password",
+  "login",
+  "로그인",
+  "보안",
   "otp",
   "인증",
+  "인증번호",
+  "verification",
   "계약",
   "등본",
+  "진단서",
+  "처방전",
+  "medical",
+  "insurance",
   "민감",
 ];
 
@@ -630,6 +682,10 @@ function labelForCategory(categoryId: MapBucketId) {
 function isSensitiveTokenMatch(value: string, token: string) {
   if (value.length <= 2 || token.length <= 2) {
     return value === token;
+  }
+
+  if (/^[a-z0-9]+$/.test(value) && /^[a-z0-9]+$/.test(token)) {
+    return value === token || value.includes(token);
   }
 
   return value.includes(token) || token.includes(value);

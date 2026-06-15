@@ -100,7 +100,7 @@ function App() {
   const [verifiedPlanId, setVerifiedPlanId] = useState<PlanId>("free");
   const restoreAttemptedRef = useRef(false);
   const [scanMessage, setScanMessage] = useState(
-    "개발 환경이라도 실제 파일 선택으로 동작을 확인할 수 있어요.",
+    "사진을 선택하거나 앨범 지도를 만들 수 있어요.",
   );
   const [selectedMapFolder, setSelectedMapFolder] = useState<
     MapFolderId | "all"
@@ -416,7 +416,7 @@ function App() {
     }));
     setScanMessage(
       grant.source === "localFallback"
-        ? `${grant.granted}장 테스트 스캔권을 받았어요.`
+        ? `${grant.granted}장 보너스 스캔권을 받았어요.`
         : `${grant.granted}장 스캔권을 받았어요.`,
     );
   }

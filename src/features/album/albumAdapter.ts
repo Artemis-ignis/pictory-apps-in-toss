@@ -41,7 +41,7 @@ export async function requestAlbumScan(maxCount = 120): Promise<ScanResult> {
     return {
       items: sampleAlbumItems,
       source: "sample",
-      message: "샘플 앨범으로 열었어요. 사진 테스트도 가능해요.",
+      message: "예시 앨범으로 열었어요. 직접 사진 선택도 가능해요.",
     };
   }
 }

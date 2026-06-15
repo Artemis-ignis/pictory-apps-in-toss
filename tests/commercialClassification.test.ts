@@ -147,6 +147,37 @@ const fixtures: Array<{
     privacy: "sensitive",
   },
   {
+    name: "financial transfer capture without account token",
+    input: {
+      fileName: "bank-transfer-screen.png",
+      hints: ["송금", "이체", "로그인", "screen"],
+      signals: {
+        ...baseItem.signals!,
+        aspectRatio: 0.48,
+        textLineScore: 0.32,
+      },
+    },
+    categoryId: "capture",
+    cleanBucketId: "sensitive",
+    privacy: "sensitive",
+  },
+  {
+    name: "medical insurance document",
+    input: {
+      fileName: "hospital-statement.jpg",
+      hints: ["진단서", "보험", "document"],
+      signals: {
+        ...baseItem.signals!,
+        whiteRatio: 0.68,
+        textLineScore: 0.34,
+        saturation: 0.11,
+      },
+    },
+    categoryId: "document",
+    cleanBucketId: "sensitive",
+    privacy: "sensitive",
+  },
+  {
     name: "tall receipt without explicit receipt hint",
     input: {
       fileName: "IMG_2042.jpg",
@@ -172,6 +203,20 @@ const fixtures: Array<{
         ...baseItem.signals!,
         aspectRatio: 1.9,
         textLineScore: 0.22,
+      },
+    },
+    categoryId: "coupon",
+    cleanBucketId: "needsReview",
+  },
+  {
+    name: "event ticket without barcode",
+    input: {
+      fileName: "concert-eticket.png",
+      hints: ["예매", "입장권"],
+      signals: {
+        ...baseItem.signals!,
+        aspectRatio: 1.72,
+        textLineScore: 0.18,
       },
     },
     categoryId: "coupon",
@@ -206,6 +251,36 @@ const fixtures: Array<{
       },
     },
     categoryId: "place",
+  },
+  {
+    name: "indoor city place without nature color",
+    input: {
+      fileName: "seoul-museum-hotel.jpg",
+      hints: ["museum", "building", "city"],
+      signals: {
+        ...baseItem.signals!,
+        textLineScore: 0.03,
+        saturation: 0.34,
+        whiteRatio: 0.12,
+        natureColorRatio: 0.04,
+      },
+    },
+    categoryId: "place",
+  },
+  {
+    name: "people event without strong skin signal",
+    input: {
+      fileName: "wedding-profile.jpg",
+      hints: ["wedding", "profile"],
+      signals: {
+        ...baseItem.signals!,
+        textLineScore: 0.03,
+        saturation: 0.36,
+        whiteRatio: 0.12,
+        skinToneRatio: 0.03,
+      },
+    },
+    categoryId: "people",
   },
 ];
 

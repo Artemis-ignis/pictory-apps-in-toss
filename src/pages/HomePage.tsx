@@ -114,7 +114,7 @@ export function HomePage({
           </button>
           <button className="soft-action" type="button" onClick={onPick}>
             <Upload size={19} />
-            <span>사진 테스트</span>
+            <span>사진 선택</span>
           </button>
         </div>
       </section>
