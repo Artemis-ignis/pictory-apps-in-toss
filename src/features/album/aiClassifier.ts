@@ -152,7 +152,12 @@ async function toAiClassificationRequestItem(
 }
 
 function canAttachImageForAi(item: ClassifiedItem) {
-  return item.privacy === "normal" && item.cleanBucketId !== "sensitive";
+  return (
+    item.privacy === "normal" &&
+    item.cleanBucketId !== "sensitive" &&
+    item.cleanBucketId !== "needsReview" &&
+    ["food", "place", "memory"].includes(item.categoryId)
+  );
 }
 
 function toRedactedAiClassificationRequestItem(

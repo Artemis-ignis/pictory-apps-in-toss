@@ -172,9 +172,9 @@ describe("aiClassifier", () => {
     const requestItems = await captureAiRequestItems([
       {
         ...item,
-        categoryId: "receipt",
+        categoryId: "food",
         cleanBucketId: "keep",
-        confidence: 0.86,
+        confidence: 0.58,
         privacy: "normal",
       },
     ]);
@@ -187,13 +187,51 @@ describe("aiClassifier", () => {
     expect(toDataURL).toHaveBeenCalledWith("image/jpeg", 0.72);
   });
 
+  it("redacts protected normal categories before server AI refinement", async () => {
+    const requestItems = await captureAiRequestItems([
+      {
+        ...item,
+        id: "receipt-normal",
+        categoryId: "receipt",
+        cleanBucketId: "keep",
+        confidence: 0.86,
+        privacy: "normal",
+      },
+      {
+        ...item,
+        id: "people-normal",
+        categoryId: "people",
+        cleanBucketId: "keep",
+        confidence: 0.86,
+        privacy: "normal",
+      },
+      {
+        ...item,
+        id: "capture-normal",
+        categoryId: "capture",
+        cleanBucketId: "capturePile",
+        confidence: 0.6,
+        privacy: "normal",
+      },
+    ]);
+
+    expect(requestItems).toHaveLength(3);
+    requestItems.forEach((requestItem) => {
+      expect(requestItem.imageDataUri).toBeUndefined();
+      expect(requestItem.redacted).toBe(true);
+      expect(requestItem.fileName).toBeUndefined();
+      expect(requestItem.createdAt).toBeUndefined();
+      expect(requestItem.signals?.perceptualHash).toBeUndefined();
+    });
+  });
+
   it("redacts normal photos when image shrinking is unavailable", async () => {
     const requestItems = await captureAiRequestItems([
       {
         ...item,
-        categoryId: "receipt",
+        categoryId: "food",
         cleanBucketId: "keep",
-        confidence: 0.86,
+        confidence: 0.58,
         privacy: "normal",
       },
     ]);

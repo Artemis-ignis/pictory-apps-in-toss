@@ -6,6 +6,7 @@ const STORAGE_KEY = "pictory-state-v1";
 const MAX_RECENT_ITEMS = 1000;
 const MAX_SCAN_HISTORY = 8;
 const THUMBNAIL_SIZE = 96;
+const MAX_PERSISTED_PREVIEW_BYTES = 40_000;
 
 export const defaultPictoryState: PersistedPictoryState = {
   savedIds: [],
@@ -37,7 +38,7 @@ export async function loadPictoryState(): Promise<PersistedPictoryState> {
       iapEntitlement: parsed.iapEntitlement,
       usageMonth: parsed.usageMonth ?? defaultPictoryState.usageMonth,
       monthlyScanUsed: parsed.monthlyScanUsed ?? 0,
-      recentItems: parsed.recentItems ?? [],
+      recentItems: sanitizeLoadedRecentItems(parsed.recentItems ?? []),
       scanHistory: parsed.scanHistory ?? [],
       lastAiRefinement: parsed.lastAiRefinement,
     });
@@ -168,13 +169,37 @@ async function prepareRecentItemForStorage(
 ): Promise<ClassifiedItem> {
   return {
     ...item,
-    dataUri:
-      item.privacy === "sensitive"
-        ? redactedDataUri()
-        : await thumbnailDataUri(item.dataUri),
+    dataUri: shouldRedactStoredImage(item)
+      ? redactedDataUri()
+      : await thumbnailDataUri(item.dataUri),
     hints: item.hints?.slice(0, 8),
     reasons: item.reasons.slice(0, 3),
   };
+}
+
+function shouldRedactStoredImage(item: ClassifiedItem) {
+  return (
+    item.privacy !== "normal" ||
+    item.cleanBucketId === "sensitive" ||
+    item.cleanBucketId === "needsReview" ||
+    item.categoryId === "receipt" ||
+    item.categoryId === "document" ||
+    item.categoryId === "coupon"
+  );
+}
+
+export function sanitizeLoadedRecentItems(items: ClassifiedItem[]) {
+  return items.slice(0, MAX_RECENT_ITEMS).map((item) => {
+    if (shouldRedactStoredImage(item)) {
+      return { ...item, dataUri: redactedDataUri() };
+    }
+
+    if (byteLength(item.dataUri) > MAX_PERSISTED_PREVIEW_BYTES) {
+      return { ...item, dataUri: "" };
+    }
+
+    return item;
+  });
 }
 
 function thumbnailDataUri(dataUri: string) {
@@ -215,6 +240,10 @@ function thumbnailDataUri(dataUri: string) {
     image.onerror = () => resolve("");
     image.src = dataUri;
   });
+}
+
+function byteLength(value: string) {
+  return new Blob([value]).size;
 }
 
 function redactedDataUri() {
