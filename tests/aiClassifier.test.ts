@@ -181,10 +181,49 @@ describe("aiClassifier", () => {
 
     expect(requestItems[0].imageDataUri).toBe(encodedImage);
     expect(requestItems[0].redacted).toBeUndefined();
-    expect(requestItems[0].fileName).toBe(item.fileName);
-    expect(requestItems[0].createdAt).toBe(item.createdAt);
-    expect(requestItems[0].signals?.perceptualHash).toBe("private-hash");
+    expect(requestItems[0].fileName).toBeUndefined();
+    expect(requestItems[0].createdAt).toBeUndefined();
+    expect(requestItems[0].signals?.perceptualHash).toBeUndefined();
     expect(toDataURL).toHaveBeenCalledWith("image/jpeg", 0.72);
+  });
+
+  it("limits attached server AI images per request", async () => {
+    vi.stubGlobal("document", {
+      createElement: vi.fn(() => ({
+        width: 0,
+        height: 0,
+        getContext: vi.fn(() => ({ drawImage: vi.fn() })),
+        toDataURL: vi.fn(() => "data:image/jpeg;base64,downsized"),
+      })),
+    });
+    class TestImage {
+      decoding: "async" | "sync" | "auto" = "auto";
+      width = 1024;
+      height = 512;
+      onload: (() => void) | null = null;
+
+      set src(value: string) {
+        void value;
+        queueMicrotask(() => this.onload?.());
+      }
+    }
+    vi.stubGlobal("Image", TestImage);
+
+    const requestItems = await captureAiRequestItems(
+      Array.from({ length: 10 }, (_, index) => ({
+        ...item,
+        id: `food-${index}`,
+        categoryId: "food",
+        cleanBucketId: "keep",
+        confidence: 0.58,
+        privacy: "normal",
+      })),
+    );
+
+    expect(requestItems.filter((requestItem) => requestItem.imageDataUri))
+      .toHaveLength(8);
+    expect(requestItems.slice(8).every((requestItem) => requestItem.redacted))
+      .toBe(true);
   });
 
   it("redacts protected normal categories before server AI refinement", async () => {

@@ -42,6 +42,7 @@ interface AiClassificationRequestItem {
 }
 
 const MAX_AI_REFINEMENT_ITEMS = 40;
+const MAX_AI_IMAGE_ITEMS = 8;
 const AI_IMAGE_MAX_EDGE = 512;
 
 export async function refineWithAiClassifier(
@@ -84,7 +85,11 @@ export async function refineWithAiClassifier(
       },
       body: JSON.stringify({
         schemaVersion: 1,
-        items: await Promise.all(candidates.map(toAiClassificationRequestItem)),
+        items: await Promise.all(
+          candidates.map((candidate, index) =>
+            toAiClassificationRequestItem(candidate, index < MAX_AI_IMAGE_ITEMS),
+          ),
+        ),
       }),
     });
 
@@ -132,8 +137,9 @@ function createAiRequestId() {
 
 async function toAiClassificationRequestItem(
   item: ClassifiedItem,
+  canUseImageBudget = true,
 ): Promise<AiClassificationRequestItem> {
-  const imageDataUri = canAttachImageForAi(item)
+  const imageDataUri = canUseImageBudget && canAttachImageForAi(item)
     ? await shrinkImageForAi(item.dataUri)
     : undefined;
 
@@ -143,10 +149,8 @@ async function toAiClassificationRequestItem(
 
   return {
     id: item.id,
-    fileName: item.fileName,
-    createdAt: item.createdAt,
     hints: item.hints ?? [],
-    signals: item.signals,
+    signals: withoutPerceptualHash(item.signals),
     imageDataUri,
   };
 }
