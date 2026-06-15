@@ -20,6 +20,7 @@ const server = spawn(process.execPath, [serverEntry], {
   env: {
     ...process.env,
     PORT: String(port),
+    PICTORY_SKIP_RUNTIME_ENV_CHECK: "true",
     PICTORY_LEDGER_FILE: ledgerFile,
     PICTORY_SERVER_SECRET: "server-secret",
     VITE_TOSS_REWARDED_AD_GROUP_ID: "ait.prod.rewarded",

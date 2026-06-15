@@ -77,6 +77,7 @@ PICTORY_AI_DAILY_LIMIT_PER_USER=0
 PICTORY_AI_DAILY_GLOBAL_LIMIT=0
 PICTORY_AI_RATE_LIMIT_PER_MINUTE=0
 PICTORY_AI_LOG_RAW_IMAGES=true
+PICTORY_SKIP_RUNTIME_ENV_CHECK=true
 `),
       { cwd: tmpdir() },
     );
@@ -95,6 +96,7 @@ PICTORY_AI_LOG_RAW_IMAGES=true
         "raw image logging is disabled",
         "free server AI quota is zero",
         "reward grants require native ad evidence",
+        "runtime env check is not skipped",
         "APPS_IN_TOSS_MTLS_CERT_PATH file is not empty",
       ]),
     );

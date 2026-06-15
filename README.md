@@ -42,6 +42,9 @@ npm run check:launch
 저장소에 커밋하지 않습니다. `npm run env:production:draft`는 강한 랜덤
 server/session secret을 넣은 로컬 초안을 만들지만, Toss 광고 ID, SKU, 운영
 API endpoint, OpenAI 키, mTLS 인증서/키 경로는 실제 값으로 교체해야 합니다.
+`npm run server:start`로 빌드된 서버를 직접 띄울 때도 server secret, OpenAI
+detail, 무료 서버 AI quota, raw image logging, Toss SKU, mTLS 파일 같은 운영
+필수값을 다시 검사해 잘못된 환경값으로 서버가 뜨지 않게 막습니다.
 `npm run check:device-evidence -- --file qa-evidence/device-smoke.json`은
 앱인토스 콘솔 QR을 실제 토스 앱에서 스캔한 증거를 검사합니다. 증거 JSON에는
 현재 `pictory.ait` SHA-256, 토스 앱 버전, QR 시각, 사진 권한, 앨범 선택,

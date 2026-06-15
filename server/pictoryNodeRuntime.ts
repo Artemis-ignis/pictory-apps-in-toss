@@ -11,6 +11,10 @@ import { createPictoryAccountHttpHandler } from "./pictoryAccountHttpAdapter";
 import { createPictoryEntitlementHttpHandler } from "./pictoryEntitlementHttpAdapter";
 import { PictoryFileUsageLedgerStore } from "./pictoryFileUsageStore";
 import type { PictoryIapOrderStatusFetcher } from "./pictoryIapOrderStatus";
+import {
+  assertPictoryRuntimeEnv,
+  PictoryRuntimeEnvError,
+} from "./pictoryRuntimeEnvGuard";
 import type {
   PictoryClassifyDeps,
   PictoryClassifyRequestContext,
@@ -128,6 +132,10 @@ export function startPictoryNodeServer(
   options: PictoryNodeRuntimeOptions = {},
 ) {
   const env = options.env ?? processEnv;
+  if (env.PICTORY_SKIP_RUNTIME_ENV_CHECK !== "true") {
+    assertPictoryRuntimeEnv(env);
+  }
+
   const port = Number.parseInt(env.PORT ?? "8787", 10);
   const server = createServer(createPictoryNodeRequestListener(options));
   server.listen(port, "127.0.0.1", () => {
@@ -189,5 +197,17 @@ function writeResponse(
 class BodyTooLargeError extends Error {}
 
 if (/pictoryNodeRuntime\.(ts|js)$/.test(process.argv[1] ?? "")) {
-  startPictoryNodeServer();
+  try {
+    startPictoryNodeServer();
+  } catch (error) {
+    if (error instanceof PictoryRuntimeEnvError) {
+      console.error(error.message);
+      for (const issue of error.issues) {
+        console.error(`- ${issue}`);
+      }
+      process.exitCode = 1;
+    } else {
+      throw error;
+    }
+  }
 }

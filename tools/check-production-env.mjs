@@ -151,6 +151,10 @@ export function validateProductionEnv(env, { cwd = rootDir } = {}) {
     value("PICTORY_REWARD_REQUIRE_NATIVE_EVENT") === "true",
     "reward grants require native ad evidence",
   );
+  add(
+    value("PICTORY_SKIP_RUNTIME_ENV_CHECK") !== "true",
+    "runtime env check is not skipped",
+  );
 
   for (const key of [
     "PICTORY_AI_AD_CREDIT_QUOTA",

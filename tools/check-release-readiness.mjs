@@ -342,6 +342,10 @@ function checkPackageScripts() {
     "server session auth helper exists",
   );
   record(
+    existsSync(projectPath("server", "pictoryRuntimeEnvGuard.ts")),
+    "server runtime env guard exists",
+  );
+  record(
     existsSync(projectPath("tools", "qa-built-server.mjs")),
     "built server smoke QA exists",
   );
@@ -404,6 +408,10 @@ function checkPackageScripts() {
   record(
     existsSync(projectPath("tests", "releaseSnapshot.test.mjs")),
     "release snapshot tests exist",
+  );
+  record(
+    existsSync(projectPath("tests", "runtimeEnvGuard.test.ts")),
+    "runtime env guard tests exist",
   );
 }
 
