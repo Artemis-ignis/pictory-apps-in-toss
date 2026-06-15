@@ -24,10 +24,12 @@ export interface RewardedScanAdResult {
   source: RewardedScanAdSource;
   adGroupId: string;
   usingTestAdGroup: boolean;
+  rewardId: string;
 }
 
 type NativeRewardAdResult = {
   reward: number;
+  rewardId?: string;
   status:
     | Exclude<RewardedScanAdSource, "native" | "localFallback">
     | "rewarded";
@@ -86,6 +88,7 @@ export async function showRewardedScanAd(): Promise<RewardedScanAdResult> {
       source: "native",
       adGroupId,
       usingTestAdGroup,
+      rewardId: nativeReward.rewardId ?? createRewardId("native", adGroupId),
     };
   }
 
@@ -100,6 +103,7 @@ export async function showRewardedScanAd(): Promise<RewardedScanAdResult> {
       source: "localFallback",
       adGroupId,
       usingTestAdGroup,
+      rewardId: createRewardId("localFallback", adGroupId),
     };
   }
 
@@ -108,6 +112,7 @@ export async function showRewardedScanAd(): Promise<RewardedScanAdResult> {
     source: nativeReward.status,
     adGroupId,
     usingTestAdGroup,
+    rewardId: createRewardId(nativeReward.status, adGroupId),
   };
 }
 
@@ -178,6 +183,7 @@ function waitForAdLoad(adGroupId: string) {
 function waitForAdShow(adGroupId: string) {
   return new Promise<NativeRewardAdResult>((resolve, reject) => {
     let reward = 0;
+    let rewardId: string | undefined;
     let settled = false;
     let cleanup = () => undefined;
 
@@ -200,12 +206,14 @@ function waitForAdShow(adGroupId: string) {
       onEvent: (event) => {
         if (event.type === "userEarnedReward") {
           reward = Number(event.data.unitAmount) || DEFAULT_SCAN_REWARD;
+          rewardId = readRewardEventId(event.data);
         }
 
         if (event.type === "dismissed") {
           finish(() =>
             resolve({
               reward,
+              rewardId,
               status: reward > 0 ? "rewarded" : "dismissed",
             }),
           );
@@ -224,4 +232,37 @@ function waitForAdShow(adGroupId: string) {
 
 function delay(milliseconds: number) {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+}
+
+let rewardSequence = 0;
+
+function createRewardId(source: string, adGroupId: string) {
+  rewardSequence += 1;
+  const random =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2);
+  return `reward-${source}-${adGroupId}-${Date.now()}-${rewardSequence}-${random}`;
+}
+
+function readRewardEventId(data: unknown) {
+  if (typeof data !== "object" || data === null) {
+    return undefined;
+  }
+
+  const source = data as Record<string, unknown>;
+  for (const key of [
+    "rewardId",
+    "rewardEventId",
+    "transactionId",
+    "impressionId",
+    "id",
+  ]) {
+    const value = source[key];
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+
+  return undefined;
 }

@@ -41,6 +41,7 @@ VITE_TOSS_REWARDED_AD_GROUP_ID=ait-ad-test-rewarded-id
 VITE_PICTORY_PLUS_SUBSCRIPTION_SKU=replace_with_toss_plus_subscription_sku
 VITE_PICTORY_PRO_SUBSCRIPTION_SKU=replace_with_toss_pro_subscription_sku
 VITE_PICTORY_CLASSIFY_ENDPOINT=https://your-api.example.com/pictory/classify
+VITE_PICTORY_REWARD_ENDPOINT=https://your-api.example.com/pictory/reward
 ```
 
 출시 빌드에서는 앱인토스 콘솔에서 발급받은 보상형 광고 그룹 ID와 구독 SKU로 바꿉니다. 개발 단계에서는 반드시 테스트 ID(`ait-ad-test-rewarded-id`)를 사용합니다. 실제 광고 ID로 개발 테스트를 반복하면 광고 정책 위반으로 간주될 수 있습니다.
@@ -73,6 +74,7 @@ PICTORY_AI_LOG_RAW_IMAGES=false
 - 광고 보상 크레딧을 원장에 지급하는 `POST /pictory/reward` HTTP 어댑터
 - 홈, 지도, 정리, 보관 4개 화면
 - 보상형 광고 연결부와 브라우저 fallback
+- 광고 보상 후 서버 원장 동기화 endpoint 연결부
 - 민감/확인 필요 후보 흐림 처리와 로컬 저장 상태 관리
 - 앱 재실행 후에도 최근 분류 지도, 보관 항목, 스캔 기록 복원
 

@@ -49,6 +49,7 @@ function checkEnvExample() {
     "VITE_PICTORY_PLUS_SUBSCRIPTION_SKU",
     "VITE_PICTORY_PRO_SUBSCRIPTION_SKU",
     "VITE_PICTORY_CLASSIFY_ENDPOINT",
+    "VITE_PICTORY_REWARD_ENDPOINT",
   ];
   const requiredServerEnv = [
     "PICTORY_SERVER_SECRET",
@@ -77,6 +78,12 @@ function checkEnvExample() {
       env.get("VITE_PICTORY_CLASSIFY_ENDPOINT") ?? "",
     ),
     ".env.example classify endpoint is a placeholder URL",
+  );
+  record(
+    /your-api\.example\.com/.test(
+      env.get("VITE_PICTORY_REWARD_ENDPOINT") ?? "",
+    ),
+    ".env.example reward endpoint is a placeholder URL",
   );
   record(
     /^replace_with_/.test(env.get("PICTORY_SERVER_SECRET") ?? ""),

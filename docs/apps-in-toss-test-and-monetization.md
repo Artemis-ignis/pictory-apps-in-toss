@@ -22,6 +22,7 @@ VITE_TOSS_REWARDED_AD_GROUP_ID=ait-ad-test-rewarded-id
 VITE_PICTORY_PLUS_SUBSCRIPTION_SKU=replace_with_toss_plus_subscription_sku
 VITE_PICTORY_PRO_SUBSCRIPTION_SKU=replace_with_toss_pro_subscription_sku
 VITE_PICTORY_CLASSIFY_ENDPOINT=https://your-api.example.com/pictory/classify
+VITE_PICTORY_REWARD_ENDPOINT=https://your-api.example.com/pictory/reward
 ```
 
 서버 AI 런타임 환경 변수는 서버 배포 환경에만 설정한다. OpenAI 키, 서버 secret, 사용자별 quota 값에는 `VITE_` 접두사를 붙이지 않는다.
@@ -93,6 +94,9 @@ npm run check:release
 값만 사용한다. `rewardId`는 한 번만 인정해 새로고침/재시도/중복 콜백으로
 크레딧이 반복 지급되지 않게 한다. 프론트엔드 번들에는 서버 secret을 넣지
 않고, 실제 서비스에서는 토스 세션 또는 게이트웨이 검증 후 subject를 해결한다.
+앱은 `VITE_PICTORY_REWARD_ENDPOINT`가 설정된 운영 환경에서는 서버 응답의
+`granted` 값만 로컬 표시 크레딧에 반영한다. 서버 지급이 실패하면 로컬에서
+임의로 크레딧을 올리지 않는다.
 
 개발 중에는 반드시 테스트 광고 ID를 사용한다.
 

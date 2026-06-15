@@ -37,6 +37,7 @@ import {
   preloadRewardedScanAd,
   showRewardedScanAd,
 } from "./features/ads/rewardAd";
+import { grantRewardCredits } from "./features/ads/rewardCredit";
 import {
   canSaveMore,
   canUseServerAiRefinement,
@@ -274,14 +275,24 @@ function App() {
       return;
     }
 
+    const grant = await grantRewardCredits(result);
+    if (grant.granted <= 0) {
+      setScanMessage(
+        grant.duplicated
+          ? "이미 지급된 광고 보상이에요."
+          : "광고 보상을 서버에 확인하지 못했어요. 잠시 후 다시 시도해주세요.",
+      );
+      return;
+    }
+
     setState((previous) => ({
       ...previous,
-      credits: Math.min(3000, previous.credits + result.reward),
+      credits: Math.min(3000, previous.credits + grant.granted),
     }));
     setScanMessage(
-      result.source === "localFallback"
-        ? `${result.reward}장 테스트 스캔권을 받았어요.`
-        : `${result.reward}장 스캔권을 받았어요.`,
+      grant.source === "localFallback"
+        ? `${grant.granted}장 테스트 스캔권을 받았어요.`
+        : `${grant.granted}장 스캔권을 받았어요.`,
     );
   }
 

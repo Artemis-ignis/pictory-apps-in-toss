@@ -116,6 +116,7 @@ describe("rewardAd config", () => {
 
     await expect(resultPromise).resolves.toMatchObject({
       reward: 120,
+      rewardId: expect.any(String),
       source: "native",
     });
   });
@@ -141,6 +142,7 @@ describe("rewardAd config", () => {
 
     await expect(resultPromise).resolves.toMatchObject({
       reward: DEFAULT_SCAN_REWARD,
+      rewardId: expect.any(String),
       source: "native",
     });
   });
