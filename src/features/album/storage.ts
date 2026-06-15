@@ -108,6 +108,59 @@ export function mergeStoredItemStatuses(
   }));
 }
 
+export function applyItemStatusChange(
+  state: PersistedPictoryState,
+  ids: string[],
+  status: ClassifiedItem["status"],
+  saveLimit = Number.POSITIVE_INFINITY,
+) {
+  const uniqueIds = Array.from(new Set(ids));
+  const savedIds = new Set(state.savedIds);
+  let remainingSaveSlots = Math.max(0, saveLimit - state.savedIds.length);
+  const targetIds =
+    status === "saved"
+      ? uniqueIds.filter((id) => {
+          if (savedIds.has(id)) {
+            return true;
+          }
+          if (remainingSaveSlots <= 0) {
+            return false;
+          }
+          remainingSaveSlots -= 1;
+          return true;
+        })
+      : uniqueIds;
+  const targetSet = new Set(targetIds);
+  const removeTargetIds = (storedIds: string[]) =>
+    storedIds.filter((id) => !targetSet.has(id));
+  const appendTargetIds = (storedIds: string[]) =>
+    Array.from(new Set([...removeTargetIds(storedIds), ...targetIds]));
+
+  return {
+    state: {
+      ...state,
+      savedIds:
+        status === "saved"
+          ? appendTargetIds(state.savedIds)
+          : removeTargetIds(state.savedIds),
+      queuedIds:
+        status === "queued"
+          ? appendTargetIds(state.queuedIds)
+          : removeTargetIds(state.queuedIds),
+      ignoredIds:
+        status === "ignored"
+          ? appendTargetIds(state.ignoredIds)
+          : removeTargetIds(state.ignoredIds),
+      recentItems: state.recentItems.map((item) =>
+        targetSet.has(item.id) ? { ...item, status } : item,
+      ),
+    },
+    changedCount: targetIds.length,
+    skippedSaveCount:
+      status === "saved" ? uniqueIds.length - targetIds.length : 0,
+  };
+}
+
 async function prepareRecentItemForStorage(
   item: ClassifiedItem,
 ): Promise<ClassifiedItem> {

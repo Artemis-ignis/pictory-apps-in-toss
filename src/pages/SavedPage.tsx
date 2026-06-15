@@ -1,4 +1,5 @@
 import {
+  Archive,
   ArrowLeft,
   Camera,
   FileText,
@@ -28,6 +29,7 @@ interface SavedPageProps {
   plan: UsagePlan;
   selectedBucket: MapBucketId | "all";
   onSelectBucket: (bucket: MapBucketId | "all") => void;
+  onUnsave: (ids: string[]) => void;
   onClear: () => void;
   onShare: () => void;
 }
@@ -49,6 +51,7 @@ export function SavedPage({
   plan,
   selectedBucket,
   onSelectBucket,
+  onUnsave,
   onClear,
   onShare,
 }: SavedPageProps) {
@@ -66,6 +69,8 @@ export function SavedPage({
       : savedItems.filter((item) => item.categoryId === selectedBucketMeta.id);
 
   if (selectedBucketMeta != null) {
+    const selectedIds = selectedItems.map((item) => item.id);
+
     return (
       <main className="screen folder-screen">
         <section className="folder-header">
@@ -86,6 +91,21 @@ export function SavedPage({
             <span>{selectedItems.length}장</span>
           </div>
         </section>
+
+        <div
+          className="folder-action-bar is-single"
+          aria-label="보관 폴더 빠른 처리"
+        >
+          <button
+            type="button"
+            className="soft-action"
+            disabled={selectedIds.length === 0}
+            onClick={() => onUnsave(selectedIds)}
+          >
+            <Archive size={16} />
+            <span>해제</span>
+          </button>
+        </div>
 
         {selectedItems.length > 0 ? (
           <section className="photo-list folder-photo-list">

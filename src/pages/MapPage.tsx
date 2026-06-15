@@ -1,14 +1,17 @@
 import { useState } from "react";
 import {
   ArrowLeft,
+  Archive,
   CalendarDays,
   Camera,
+  Check,
   FileText,
   FolderOpen,
   Heart,
   MapPin,
   ReceiptText,
   Soup,
+  Trash2,
   UserRound,
 } from "lucide-react";
 import { BucketCard } from "../components/BucketCard";
@@ -28,6 +31,10 @@ interface MapPageProps {
   onSave: (id: string) => void;
   onQueue: (id: string) => void;
   onIgnore: (id: string) => void;
+  onApplyFolderStatus: (
+    ids: string[],
+    status: ClassifiedItem["status"],
+  ) => void;
 }
 
 const icons: Record<MapBucketId, JSX.Element> = {
@@ -48,6 +55,7 @@ export function MapPage({
   onSave,
   onQueue,
   onIgnore,
+  onApplyFolderStatus,
 }: MapPageProps) {
   const [viewMode, setViewMode] = useState<"category" | "period">("category");
   const categoryFolders = MAP_BUCKETS.map((bucket) => ({
@@ -70,6 +78,8 @@ export function MapPage({
   const selectedFolderMeta = selectedCategoryFolder ?? selectedPeriodFolder;
 
   if (selectedFolderMeta != null) {
+    const selectedIds = selectedFolderMeta.items.map((item) => item.id);
+
     return (
       <main className="screen folder-screen">
         <section className="folder-header">
@@ -90,6 +100,36 @@ export function MapPage({
             <span>{selectedFolderMeta.items.length}장</span>
           </div>
         </section>
+
+        <div className="folder-action-bar" aria-label="폴더 빠른 처리">
+          <button
+            type="button"
+            className="soft-action"
+            disabled={selectedIds.length === 0}
+            onClick={() => onApplyFolderStatus(selectedIds, "saved")}
+          >
+            <Archive size={16} />
+            <span>보관</span>
+          </button>
+          <button
+            type="button"
+            className="soft-action"
+            disabled={selectedIds.length === 0}
+            onClick={() => onApplyFolderStatus(selectedIds, "queued")}
+          >
+            <Trash2 size={16} />
+            <span>정리</span>
+          </button>
+          <button
+            type="button"
+            className="soft-action"
+            disabled={selectedIds.length === 0}
+            onClick={() => onApplyFolderStatus(selectedIds, "ignored")}
+          >
+            <Check size={16} />
+            <span>제외</span>
+          </button>
+        </div>
 
         {selectedFolderMeta.items.length > 0 ? (
           <section className="photo-list folder-photo-list">

@@ -112,13 +112,14 @@ async function runQa() {
         .locator(".folder-header")
         .filter({ hasText: "종류 폴더" })
         .count()) > 0;
+    const mapFolderActionsReady =
+      (await page.locator(".folder-action-bar button").count()) >= 3;
     await page.screenshot({
       path: path.join(screenshotDir, "03-map-food-folder.png"),
     });
     await page
-      .locator(".folder-photo-list")
-      .locator('button[aria-label="보관"]')
-      .first()
+      .locator(".folder-action-bar")
+      .getByRole("button", { name: /^보관$/ })
       .click();
     await page.locator(".folder-back").click();
     await page
@@ -149,6 +150,8 @@ async function runQa() {
         .locator(".folder-header")
         .filter({ hasText: "정리 폴더" })
         .count()) > 0;
+    const cleanFolderActionsReady =
+      (await page.locator(".folder-action-bar button").count()) >= 3;
     await page.screenshot({
       path: path.join(screenshotDir, "05-clean-sensitive-folder.png"),
     });
@@ -164,6 +167,8 @@ async function runQa() {
         .locator(".folder-header")
         .filter({ hasText: "보관 폴더" })
         .count()) > 0;
+    const savedFolderActionsReady =
+      (await page.locator(".folder-action-bar button").count()) >= 1;
     await page.screenshot({
       path: path.join(screenshotDir, "07-saved-food-folder.png"),
     });
@@ -177,6 +182,9 @@ async function runQa() {
         (image) => image.complete && image.naturalWidth === 0,
       ).length,
       bucketCards: document.querySelectorAll(".bucket-card").length,
+      folderActionButtons: document.querySelectorAll(
+        ".folder-action-bar button",
+      ).length,
       folderHeaders: document.querySelectorAll(".folder-header").length,
       trayPhotos: document.querySelectorAll(".tray-photo").length,
       photoTiles: document.querySelectorAll(".photo-tile").length,
@@ -206,6 +214,9 @@ async function runQa() {
         periodFolderOpened &&
         cleanFolderOpened &&
         savedFolderOpened &&
+        mapFolderActionsReady &&
+        cleanFolderActionsReady &&
+        savedFolderActionsReady &&
         dom.brokenImages === 0 &&
         dom.folderHeaders >= 1 &&
         dom.photoTiles >= 1 &&
@@ -223,6 +234,9 @@ async function runQa() {
         periodFolderOpened,
         cleanFolderOpened,
         savedFolderOpened,
+        mapFolderActionsReady,
+        cleanFolderActionsReady,
+        savedFolderActionsReady,
       },
       dom,
       consoleIssues,

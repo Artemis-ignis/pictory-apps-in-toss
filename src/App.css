@@ -645,6 +645,28 @@
   margin-top: 2px;
 }
 
+.folder-action-bar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.folder-action-bar.is-single {
+  grid-template-columns: 1fr;
+}
+
+.folder-action-bar .soft-action {
+  min-height: 42px;
+  border-radius: 13px;
+  font-size: 14px;
+}
+
+.folder-action-bar button:disabled {
+  cursor: default;
+  opacity: 0.45;
+  transform: none;
+}
+
 .bucket-list {
   display: grid;
   gap: 8px;

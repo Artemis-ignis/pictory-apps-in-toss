@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyItemStatusChange,
   defaultPictoryState,
   mergeStoredItemStatuses,
   prepareRecentItemsForStorage,
@@ -69,5 +70,51 @@ describe("album storage helpers", () => {
     const [stored] = await prepareRecentItemsForStorage([baseItem]);
 
     expect(stored.dataUri).toBe("");
+  });
+
+  it("applies bulk status changes without exceeding saved limit", () => {
+    const secondItem = { ...baseItem, id: "item-2", status: "queued" as const };
+    const result = applyItemStatusChange(
+      {
+        ...defaultPictoryState,
+        queuedIds: [secondItem.id],
+        recentItems: [baseItem, secondItem],
+      },
+      [baseItem.id, secondItem.id],
+      "saved",
+      1,
+    );
+
+    expect(result.changedCount).toBe(1);
+    expect(result.skippedSaveCount).toBe(1);
+    expect(result.state.savedIds).toEqual([baseItem.id]);
+    expect(result.state.queuedIds).toEqual([secondItem.id]);
+    expect(result.state.recentItems[0].status).toBe("saved");
+    expect(result.state.recentItems[1].status).toBe("queued");
+  });
+
+  it("moves a folder batch between queued, ignored, and inbox states", () => {
+    const secondItem = { ...baseItem, id: "item-2" };
+    const queued = applyItemStatusChange(
+      { ...defaultPictoryState, recentItems: [baseItem, secondItem] },
+      [baseItem.id, secondItem.id],
+      "queued",
+    ).state;
+    const ignored = applyItemStatusChange(
+      queued,
+      [secondItem.id],
+      "ignored",
+    ).state;
+    const restored = applyItemStatusChange(
+      ignored,
+      [baseItem.id],
+      "inbox",
+    ).state;
+
+    expect(ignored.queuedIds).toEqual([baseItem.id]);
+    expect(ignored.ignoredIds).toEqual([secondItem.id]);
+    expect(restored.queuedIds).toEqual([]);
+    expect(restored.recentItems[0].status).toBe("inbox");
+    expect(restored.recentItems[1].status).toBe("ignored");
   });
 });

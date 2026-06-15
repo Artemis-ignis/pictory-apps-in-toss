@@ -1,12 +1,15 @@
 import {
+  Archive,
   ArrowLeft,
   Camera,
+  Check,
   FileArchive,
   FolderOpen,
   ImageOff,
   Moon,
   ShieldAlert,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 import { BucketCard } from "../components/BucketCard";
 import { Mascot } from "../components/Mascot";
@@ -29,6 +32,10 @@ interface CleanPageProps {
   onQueue: (id: string) => void;
   onSave: (id: string) => void;
   onIgnore: (id: string) => void;
+  onApplyFolderStatus: (
+    ids: string[],
+    status: ClassifiedItem["status"],
+  ) => void;
 }
 
 const icons: Record<CleanBucketId, JSX.Element> = {
@@ -48,6 +55,7 @@ export function CleanPage({
   onQueue,
   onSave,
   onIgnore,
+  onApplyFolderStatus,
 }: CleanPageProps) {
   const candidates = items.filter(isCleanTabItem);
   const buckets = CLEAN_BUCKETS.map((bucket) => ({
@@ -67,6 +75,8 @@ export function CleanPage({
         );
 
   if (selectedBucketMeta != null) {
+    const selectedIds = selectedItems.map((item) => item.id);
+
     return (
       <main className="screen folder-screen">
         <section className="folder-header">
@@ -97,6 +107,36 @@ export function CleanPage({
             </span>
           </div>
         ) : null}
+
+        <div className="folder-action-bar" aria-label="폴더 빠른 처리">
+          <button
+            type="button"
+            className="soft-action"
+            disabled={selectedIds.length === 0}
+            onClick={() => onApplyFolderStatus(selectedIds, "queued")}
+          >
+            <Trash2 size={16} />
+            <span>정리</span>
+          </button>
+          <button
+            type="button"
+            className="soft-action"
+            disabled={selectedIds.length === 0}
+            onClick={() => onApplyFolderStatus(selectedIds, "saved")}
+          >
+            <Archive size={16} />
+            <span>보관</span>
+          </button>
+          <button
+            type="button"
+            className="soft-action"
+            disabled={selectedIds.length === 0}
+            onClick={() => onApplyFolderStatus(selectedIds, "ignored")}
+          >
+            <Check size={16} />
+            <span>제외</span>
+          </button>
+        </div>
 
         {selectedItems.length > 0 ? (
           <section className="photo-list folder-photo-list">

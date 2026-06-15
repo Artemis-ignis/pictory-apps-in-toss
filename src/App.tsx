@@ -19,6 +19,7 @@ import {
 import {
   clearPictoryState,
   defaultPictoryState,
+  applyItemStatusChange,
   loadPictoryState,
   mergeStoredItemStatuses,
   prepareRecentItemsForStorage,
@@ -39,7 +40,6 @@ import {
 } from "./features/ads/rewardAd";
 import { grantRewardCredits } from "./features/ads/rewardCredit";
 import {
-  canSaveMore,
   canUseServerAiRefinement,
   canUseLocalPaidPlanPreview,
   consumeScanAllowance,
@@ -297,36 +297,47 @@ function App() {
   }
 
   function updateItemStatus(id: string, status: ClassifiedItem["status"]) {
-    if (
-      status === "saved" &&
-      !state.savedIds.includes(id) &&
-      !canSaveMore(entitledState, state.savedIds.length)
-    ) {
+    updateItemsStatus([id], status);
+  }
+
+  function updateItemsStatus(ids: string[], status: ClassifiedItem["status"]) {
+    if (ids.length === 0) {
+      return;
+    }
+
+    const result = applyItemStatusChange(
+      state,
+      ids,
+      status,
+      currentPlan.storageLimit,
+    );
+    if (result.changedCount === 0) {
       setScanMessage(`${currentPlan.label} 플랜의 보관 한도에 도달했어요.`);
       return;
     }
 
-    setState((previous) => {
-      const remove = (ids: string[]) => ids.filter((itemId) => itemId !== id);
-      return {
-        ...previous,
-        savedIds:
-          status === "saved"
-            ? [...remove(previous.savedIds), id]
-            : remove(previous.savedIds),
-        queuedIds:
-          status === "queued"
-            ? [...remove(previous.queuedIds), id]
-            : remove(previous.queuedIds),
-        ignoredIds:
-          status === "ignored"
-            ? [...remove(previous.ignoredIds), id]
-            : remove(previous.ignoredIds),
-        recentItems: previous.recentItems.map((item) =>
-          item.id === id ? { ...item, status } : item,
-        ),
-      };
-    });
+    setState(result.state);
+
+    if (status === "saved") {
+      setScanMessage(
+        result.skippedSaveCount > 0
+          ? `${result.changedCount}장만 보관했어요. ${currentPlan.label} 보관 한도에 걸렸어요.`
+          : `${result.changedCount}장을 보관했어요.`,
+      );
+      return;
+    }
+
+    if (status === "queued") {
+      setScanMessage(`${result.changedCount}장을 정리 후보로 표시했어요.`);
+      return;
+    }
+
+    if (status === "ignored") {
+      setScanMessage(`${result.changedCount}장을 이번 정리에서 제외했어요.`);
+      return;
+    }
+
+    setScanMessage(`${result.changedCount}장을 원래 상태로 돌렸어요.`);
   }
 
   async function handleClear() {
@@ -451,6 +462,7 @@ function App() {
             onSave={(id) => updateItemStatus(id, "saved")}
             onQueue={(id) => updateItemStatus(id, "queued")}
             onIgnore={(id) => updateItemStatus(id, "ignored")}
+            onApplyFolderStatus={updateItemsStatus}
           />
         ) : null}
         {activeTab === "clean" ? (
@@ -462,6 +474,7 @@ function App() {
             onQueue={(id) => updateItemStatus(id, "queued")}
             onSave={(id) => updateItemStatus(id, "saved")}
             onIgnore={(id) => updateItemStatus(id, "ignored")}
+            onApplyFolderStatus={updateItemsStatus}
           />
         ) : null}
         {activeTab === "saved" ? (
@@ -471,6 +484,7 @@ function App() {
             plan={currentPlan}
             selectedBucket={selectedSavedBucket}
             onSelectBucket={setSelectedSavedBucket}
+            onUnsave={(ids) => updateItemsStatus(ids, "inbox")}
             onClear={handleClear}
             onShare={handleShare}
           />
