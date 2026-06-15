@@ -6,6 +6,7 @@ import { HomePage } from "./pages/HomePage";
 import { MapPage } from "./pages/MapPage";
 import { CleanPage } from "./pages/CleanPage";
 import { SavedPage } from "./pages/SavedPage";
+import { PhotoDetailPage } from "./pages/PhotoDetailPage";
 import {
   pickAlbumItems,
   requestAlbumScan,
@@ -75,6 +76,7 @@ function App() {
   const [selectedSavedBucket, setSelectedSavedBucket] = useState<
     MapBucketId | "all"
   >("all");
+  const [selectedPhotoId, setSelectedPhotoId] = useState<string | null>(null);
   const billingRuntime = useMemo(() => getBillingRuntime(), []);
 
   useEffect(() => {
@@ -95,7 +97,13 @@ function App() {
 
   useEffect(() => {
     screenFrameRef.current?.scrollTo({ top: 0 });
-  }, [activeTab, selectedCleanBucket, selectedMapFolder, selectedSavedBucket]);
+  }, [
+    activeTab,
+    selectedCleanBucket,
+    selectedMapFolder,
+    selectedPhotoId,
+    selectedSavedBucket,
+  ]);
 
   useEffect(() => {
     preloadRewardedScanAd().catch(() => undefined);
@@ -163,6 +171,10 @@ function App() {
   );
 
   const savedItems = visibleItems.filter((item) => item.status === "saved");
+  const selectedPhoto =
+    selectedPhotoId == null
+      ? undefined
+      : visibleItems.find((item) => item.id === selectedPhotoId);
   const queuedCount = visibleItems.filter(
     (item) => item.status === "queued",
   ).length;
@@ -344,6 +356,7 @@ function App() {
     await clearPictoryState();
     setState(defaultPictoryState);
     setItems([]);
+    setSelectedPhotoId(null);
     setSelectedMapFolder("all");
     setSelectedCleanBucket("all");
     setSelectedSavedBucket("all");
@@ -351,6 +364,7 @@ function App() {
   }
 
   function handleTabChange(tabId: TabId) {
+    setSelectedPhotoId(null);
     if (tabId === "map") {
       setSelectedMapFolder("all");
     }
@@ -364,11 +378,13 @@ function App() {
   }
 
   function handleViewAll() {
+    setSelectedPhotoId(null);
     setSelectedMapFolder("all");
     setActiveTab("map");
   }
 
   function handleOpenMapFolder(folderId: MapFolderId) {
+    setSelectedPhotoId(null);
     setSelectedMapFolder(folderId);
     setActiveTab("map");
   }
@@ -436,7 +452,16 @@ function App() {
     <div className="app-shell">
       <AppHeader onNotify={handleNotify} />
       <div className="screen-frame" ref={screenFrameRef}>
-        {activeTab === "home" ? (
+        {selectedPhoto != null ? (
+          <PhotoDetailPage
+            item={selectedPhoto}
+            onBack={() => setSelectedPhotoId(null)}
+            onSave={(id) => updateItemStatus(id, "saved")}
+            onQueue={(id) => updateItemStatus(id, "queued")}
+            onIgnore={(id) => updateItemStatus(id, "ignored")}
+          />
+        ) : null}
+        {selectedPhoto == null && activeTab === "home" ? (
           <HomePage
             items={visibleItems}
             credits={state.credits}
@@ -454,7 +479,7 @@ function App() {
             onOpenMapFolder={handleOpenMapFolder}
           />
         ) : null}
-        {activeTab === "map" ? (
+        {selectedPhoto == null && activeTab === "map" ? (
           <MapPage
             items={visibleItems}
             selectedFolder={selectedMapFolder}
@@ -462,10 +487,11 @@ function App() {
             onSave={(id) => updateItemStatus(id, "saved")}
             onQueue={(id) => updateItemStatus(id, "queued")}
             onIgnore={(id) => updateItemStatus(id, "ignored")}
+            onOpenPhoto={setSelectedPhotoId}
             onApplyFolderStatus={updateItemsStatus}
           />
         ) : null}
-        {activeTab === "clean" ? (
+        {selectedPhoto == null && activeTab === "clean" ? (
           <CleanPage
             items={visibleItems}
             selectedBucket={selectedCleanBucket}
@@ -474,16 +500,18 @@ function App() {
             onQueue={(id) => updateItemStatus(id, "queued")}
             onSave={(id) => updateItemStatus(id, "saved")}
             onIgnore={(id) => updateItemStatus(id, "ignored")}
+            onOpenPhoto={setSelectedPhotoId}
             onApplyFolderStatus={updateItemsStatus}
           />
         ) : null}
-        {activeTab === "saved" ? (
+        {selectedPhoto == null && activeTab === "saved" ? (
           <SavedPage
             savedItems={savedItems}
             historyEntries={state.scanHistory}
             plan={currentPlan}
             selectedBucket={selectedSavedBucket}
             onSelectBucket={setSelectedSavedBucket}
+            onOpenPhoto={setSelectedPhotoId}
             onUnsave={(ids) => updateItemsStatus(ids, "inbox")}
             onClear={handleClear}
             onShare={handleShare}

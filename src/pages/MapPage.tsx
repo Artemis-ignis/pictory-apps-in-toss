@@ -31,6 +31,7 @@ interface MapPageProps {
   onSave: (id: string) => void;
   onQueue: (id: string) => void;
   onIgnore: (id: string) => void;
+  onOpenPhoto: (id: string) => void;
   onApplyFolderStatus: (
     ids: string[],
     status: ClassifiedItem["status"],
@@ -55,6 +56,7 @@ export function MapPage({
   onSave,
   onQueue,
   onIgnore,
+  onOpenPhoto,
   onApplyFolderStatus,
 }: MapPageProps) {
   const [viewMode, setViewMode] = useState<"category" | "period">("category");
@@ -137,6 +139,7 @@ export function MapPage({
               <PhotoTile
                 key={item.id}
                 item={item}
+                onOpen={onOpenPhoto}
                 onSave={onSave}
                 onQueue={onQueue}
                 onIgnore={onIgnore}

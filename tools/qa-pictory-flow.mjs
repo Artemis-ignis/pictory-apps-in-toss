@@ -117,6 +117,19 @@ async function runQa() {
     await page.screenshot({
       path: path.join(screenshotDir, "03-map-food-folder.png"),
     });
+    await page.locator(".folder-photo-list .photo-open").first().click();
+    await page.locator(".photo-detail-screen").waitFor();
+    await waitForScreenTop(page);
+    const mapPhotoDetailOpened =
+      (await page.locator(".detail-actions button").count()) >= 3;
+    await page.screenshot({
+      path: path.join(screenshotDir, "04-map-photo-detail.png"),
+    });
+    await page
+      .locator(".detail-actions")
+      .getByRole("button", { name: /^보관$/ })
+      .click();
+    await page.locator(".detail-header .folder-back").click();
     await page
       .locator(".folder-action-bar")
       .getByRole("button", { name: /^보관$/ })
@@ -134,7 +147,7 @@ async function runQa() {
         .filter({ hasText: "기간 폴더" })
         .count()) > 0;
     await page.screenshot({
-      path: path.join(screenshotDir, "04-map-period-folder.png"),
+      path: path.join(screenshotDir, "05-map-period-folder.png"),
     });
 
     await clickBottomNav(page, "정리");
@@ -153,12 +166,25 @@ async function runQa() {
     const cleanFolderActionsReady =
       (await page.locator(".folder-action-bar button").count()) >= 3;
     await page.screenshot({
-      path: path.join(screenshotDir, "05-clean-sensitive-folder.png"),
+      path: path.join(screenshotDir, "06-clean-sensitive-folder.png"),
     });
+    await page.locator(".folder-photo-list .photo-open").first().click();
+    await page.locator(".photo-detail-screen").waitFor();
+    await waitForScreenTop(page);
+    const cleanPhotoDetailOpened =
+      (await page.locator(".detail-actions button").count()) >= 3;
+    const detailProtectedMask =
+      (await page
+        .locator(".detail-preview.is-protected .detail-mask")
+        .count()) > 0;
+    await page.screenshot({
+      path: path.join(screenshotDir, "07-clean-photo-detail.png"),
+    });
+    await page.locator(".detail-header .folder-back").click();
 
     await clickBottomNav(page, "보관");
     await page.getByText("다시 볼 것만 보관").waitFor();
-    await page.screenshot({ path: path.join(screenshotDir, "06-saved.png") });
+    await page.screenshot({ path: path.join(screenshotDir, "08-saved.png") });
     await page.getByRole("button", { name: /음식/ }).click();
     await page.getByText("보관 폴더").waitFor();
     await page.locator(".folder-header").filter({ hasText: "음식" }).waitFor();
@@ -170,7 +196,15 @@ async function runQa() {
     const savedFolderActionsReady =
       (await page.locator(".folder-action-bar button").count()) >= 1;
     await page.screenshot({
-      path: path.join(screenshotDir, "07-saved-food-folder.png"),
+      path: path.join(screenshotDir, "09-saved-food-folder.png"),
+    });
+    await page.locator(".folder-photo-list .photo-open").first().click();
+    await page.locator(".photo-detail-screen").waitFor();
+    await waitForScreenTop(page);
+    const savedPhotoDetailOpened =
+      (await page.locator(".detail-actions button").count()) >= 3;
+    await page.screenshot({
+      path: path.join(screenshotDir, "10-saved-photo-detail.png"),
     });
 
     const state = await page.evaluate(() => {
@@ -185,6 +219,7 @@ async function runQa() {
       folderActionButtons: document.querySelectorAll(
         ".folder-action-bar button",
       ).length,
+      detailScreens: document.querySelectorAll(".photo-detail-screen").length,
       folderHeaders: document.querySelectorAll(".folder-header").length,
       trayPhotos: document.querySelectorAll(".tray-photo").length,
       photoTiles: document.querySelectorAll(".photo-tile").length,
@@ -217,9 +252,12 @@ async function runQa() {
         mapFolderActionsReady &&
         cleanFolderActionsReady &&
         savedFolderActionsReady &&
+        mapPhotoDetailOpened &&
+        cleanPhotoDetailOpened &&
+        savedPhotoDetailOpened &&
+        detailProtectedMask &&
         dom.brokenImages === 0 &&
-        dom.folderHeaders >= 1 &&
-        dom.photoTiles >= 1 &&
+        dom.detailScreens >= 1 &&
         dom.navItems.join(",") === "홈,지도,정리,보관",
       url: baseUrl,
       screenshots: screenshotDir,
@@ -237,6 +275,10 @@ async function runQa() {
         mapFolderActionsReady,
         cleanFolderActionsReady,
         savedFolderActionsReady,
+        mapPhotoDetailOpened,
+        cleanPhotoDetailOpened,
+        savedPhotoDetailOpened,
+        detailProtectedMask,
       },
       dom,
       consoleIssues,
@@ -257,6 +299,14 @@ async function clickBottomNav(page, label) {
     .locator(".bottom-nav-item")
     .filter({ hasText: new RegExp(`^${label}$`) })
     .click();
+}
+
+async function waitForScreenTop(page) {
+  await page.waitForFunction(
+    () => (document.querySelector(".screen-frame")?.scrollTop ?? 0) === 0,
+    undefined,
+    { timeout: 3_000 },
+  );
 }
 
 function countBy(items, key) {

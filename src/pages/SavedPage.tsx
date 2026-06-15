@@ -29,6 +29,7 @@ interface SavedPageProps {
   plan: UsagePlan;
   selectedBucket: MapBucketId | "all";
   onSelectBucket: (bucket: MapBucketId | "all") => void;
+  onOpenPhoto: (id: string) => void;
   onUnsave: (ids: string[]) => void;
   onClear: () => void;
   onShare: () => void;
@@ -51,6 +52,7 @@ export function SavedPage({
   plan,
   selectedBucket,
   onSelectBucket,
+  onOpenPhoto,
   onUnsave,
   onClear,
   onShare,
@@ -110,7 +112,12 @@ export function SavedPage({
         {selectedItems.length > 0 ? (
           <section className="photo-list folder-photo-list">
             {selectedItems.map((item) => (
-              <PhotoTile key={item.id} item={item} compact />
+              <PhotoTile
+                key={item.id}
+                item={item}
+                compact
+                onOpen={onOpenPhoto}
+              />
             ))}
           </section>
         ) : (
@@ -175,7 +182,12 @@ export function SavedPage({
           </div>
           <section className="photo-list">
             {savedItems.slice(0, 4).map((item) => (
-              <PhotoTile key={item.id} item={item} compact />
+              <PhotoTile
+                key={item.id}
+                item={item}
+                compact
+                onOpen={onOpenPhoto}
+              />
             ))}
           </section>
         </>

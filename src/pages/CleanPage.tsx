@@ -32,6 +32,7 @@ interface CleanPageProps {
   onQueue: (id: string) => void;
   onSave: (id: string) => void;
   onIgnore: (id: string) => void;
+  onOpenPhoto: (id: string) => void;
   onApplyFolderStatus: (
     ids: string[],
     status: ClassifiedItem["status"],
@@ -55,6 +56,7 @@ export function CleanPage({
   onQueue,
   onSave,
   onIgnore,
+  onOpenPhoto,
   onApplyFolderStatus,
 }: CleanPageProps) {
   const candidates = items.filter(isCleanTabItem);
@@ -144,6 +146,7 @@ export function CleanPage({
               <PhotoTile
                 key={item.id}
                 item={item}
+                onOpen={onOpenPhoto}
                 onQueue={onQueue}
                 onSave={onSave}
                 onIgnore={onIgnore}

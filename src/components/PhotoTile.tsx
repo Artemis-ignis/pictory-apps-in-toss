@@ -4,6 +4,7 @@ import type { ClassifiedItem } from "../features/album/types";
 interface PhotoTileProps {
   item: ClassifiedItem;
   compact?: boolean;
+  onOpen?: (id: string) => void;
   onQueue?: (id: string) => void;
   onSave?: (id: string) => void;
   onIgnore?: (id: string) => void;
@@ -12,6 +13,7 @@ interface PhotoTileProps {
 export function PhotoTile({
   item,
   compact = false,
+  onOpen,
   onQueue,
   onSave,
   onIgnore,
@@ -33,23 +35,32 @@ export function PhotoTile({
     <article
       className={`photo-tile is-${item.status} ${compact ? "is-compact" : ""}`}
     >
-      <div className={`photo-frame ${protectedPreview ? "is-sensitive" : ""}`}>
-        {item.dataUri ? (
-          <img src={item.dataUri} alt={item.fileName ?? "사진"} />
-        ) : null}
-        {protectedPreview ? (
-          <span className="sensitive-mask">{maskLabel}</span>
-        ) : null}
-      </div>
-      <div className="photo-info">
-        <div className="photo-title-row">
-          <strong>
-            {item.fileName?.replace(/^sample-/, "") ?? item.categoryId}
-          </strong>
-          {statusLabel ? <em>{statusLabel}</em> : null}
+      <button
+        type="button"
+        className="photo-open"
+        onClick={() => onOpen?.(item.id)}
+        aria-label={`${item.fileName ?? "사진"} 상세 보기`}
+      >
+        <div
+          className={`photo-frame ${protectedPreview ? "is-sensitive" : ""}`}
+        >
+          {item.dataUri ? (
+            <img src={item.dataUri} alt={item.fileName ?? "사진"} />
+          ) : null}
+          {protectedPreview ? (
+            <span className="sensitive-mask">{maskLabel}</span>
+          ) : null}
         </div>
-        <span>{item.reasons.join(" · ")}</span>
-      </div>
+        <div className="photo-info">
+          <div className="photo-title-row">
+            <strong>
+              {item.fileName?.replace(/^sample-/, "") ?? item.categoryId}
+            </strong>
+            {statusLabel ? <em>{statusLabel}</em> : null}
+          </div>
+          <span>{item.reasons.join(" · ")}</span>
+        </div>
+      </button>
       {!compact ? (
         <div className="photo-actions">
           <button
