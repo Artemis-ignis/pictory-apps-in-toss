@@ -1,8 +1,9 @@
 import { Storage } from "@apps-in-toss/web-framework";
 import type { ClassifiedItem, PersistedPictoryState } from "./types";
+import { currentUsageMonth, normalizeBillingState } from "../billing/plans";
 
 const STORAGE_KEY = "pictory-state-v1";
-const MAX_RECENT_ITEMS = 80;
+const MAX_RECENT_ITEMS = 1000;
 const MAX_SCAN_HISTORY = 8;
 const THUMBNAIL_SIZE = 96;
 
@@ -11,6 +12,9 @@ export const defaultPictoryState: PersistedPictoryState = {
   queuedIds: [],
   ignoredIds: [],
   credits: 0,
+  planId: "free",
+  usageMonth: currentUsageMonth(),
+  monthlyScanUsed: 0,
   recentItems: [],
   scanHistory: [],
 };
@@ -23,15 +27,18 @@ export async function loadPictoryState(): Promise<PersistedPictoryState> {
 
   try {
     const parsed = JSON.parse(raw) as Partial<PersistedPictoryState>;
-    return {
+    return normalizeBillingState({
       ...defaultPictoryState,
       ...parsed,
       savedIds: parsed.savedIds ?? [],
       queuedIds: parsed.queuedIds ?? [],
       ignoredIds: parsed.ignoredIds ?? [],
+      planId: parsed.planId ?? defaultPictoryState.planId,
+      usageMonth: parsed.usageMonth ?? defaultPictoryState.usageMonth,
+      monthlyScanUsed: parsed.monthlyScanUsed ?? 0,
       recentItems: parsed.recentItems ?? [],
       scanHistory: parsed.scanHistory ?? [],
-    };
+    });
   } catch {
     return defaultPictoryState;
   }
@@ -43,6 +50,9 @@ export async function savePictoryState(state: PersistedPictoryState) {
     queuedIds: state.queuedIds,
     ignoredIds: state.ignoredIds,
     credits: state.credits,
+    planId: state.planId,
+    usageMonth: state.usageMonth,
+    monthlyScanUsed: state.monthlyScanUsed,
     recentItems: state.recentItems.slice(0, MAX_RECENT_ITEMS),
     scanHistory: state.scanHistory.slice(0, MAX_SCAN_HISTORY),
     lastScanAt: state.lastScanAt,

@@ -21,16 +21,27 @@ import {
   MAP_BUCKETS,
   type ClassifiedItem,
   type MapBucketId,
+  type PlanId,
 } from "../features/album/types";
+import {
+  USAGE_PLANS,
+  type ScanAllowance,
+  type UsagePlan,
+} from "../features/billing/plans";
 
 interface HomePageProps {
   items: ClassifiedItem[];
   credits: number;
+  plan: UsagePlan;
+  scanAllowance: ScanAllowance;
+  savedCount: number;
+  selectedPlanId: PlanId;
   isScanning: boolean;
   scanMessage: string;
   onScan: () => void;
   onPick: () => void;
   onReward: () => void;
+  onSelectPlan: (planId: PlanId) => void;
   onViewAll: () => void;
 }
 
@@ -48,11 +59,16 @@ const homeIcons: Record<MapBucketId, JSX.Element> = {
 export function HomePage({
   items,
   credits,
+  plan,
+  scanAllowance,
+  savedCount,
+  selectedPlanId,
   isScanning,
   scanMessage,
   onScan,
   onPick,
   onReward,
+  onSelectPlan,
   onViewAll,
 }: HomePageProps) {
   const kindCount = new Set(items.map((item) => item.categoryId)).size;
@@ -100,8 +116,56 @@ export function HomePage({
         </div>
       </section>
 
-      <p className="privacy-note">원본 저장 안 함 · 기기 안 분석</p>
+      <p className="privacy-note">원본 저장 안 함 · 기기 안에서 분석</p>
       <p className="dev-note">{scanMessage}</p>
+
+      <section className="capacity-panel" aria-label="정리 한도">
+        <div className="capacity-row">
+          <div>
+            <span>현재 플랜</span>
+            <strong>{plan.label}</strong>
+          </div>
+          <div>
+            <span>이번 배치</span>
+            <strong>{scanAllowance.nextBatchLimit}장</strong>
+          </div>
+          <div>
+            <span>보관함</span>
+            <strong>
+              {savedCount}/{plan.storageLimit}
+            </strong>
+          </div>
+        </div>
+        <div className="credit-meter" aria-label="남은 정리 가능 장수">
+          <span
+            style={{
+              width: `${Math.min(
+                100,
+                (scanAllowance.totalLeft /
+                  Math.max(1, plan.monthlyScanCredits)) *
+                  100,
+              )}%`,
+            }}
+          />
+        </div>
+        <p>
+          남은 정리 {scanAllowance.totalLeft}장 · 광고 크레딧 {credits}장
+        </p>
+      </section>
+
+      <section className="plan-strip" aria-label="플랜">
+        {USAGE_PLANS.map((usagePlan) => (
+          <button
+            key={usagePlan.id}
+            type="button"
+            className={selectedPlanId === usagePlan.id ? "is-active" : ""}
+            onClick={() => onSelectPlan(usagePlan.id)}
+          >
+            <b>{usagePlan.label}</b>
+            <span>{usagePlan.monthlyScanCredits}장</span>
+          </button>
+        ))}
+      </section>
 
       <section className="metric-grid" aria-label="요약">
         <MetricCard

@@ -7,7 +7,9 @@ import {
   Soup,
   UserRound,
 } from "lucide-react";
+import { Fragment } from "react";
 import { BucketCard } from "../components/BucketCard";
+import { BucketPhotoTray } from "../components/BucketPhotoTray";
 import { Mascot } from "../components/Mascot";
 import { PhotoTile } from "../components/PhotoTile";
 import {
@@ -75,17 +77,32 @@ export function MapPage({
       </div>
 
       <section className="bucket-list">
-        {buckets.map(({ bucket, count }) => (
-          <BucketCard
-            key={bucket.id}
-            bucket={bucket}
-            count={count}
-            icon={icons[bucket.id]}
-            extraCount={Math.max(0, count - 3)}
-            selected={selectedBucket === bucket.id}
-            onClick={() => onSelectBucket(bucket.id)}
-          />
-        ))}
+        {buckets.map(({ bucket, count }) => {
+          const bucketItems = items.filter(
+            (item) => item.categoryId === bucket.id,
+          );
+          return (
+            <Fragment key={bucket.id}>
+              <BucketCard
+                bucket={bucket}
+                count={count}
+                icon={icons[bucket.id]}
+                extraCount={Math.max(0, count - 3)}
+                selected={selectedBucket === bucket.id}
+                onClick={() => onSelectBucket(bucket.id)}
+              />
+              {selectedBucket === bucket.id ? (
+                <BucketPhotoTray
+                  items={bucketItems}
+                  title={bucket.label}
+                  onSave={onSave}
+                  onQueue={onQueue}
+                  onIgnore={onIgnore}
+                />
+              ) : null}
+            </Fragment>
+          );
+        })}
       </section>
 
       <section className="photo-list">

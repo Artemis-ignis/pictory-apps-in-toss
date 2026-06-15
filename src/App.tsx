@@ -30,8 +30,15 @@ import type {
   CleanBucketId,
   MapBucketId,
   PersistedPictoryState,
+  PlanId,
 } from "./features/album/types";
 import { showRewardedScanAd } from "./features/ads/rewardAd";
+import {
+  canSaveMore,
+  consumeScanAllowance,
+  getPlan,
+  getScanAllowance,
+} from "./features/billing/plans";
 
 function App() {
   const screenFrameRef = useRef<HTMLDivElement>(null);
@@ -100,6 +107,8 @@ function App() {
   const queuedCount = visibleItems.filter(
     (item) => item.status === "queued",
   ).length;
+  const scanAllowance = getScanAllowance(state);
+  const currentPlan = getPlan(state.planId);
 
   async function analyzeIncoming(nextItems: AlbumItem[], message: string) {
     setIsScanning(true);
@@ -109,7 +118,7 @@ function App() {
     const scannedAt = new Date().toISOString();
     setItems(classified);
     setState((previous) => ({
-      ...previous,
+      ...consumeScanAllowance(previous, classified.length),
       recentItems,
       scanHistory: [
         {
@@ -131,7 +140,16 @@ function App() {
   async function handleScan() {
     try {
       setIsScanning(true);
-      const result = await requestAlbumScan(Math.max(40, state.credits || 40));
+      const allowance = getScanAllowance(state);
+      if (allowance.nextBatchLimit <= 0) {
+        setScanMessage(
+          "이번 달 정리 가능 장수를 다 썼어요. 광고나 플랜으로 늘릴 수 있어요.",
+        );
+        setIsScanning(false);
+        return;
+      }
+
+      const result = await requestAlbumScan(allowance.nextBatchLimit);
       await analyzeIncoming(result.items, result.message);
       setActiveTab("map");
     } catch {
@@ -144,7 +162,15 @@ function App() {
 
   async function handlePick() {
     try {
-      const result = await pickAlbumItems(40);
+      const allowance = getScanAllowance(state);
+      if (allowance.nextBatchLimit <= 0) {
+        setScanMessage(
+          "이번 달 정리 가능 장수를 다 썼어요. 광고나 플랜으로 늘릴 수 있어요.",
+        );
+        return;
+      }
+
+      const result = await pickAlbumItems(allowance.nextBatchLimit);
       if (result.items.length === 0) {
         setScanMessage(result.message);
         return;
@@ -173,7 +199,7 @@ function App() {
 
     setState((previous) => ({
       ...previous,
-      credits: Math.min(500, previous.credits + result.reward),
+      credits: Math.min(3000, previous.credits + result.reward),
     }));
     setScanMessage(
       result.source === "localFallback"
@@ -183,6 +209,15 @@ function App() {
   }
 
   function updateItemStatus(id: string, status: ClassifiedItem["status"]) {
+    if (
+      status === "saved" &&
+      !state.savedIds.includes(id) &&
+      !canSaveMore(state, state.savedIds.length)
+    ) {
+      setScanMessage(`${currentPlan.label} 플랜의 보관 한도에 도달했어요.`);
+      return;
+    }
+
     setState((previous) => {
       const remove = (ids: string[]) => ids.filter((itemId) => itemId !== id);
       return {
@@ -230,6 +265,26 @@ function App() {
     setScanMessage("요약을 클립보드에 복사했어요.");
   }
 
+  function handleSelectPlan(planId: PlanId) {
+    const isLocalPreview =
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1";
+
+    if (planId !== "free" && !isLocalPreview) {
+      setScanMessage(
+        `${getPlan(planId).label} 플랜은 결제 서버 연동 후 활성화돼요.`,
+      );
+      return;
+    }
+
+    setState((previous) => ({ ...previous, planId }));
+    setScanMessage(
+      planId === "free"
+        ? "무료 플랜으로 전환했어요."
+        : `${getPlan(planId).label} 플랜 기준으로 한도 미리보기를 적용했어요. 실제 결제는 토스 결제 연동 후 활성화해요.`,
+    );
+  }
+
   return (
     <div className="app-shell">
       <AppHeader />
@@ -238,11 +293,16 @@ function App() {
           <HomePage
             items={visibleItems}
             credits={state.credits}
+            plan={currentPlan}
+            scanAllowance={scanAllowance}
+            savedCount={savedItems.length}
+            selectedPlanId={state.planId}
             isScanning={isScanning}
             scanMessage={scanMessage}
             onScan={handleScan}
             onPick={handlePick}
             onReward={handleReward}
+            onSelectPlan={handleSelectPlan}
             onViewAll={() => setActiveTab("map")}
           />
         ) : null}
@@ -271,6 +331,7 @@ function App() {
           <SavedPage
             savedItems={savedItems}
             historyEntries={state.scanHistory}
+            plan={currentPlan}
             onClear={handleClear}
             onShare={handleShare}
           />

@@ -25,6 +25,7 @@ export type CleanBucketId =
   | "keep";
 
 export type ItemStatus = "inbox" | "queued" | "saved" | "ignored";
+export type PlanId = "free" | "plus" | "pro";
 
 export interface ImageSignals {
   width: number;
@@ -88,6 +89,9 @@ export interface PersistedPictoryState {
   queuedIds: string[];
   ignoredIds: string[];
   credits: number;
+  planId: PlanId;
+  usageMonth: string;
+  monthlyScanUsed: number;
   recentItems: ClassifiedItem[];
   scanHistory: ScanHistoryEntry[];
   lastScanAt?: string;

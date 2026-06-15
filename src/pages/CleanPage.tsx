@@ -6,7 +6,9 @@ import {
   ShieldAlert,
   Sparkles,
 } from "lucide-react";
+import { Fragment } from "react";
 import { BucketCard } from "../components/BucketCard";
+import { BucketPhotoTray } from "../components/BucketPhotoTray";
 import { Mascot } from "../components/Mascot";
 import { PhotoTile } from "../components/PhotoTile";
 import {
@@ -81,17 +83,32 @@ export function CleanPage({
       </div>
 
       <section className="bucket-list">
-        {buckets.map(({ bucket, count }) => (
-          <BucketCard
-            key={bucket.id}
-            bucket={bucket}
-            count={count}
-            icon={icons[bucket.id]}
-            extraCount={Math.max(0, count - 3)}
-            selected={selectedBucket === bucket.id}
-            onClick={() => onSelectBucket(bucket.id)}
-          />
-        ))}
+        {buckets.map(({ bucket, count }) => {
+          const bucketItems = candidates.filter((item) =>
+            cleanBucketMatches(item, bucket.id),
+          );
+          return (
+            <Fragment key={bucket.id}>
+              <BucketCard
+                bucket={bucket}
+                count={count}
+                icon={icons[bucket.id]}
+                extraCount={Math.max(0, count - 3)}
+                selected={selectedBucket === bucket.id}
+                onClick={() => onSelectBucket(bucket.id)}
+              />
+              {selectedBucket === bucket.id ? (
+                <BucketPhotoTray
+                  items={bucketItems}
+                  title={bucket.label}
+                  onQueue={onQueue}
+                  onSave={onSave}
+                  onIgnore={onIgnore}
+                />
+              ) : null}
+            </Fragment>
+          );
+        })}
       </section>
 
       {queuedCount > 0 ? (

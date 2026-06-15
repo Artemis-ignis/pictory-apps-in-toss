@@ -1,11 +1,14 @@
 import { Share2, Trash2 } from "lucide-react";
+import { BucketPhotoTray } from "../components/BucketPhotoTray";
 import { Mascot } from "../components/Mascot";
 import { PhotoTile } from "../components/PhotoTile";
 import type { ClassifiedItem, ScanHistoryEntry } from "../features/album/types";
+import type { UsagePlan } from "../features/billing/plans";
 
 interface SavedPageProps {
   savedItems: ClassifiedItem[];
   historyEntries: ScanHistoryEntry[];
+  plan: UsagePlan;
   onClear: () => void;
   onShare: () => void;
 }
@@ -13,6 +16,7 @@ interface SavedPageProps {
 export function SavedPage({
   savedItems,
   historyEntries,
+  plan,
   onClear,
   onShare,
 }: SavedPageProps) {
@@ -29,15 +33,20 @@ export function SavedPage({
 
       <div className="section-heading">
         <h2>보관한 사진</h2>
-        <button type="button">{savedItems.length}장</button>
+        <button type="button">
+          {savedItems.length}/{plan.storageLimit}장
+        </button>
       </div>
 
       {savedItems.length > 0 ? (
-        <section className="photo-list">
-          {savedItems.map((item) => (
-            <PhotoTile key={item.id} item={item} compact />
-          ))}
-        </section>
+        <>
+          <BucketPhotoTray items={savedItems} title="보관함" />
+          <section className="photo-list">
+            {savedItems.map((item) => (
+              <PhotoTile key={item.id} item={item} compact />
+            ))}
+          </section>
+        </>
       ) : (
         <section className="saved-empty">
           <Mascot variant="saved" size="empty" />
