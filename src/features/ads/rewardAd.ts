@@ -33,6 +33,9 @@ type NativeRewardAdResult = {
     | "rewarded";
 };
 
+let preloadedAdGroupId: string | null = null;
+let preloadPromise: Promise<boolean> | null = null;
+
 export function getRewardedAdGroupId(env: RewardAdEnv = import.meta.env) {
   return (
     env.VITE_TOSS_REWARDED_AD_GROUP_ID?.trim() || TEST_REWARDED_AD_GROUP_ID
@@ -48,6 +51,28 @@ export function isLocalRewardFallbackAllowed(
   hostname = window.location.hostname,
 ) {
   return env.DEV || hostname === "localhost" || hostname === "127.0.0.1";
+}
+
+export async function preloadRewardedScanAd(
+  adGroupId = getRewardedAdGroupId(),
+): Promise<boolean> {
+  if (loadFullScreenAd.isSupported() !== true) {
+    return false;
+  }
+
+  if (preloadPromise != null && preloadedAdGroupId === adGroupId) {
+    return preloadPromise;
+  }
+
+  preloadedAdGroupId = adGroupId;
+  preloadPromise = waitForAdLoad(adGroupId)
+    .then(() => true)
+    .catch(() => {
+      clearPreloadedAd();
+      return false;
+    });
+
+  return preloadPromise;
 }
 
 export async function showRewardedScanAd(): Promise<RewardedScanAdResult> {
@@ -97,11 +122,24 @@ async function showNativeRewardAd(
       return { reward: 0, status: "unsupported" };
     }
 
-    await waitForAdLoad(adGroupId);
-    return await waitForAdShow(adGroupId);
+    const isLoaded = await preloadRewardedScanAd(adGroupId);
+    if (!isLoaded) {
+      return { reward: 0, status: "error" };
+    }
+
+    const result = await waitForAdShow(adGroupId);
+    clearPreloadedAd();
+    void preloadRewardedScanAd(adGroupId);
+    return result;
   } catch {
+    clearPreloadedAd();
     return { reward: 0, status: "error" };
   }
+}
+
+function clearPreloadedAd() {
+  preloadedAdGroupId = null;
+  preloadPromise = null;
 }
 
 function waitForAdLoad(adGroupId: string) {

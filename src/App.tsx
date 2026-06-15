@@ -32,7 +32,10 @@ import type {
   PersistedPictoryState,
   PlanId,
 } from "./features/album/types";
-import { showRewardedScanAd } from "./features/ads/rewardAd";
+import {
+  preloadRewardedScanAd,
+  showRewardedScanAd,
+} from "./features/ads/rewardAd";
 import {
   canSaveMore,
   consumeScanAllowance,
@@ -77,6 +80,10 @@ function App() {
   useEffect(() => {
     screenFrameRef.current?.scrollTo({ top: 0 });
   }, [activeTab]);
+
+  useEffect(() => {
+    preloadRewardedScanAd().catch(() => undefined);
+  }, []);
 
   const statusMap = useMemo(() => {
     const map = new Map<string, ClassifiedItem["status"]>();

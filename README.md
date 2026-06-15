@@ -42,11 +42,14 @@ VITE_TOSS_REWARDED_AD_GROUP_ID=콘솔에서_발급받은_보상형_광고_ID
 
 개발 단계에서는 반드시 테스트 ID(`ait-ad-test-rewarded-id`)를 사용합니다. 실제 광고 ID로 개발 테스트를 반복하면 광고 정책 위반으로 간주될 수 있습니다.
 
+앱인토스 QR 테스트, 광고 운영, 서버 AI 분류 API 계약은 `docs/apps-in-toss-test-and-monetization.md`를 기준으로 확인합니다.
+
 ## 구현 범위
 
 - Apps in Toss `photos` 권한과 `fetchAlbumPhotos`/`fetchAlbumItems` 연결
 - 브라우저 개발 환경용 실제 이미지 파일 선택
 - 캔버스 기반 이미지 신호 분석과 종류/정리 후보 분류
+- 운영 서버 AI 분류 endpoint 연결부
 - 홈, 지도, 정리, 보관 4개 화면
 - 보상형 광고 연결부와 브라우저 fallback
 - 민감정보 후보 흐림 처리와 로컬 저장 상태 관리

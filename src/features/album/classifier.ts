@@ -1,3 +1,4 @@
+import { refineWithAiClassifier } from "./aiClassifier";
 import { analyzeImageSource, emptySignals } from "./imageSignals";
 import { inferVisualHints } from "./visualClassifier";
 import type {
@@ -97,7 +98,7 @@ export async function classifyAlbumItems(
 
   const duplicateGroups = findDuplicateGroups(classified);
 
-  return classified.map((item) => {
+  const locallyClassified = classified.map((item) => {
     const duplicateGroup = duplicateGroups.get(item.id);
     const baseCleanBucket = chooseCleanBucket(
       item.cleanBucketId,
@@ -117,6 +118,8 @@ export async function classifyAlbumItems(
       status: existingStatuses.get(item.id) ?? item.status,
     };
   });
+
+  return refineWithAiClassifier(locallyClassified);
 }
 
 export function classifyItem(item: AlbumItem): ClassifiedItem {
