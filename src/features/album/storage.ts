@@ -39,6 +39,7 @@ export async function loadPictoryState(): Promise<PersistedPictoryState> {
       monthlyScanUsed: parsed.monthlyScanUsed ?? 0,
       recentItems: parsed.recentItems ?? [],
       scanHistory: parsed.scanHistory ?? [],
+      lastAiRefinement: parsed.lastAiRefinement,
     });
   } catch {
     return defaultPictoryState;
@@ -57,6 +58,7 @@ export async function savePictoryState(state: PersistedPictoryState) {
     monthlyScanUsed: state.monthlyScanUsed,
     recentItems: state.recentItems.slice(0, MAX_RECENT_ITEMS),
     scanHistory: state.scanHistory.slice(0, MAX_SCAN_HISTORY),
+    lastAiRefinement: state.lastAiRefinement,
     lastScanAt: state.lastScanAt,
     lastScanCount: state.lastScanCount,
   };

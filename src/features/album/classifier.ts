@@ -3,6 +3,7 @@ import { analyzeImageSource, emptySignals } from "./imageSignals";
 import { inferNativeDetectorHints } from "./nativeDetectors";
 import { inferVisualHints } from "./visualClassifier";
 import type {
+  AiRefinementResult,
   AlbumItem,
   ClassifiedItem,
   CleanBucketId,
@@ -77,6 +78,7 @@ const SENSITIVE_TOKENS = [
 
 interface ClassifyOptions {
   refineWithServerAi?: boolean;
+  onAiRefinementResult?: (result: AiRefinementResult) => void;
 }
 
 export async function classifyAlbumItems(
@@ -128,7 +130,9 @@ export async function classifyAlbumItems(
   });
 
   return options.refineWithServerAi
-    ? refineWithAiClassifier(locallyClassified)
+    ? refineWithAiClassifier(locallyClassified, undefined, {
+        onResult: options.onAiRefinementResult,
+      })
     : locallyClassified;
 }
 

@@ -1,4 +1,9 @@
-import type { ClassifiedItem, CleanBucketId, MapBucketId } from "./types";
+import type {
+  AiRefinementResult,
+  ClassifiedItem,
+  CleanBucketId,
+  MapBucketId,
+} from "./types";
 
 interface AiClassifierEnv {
   VITE_PICTORY_CLASSIFY_ENDPOINT?: string;
@@ -16,6 +21,10 @@ export interface AiClassificationPatch {
 
 interface AiClassificationResponse {
   items?: AiClassificationPatch[];
+}
+
+interface AiClassifierOptions {
+  onResult?: (result: AiRefinementResult) => void;
 }
 
 type AiClassificationRequestSignals =
@@ -38,9 +47,16 @@ const AI_IMAGE_MAX_EDGE = 512;
 export async function refineWithAiClassifier(
   items: ClassifiedItem[],
   env: AiClassifierEnv = import.meta.env as AiClassifierEnv,
+  options: AiClassifierOptions = {},
 ): Promise<ClassifiedItem[]> {
   const endpoint = env.VITE_PICTORY_CLASSIFY_ENDPOINT?.trim();
   if (!endpoint || items.length === 0 || typeof fetch === "undefined") {
+    options.onResult?.({
+      status: "skipped",
+      candidateCount: 0,
+      refinedCount: 0,
+      reason: "missingEndpoint",
+    });
     return items;
   }
 
@@ -48,6 +64,12 @@ export async function refineWithAiClassifier(
     .filter(needsAiRefinement)
     .slice(0, MAX_AI_REFINEMENT_ITEMS);
   if (candidates.length === 0) {
+    options.onResult?.({
+      status: "skipped",
+      candidateCount: 0,
+      refinedCount: 0,
+      reason: "noCandidates",
+    });
     return items;
   }
 
@@ -67,6 +89,12 @@ export async function refineWithAiClassifier(
     });
 
     if (!response.ok) {
+      options.onResult?.({
+        status: "failed",
+        candidateCount: candidates.length,
+        refinedCount: 0,
+        reason: "httpError",
+      });
       return items;
     }
 
@@ -75,8 +103,21 @@ export async function refineWithAiClassifier(
       (data.items ?? []).map((patch) => [patch.id, patch] as const),
     );
 
-    return items.map((item) => applyAiClassificationPatch(item, patches));
+    const refined = items.map((item) => applyAiClassificationPatch(item, patches));
+    options.onResult?.({
+      status: "applied",
+      candidateCount: candidates.length,
+      refinedCount: patches.size,
+      reason: "ok",
+    });
+    return refined;
   } catch {
+    options.onResult?.({
+      status: "failed",
+      candidateCount: candidates.length,
+      refinedCount: 0,
+      reason: "networkError",
+    });
     return items;
   }
 }

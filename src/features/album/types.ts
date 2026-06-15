@@ -90,6 +90,20 @@ export interface ScanHistoryEntry {
   mapBucketCount: number;
 }
 
+export type AiRefinementStatus = "skipped" | "applied" | "failed";
+
+export interface AiRefinementResult {
+  status: AiRefinementStatus;
+  candidateCount: number;
+  refinedCount: number;
+  reason:
+    | "missingEndpoint"
+    | "noCandidates"
+    | "httpError"
+    | "networkError"
+    | "ok";
+}
+
 export interface IapEntitlement {
   planId: Exclude<PlanId, "free">;
   orderId: string;
@@ -111,6 +125,7 @@ export interface PersistedPictoryState {
   monthlyScanUsed: number;
   recentItems: ClassifiedItem[];
   scanHistory: ScanHistoryEntry[];
+  lastAiRefinement?: AiRefinementResult;
   lastScanAt?: string;
   lastScanCount?: number;
 }

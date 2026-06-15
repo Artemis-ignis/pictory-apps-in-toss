@@ -225,6 +225,68 @@ describe("aiClassifier", () => {
     expect(headers["Content-Type"]).toBe("application/json");
     expect(headers["X-Pictory-Request-Id"]).toMatch(/^pictory-/);
   });
+
+  it("reports applied server AI refinement results", async () => {
+    const onResult = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                id: "photo-1",
+                categoryId: "document",
+                cleanBucketId: "sensitive",
+                confidence: 0.91,
+                privacy: "sensitive",
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      }),
+    );
+
+    await refineWithAiClassifier(
+      [item],
+      { VITE_PICTORY_CLASSIFY_ENDPOINT: "https://classify.example.com" },
+      { onResult },
+    );
+
+    expect(onResult).toHaveBeenCalledWith({
+      status: "applied",
+      candidateCount: 1,
+      refinedCount: 1,
+      reason: "ok",
+    });
+  });
+
+  it("reports failed server AI refinement without changing local results", async () => {
+    const onResult = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        return new Response(JSON.stringify({ error: "no quota" }), {
+          status: 402,
+        });
+      }),
+    );
+
+    const [result] = await refineWithAiClassifier(
+      [item],
+      { VITE_PICTORY_CLASSIFY_ENDPOINT: "https://classify.example.com" },
+      { onResult },
+    );
+
+    expect(result).toEqual(item);
+    expect(onResult).toHaveBeenCalledWith({
+      status: "failed",
+      candidateCount: 1,
+      refinedCount: 0,
+      reason: "httpError",
+    });
+  });
 });
 
 async function captureAiRequestItems(items: ClassifiedItem[]) {

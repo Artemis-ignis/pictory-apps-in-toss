@@ -28,6 +28,7 @@ import {
 } from "./features/album/storage";
 import type {
   AlbumItem,
+  AiRefinementResult,
   ClassifiedItem,
   CleanBucketId,
   MapFolderId,
@@ -189,11 +190,15 @@ function App() {
   async function analyzeIncoming(nextItems: AlbumItem[], message: string) {
     setIsScanning(true);
     setScanMessage("픽토리가 사진 신호를 읽고 있어요.");
+    let aiRefinementResult: AiRefinementResult | undefined;
     const classified = await classifyAlbumItems(nextItems, statusMap, {
       refineWithServerAi: canUseServerAiRefinement(
         entitledState,
         nextItems.length,
       ),
+      onAiRefinementResult: (result) => {
+        aiRefinementResult = result;
+      },
     });
     const recentItems = await prepareRecentItemsForStorage(classified);
     const scannedAt = new Date().toISOString();
@@ -218,11 +223,12 @@ function App() {
           },
           ...previous.scanHistory,
         ].slice(0, 8),
+        lastAiRefinement: aiRefinementResult,
         lastScanAt: scannedAt,
         lastScanCount: classified.length,
       };
     });
-    setScanMessage(message);
+    setScanMessage(formatScanMessage(message, aiRefinementResult));
     setIsScanning(false);
   }
 
@@ -540,6 +546,28 @@ function countCleanCandidates(items: ClassifiedItem[]) {
         item.privacy !== "normal" ||
         item.status === "queued"),
   ).length;
+}
+
+function formatScanMessage(
+  message: string,
+  aiRefinementResult?: AiRefinementResult,
+) {
+  if (!aiRefinementResult) {
+    return message;
+  }
+
+  if (
+    aiRefinementResult.status === "applied" &&
+    aiRefinementResult.refinedCount > 0
+  ) {
+    return `${message} 서버 AI가 ${aiRefinementResult.refinedCount}장 더 확인했어요.`;
+  }
+
+  if (aiRefinementResult.status === "failed") {
+    return `${message} 서버 AI 보정은 플랜/크레딧 확인 후 다시 시도해요.`;
+  }
+
+  return message;
 }
 
 export default App;
