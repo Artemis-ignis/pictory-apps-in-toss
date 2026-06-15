@@ -30,6 +30,7 @@ VITE_PICTORY_CLASSIFY_ENDPOINT=https://your-api.example.com/pictory/classify
 PICTORY_SERVER_SECRET=replace_with_long_random_server_secret
 OPENAI_API_KEY=replace_with_openai_api_key_server_only
 OPENAI_MODEL=gpt-4.1-mini
+OPENAI_IMAGE_DETAIL=low
 PICTORY_AI_FREE_MONTHLY_QUOTA=0
 PICTORY_AI_AD_CREDIT_QUOTA=100
 PICTORY_AI_PLUS_MONTHLY_QUOTA=500
@@ -129,7 +130,7 @@ VITE_TOSS_REWARDED_AD_GROUP_ID=콘솔_보상형_광고_그룹_ID
 
 현재 앱은 무료 기본 사용량에서는 서버 AI를 호출하지 않는다. 유료 플랜이거나 광고 시청으로 받은 크레딧이 있을 때만 서버 AI 정밀 분류를 켠다.
 
-서버 AI 요청은 한 번에 최대 40장으로 제한하고, 전송 전 이미지를 512px JPEG로 줄인다.
+서버 AI 요청은 한 번에 최대 40장으로 제한하고, 전송 전 이미지를 512px JPEG로 줄인다. 서버의 기본 OpenAI 이미지 detail은 `low`로 두어 비용을 방어한다.
 
 권장 구조:
 
@@ -184,7 +185,7 @@ flowchart LR
 
 ## AI 분류 API 계약
 
-앱은 공개 클라이언트 값인 `VITE_PICTORY_CLASSIFY_ENDPOINT`가 있을 때만 서버 AI 분류를 호출한다. OpenAI 키, 서버 secret, quota 검증은 이 endpoint 뒤의 서버에서만 처리한다.
+앱은 공개 클라이언트 값인 `VITE_PICTORY_CLASSIFY_ENDPOINT`가 있을 때만 서버 AI 분류를 호출한다. OpenAI 키, 서버 secret, quota 검증은 이 endpoint 뒤의 서버에서만 처리한다. 브라우저 앱은 `credentials: include`와 요청 ID만 보낸다. `x-pictory-server-secret` 같은 서버 간 secret은 프론트엔드 번들에 넣지 않고, 배포 게이트웨이/서버 어댑터가 내부에서 붙인다.
 
 운영 요청 헤더 예시:
 
@@ -198,9 +199,10 @@ x-request-id: req_20260615_001
 
 `Authorization`과 `x-pictory-server-secret`은 운영 서버의
 `verifyEntitlement`가 검증할 수 있도록 요청 컨텍스트에 전달한다. 핸들러
-자체는 secret 값을 하드코딩해서 비교하지 않는다. 서버는 이 헤더/토큰으로
-사용자 식별, 유료 권한, 광고 크레딧, 월간 quota를 검증해야 하며, 클라이언트
-`planId`나 로컬 상태만으로 entitlement/quota를 승인하지 않는다.
+자체는 secret 값을 하드코딩해서 비교하지 않는다. 서버는 이 헤더/토큰 또는
+동일 출처 세션 쿠키로 사용자 식별, 유료 권한, 광고 크레딧, 월간 quota를
+검증해야 하며, 클라이언트 `planId`나 로컬 상태만으로 entitlement/quota를
+승인하지 않는다.
 
 요청:
 
@@ -280,7 +282,7 @@ redacted 처리한다. redacted 항목은 원본 `fileName`, 정확한 `createdA
 
 ## OpenAI 분류 프롬프트 방향
 
-서버에서는 Vision 모델에 이미지를 넣고 JSON Schema로 결과를 강제한다.
+서버 기본 분류기는 OpenAI Responses API에 Vision 이미지를 넣고 JSON Schema로 결과를 강제한다. 요청은 `store:false`, `temperature:0`, `OPENAI_IMAGE_DETAIL=low` 기본값으로 보내며 원본 이미지를 저장하지 않는다.
 
 권장 라벨:
 

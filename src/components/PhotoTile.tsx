@@ -16,18 +16,30 @@ export function PhotoTile({
   onSave,
   onIgnore,
 }: PhotoTileProps) {
-  const sensitive = item.privacy === "sensitive";
+  const protectedPreview =
+    item.privacy !== "normal" ||
+    item.cleanBucketId === "sensitive" ||
+    item.cleanBucketId === "needsReview" ||
+    item.categoryId === "receipt" ||
+    item.categoryId === "document" ||
+    item.categoryId === "coupon";
+  const maskLabel =
+    item.privacy === "sensitive" || item.cleanBucketId === "sensitive"
+      ? "민감"
+      : "확인";
   const statusLabel = getStatusLabel(item.status);
 
   return (
     <article
       className={`photo-tile is-${item.status} ${compact ? "is-compact" : ""}`}
     >
-      <div className={`photo-frame ${sensitive ? "is-sensitive" : ""}`}>
+      <div className={`photo-frame ${protectedPreview ? "is-sensitive" : ""}`}>
         {item.dataUri ? (
           <img src={item.dataUri} alt={item.fileName ?? "사진"} />
         ) : null}
-        {sensitive ? <span className="sensitive-mask">민감</span> : null}
+        {protectedPreview ? (
+          <span className="sensitive-mask">{maskLabel}</span>
+        ) : null}
       </div>
       <div className="photo-info">
         <div className="photo-title-row">

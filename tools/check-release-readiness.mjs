@@ -54,6 +54,7 @@ function checkEnvExample() {
     "PICTORY_SERVER_SECRET",
     "OPENAI_API_KEY",
     "OPENAI_MODEL",
+    "OPENAI_IMAGE_DETAIL",
     "PICTORY_AI_FREE_MONTHLY_QUOTA",
     "PICTORY_AI_AD_CREDIT_QUOTA",
     "PICTORY_AI_PLUS_MONTHLY_QUOTA",
@@ -89,6 +90,10 @@ function checkEnvExample() {
   record(
     env.get("PICTORY_AI_LOG_RAW_IMAGES") === "false",
     ".env.example keeps raw image logging disabled",
+  );
+  record(
+    ["low", "auto", "high"].includes(env.get("OPENAI_IMAGE_DETAIL") ?? ""),
+    ".env.example OpenAI image detail is explicit",
   );
 
   for (const key of [

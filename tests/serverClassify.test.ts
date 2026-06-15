@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  defaultClassifyItems,
   handlePictoryClassifyRequest,
   type PictoryClassifyDeps,
   type PictoryClassifyRequestInput,
@@ -58,6 +59,10 @@ const imageBody = {
 };
 
 describe("handlePictoryClassifyRequest", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("rejects requests without paid entitlement", async () => {
     const classifyItems = vi.fn();
     const result = await handlePictoryClassifyRequest(redactedInput(), {
@@ -214,6 +219,170 @@ describe("handlePictoryClassifyRequest", () => {
     expect(result.status).toBe(413);
     expect(result.body.error?.code).toBe("body_too_large");
     expect(verifyEntitlement).not.toHaveBeenCalled();
+  });
+
+  it("uses the default OpenAI classifier without storing responses", async () => {
+    const fetch = vi.fn(async (_url: string, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body ?? "{}")) as {
+        store?: boolean;
+        text?: { format?: { type?: string; strict?: boolean } };
+        input?: Array<{
+          content?: Array<{
+            type?: string;
+            image_url?: string;
+            detail?: string;
+          }>;
+        }>;
+      };
+      expect(body.store).toBe(false);
+      expect(body.text?.format?.type).toBe("json_schema");
+      expect(body.text?.format?.strict).toBe(true);
+      const content = body.input?.[0]?.content ?? [];
+      expect(content.some((entry) => entry.type === "input_image")).toBe(true);
+      expect(
+        content.some(
+          (entry) =>
+            entry.type === "input_image" &&
+            entry.image_url === "data:image/jpeg;base64,abc123" &&
+            entry.detail === "low",
+        ),
+      ).toBe(true);
+
+      return new Response(
+        JSON.stringify({
+          output_text: JSON.stringify({
+            items: [
+              {
+                id: "photo-id",
+                categoryId: "receipt",
+                cleanBucketId: "needsReview",
+                confidence: 0.91,
+                privacy: "review",
+                reasons: ["영수증", "결제 내역", "확인 필요"],
+                hints: ["receipt"],
+              },
+            ],
+          }),
+        }),
+        { status: 200 },
+      );
+    });
+    vi.stubGlobal("fetch", fetch);
+
+    const result = await handlePictoryClassifyRequest(
+      imageInput(),
+      deps({
+        classifyItems: undefined,
+        env: { OPENAI_API_KEY: "sk-test" },
+      }),
+    );
+
+    expect(result.status).toBe(200);
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.openai.com/v1/responses",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          Authorization: "Bearer sk-test",
+          "Content-Type": "application/json",
+        }),
+      }),
+    );
+    expect(result.body.items?.[0]).toMatchObject({
+      id: "photo-id",
+      categoryId: "receipt",
+      cleanBucketId: "needsReview",
+      privacy: "review",
+    });
+    expect(JSON.stringify(result.body)).not.toContain("imageDataUri");
+  });
+
+  it("classifies redacted-only batches without sending images to OpenAI", async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+
+    const result = await handlePictoryClassifyRequest(
+      redactedInput(),
+      deps({
+        classifyItems: undefined,
+        env: { OPENAI_API_KEY: "sk-test" },
+      }),
+    );
+
+    expect(result.status).toBe(200);
+    expect(fetch).not.toHaveBeenCalled();
+    expect(result.body.items?.[0]).toMatchObject({
+      id: "sensitive-photo-id",
+      categoryId: "document",
+      cleanBucketId: "sensitive",
+      privacy: "sensitive",
+    });
+  });
+
+  it("returns 503 when the default OpenAI classifier is not configured", async () => {
+    const result = await handlePictoryClassifyRequest(
+      imageInput(),
+      deps({ classifyItems: undefined, env: {} }),
+    );
+
+    expect(result.status).toBe(503);
+    expect(result.body.error?.code).toBe("classifier_unconfigured");
+  });
+});
+
+describe("defaultClassifyItems", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("parses output text content from the Responses API shape", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          output: [
+            {
+              content: [
+                {
+                  type: "output_text",
+                  text: JSON.stringify({
+                    items: [
+                      {
+                        id: "photo-id",
+                        categoryId: "food",
+                        cleanBucketId: "keep",
+                        confidence: 0.88,
+                        privacy: "normal",
+                        reasons: ["음식", "접시", "보관"],
+                        hints: ["food"],
+                      },
+                    ],
+                  }),
+                },
+              ],
+            },
+          ],
+        }),
+      ),
+    );
+
+    const items = await defaultClassifyItems(
+      imageBody.items as PictoryClassifyRequestItem[],
+      {
+        schemaVersion: 1,
+        itemCount: 1,
+        headers: {},
+        entitlement,
+        quota: { remaining: 40 },
+        env: { OPENAI_API_KEY: "sk-test" },
+      },
+    );
+
+    expect(items[0]).toMatchObject({
+      id: "photo-id",
+      categoryId: "food",
+      cleanBucketId: "keep",
+    });
   });
 });
 

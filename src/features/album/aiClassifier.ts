@@ -54,7 +54,12 @@ export async function refineWithAiClassifier(
   try {
     const response = await fetch(endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "X-Pictory-Request-Id": createAiRequestId(),
+      },
       body: JSON.stringify({
         schemaVersion: 1,
         items: await Promise.all(candidates.map(toAiClassificationRequestItem)),
@@ -74,6 +79,14 @@ export async function refineWithAiClassifier(
   } catch {
     return items;
   }
+}
+
+function createAiRequestId() {
+  const random =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2);
+  return `pictory-${Date.now()}-${random}`;
 }
 
 async function toAiClassificationRequestItem(

@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 type MaybePromise<T> = T | Promise<T>;
 
 export type PictoryCategoryId =
@@ -121,6 +123,8 @@ export interface PictoryClassifyHandlerResult {
 const SCHEMA_VERSION = 1;
 const MAX_ITEMS = 40;
 const DEFAULT_MAX_BODY_BYTES = 4 * 1024 * 1024;
+const DEFAULT_OPENAI_MODEL = "gpt-4.1-mini";
+const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 const PAID_PLAN_IDS = new Set(["plus", "pro"]);
 const CATEGORY_IDS = new Set<PictoryCategoryId>([
   "capture",
@@ -229,10 +233,12 @@ export async function handlePictoryClassifyRequest(
 }
 
 export async function defaultClassifyItems(
-  _items: readonly PictoryClassifyRequestItem[],
+  items: readonly PictoryClassifyRequestItem[],
   context: PictoryClassifyItemsContext,
 ): Promise<readonly PictoryClassifyResponseItem[]> {
-  if (!context.env.OPENAI_API_KEY && !context.env.PICTORY_OPENAI_API_KEY) {
+  const apiKey =
+    context.env.OPENAI_API_KEY ?? context.env.PICTORY_OPENAI_API_KEY;
+  if (!apiKey) {
     throw new PictoryClassifyHttpError(
       503,
       "classifier_unconfigured",
@@ -240,11 +246,348 @@ export async function defaultClassifyItems(
     );
   }
 
-  throw new PictoryClassifyHttpError(
-    503,
-    "classifier_unconfigured",
-    "Inject deps.classifyItems to enable server AI classification.",
+  const imageItems = items.filter(hasAttachedImage);
+  const redactedItems = items.filter((item) => !hasAttachedImage(item));
+  const redactedClassifications = redactedItems.map(classifyRedactedItem);
+
+  if (imageItems.length === 0) {
+    return redactedClassifications;
+  }
+
+  return [
+    ...(await classifyImageItemsWithOpenAi(imageItems, context, apiKey)),
+    ...redactedClassifications,
+  ];
+}
+
+function hasAttachedImage(
+  item: PictoryClassifyRequestItem,
+): item is PictoryClassifyRequestItem & { imageDataUri: string } {
+  return (
+    !item.redacted && item.imageDataUri?.startsWith("data:image/") === true
   );
+}
+
+async function classifyImageItemsWithOpenAi(
+  items: readonly (PictoryClassifyRequestItem & { imageDataUri: string })[],
+  context: PictoryClassifyItemsContext,
+  apiKey: string,
+) {
+  const response = await fetch(OPENAI_RESPONSES_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(createOpenAiClassificationBody(items, context)),
+  });
+
+  if (!response.ok) {
+    throw new PictoryClassifyHttpError(
+      502,
+      "classifier_upstream_error",
+      "OpenAI classification request failed.",
+    );
+  }
+
+  return parseOpenAiClassificationResponse(await response.json());
+}
+
+function createOpenAiClassificationBody(
+  items: readonly (PictoryClassifyRequestItem & { imageDataUri: string })[],
+  context: PictoryClassifyItemsContext,
+) {
+  return {
+    model:
+      context.env.OPENAI_MODEL ??
+      context.env.PICTORY_OPENAI_MODEL ??
+      DEFAULT_OPENAI_MODEL,
+    input: [
+      {
+        role: "user",
+        content: createOpenAiInputContent(items, context.env),
+      },
+    ],
+    text: {
+      format: {
+        type: "json_schema",
+        name: "pictory_classification",
+        strict: true,
+        schema: OPENAI_CLASSIFICATION_SCHEMA,
+      },
+      verbosity: "low",
+    },
+    max_output_tokens: 1200,
+    safety_identifier: hashSafetyIdentifier(context.entitlement.subjectId),
+    store: false,
+    temperature: 0,
+  };
+}
+
+function createOpenAiInputContent(
+  items: readonly (PictoryClassifyRequestItem & { imageDataUri: string })[],
+  env: Record<string, string | undefined>,
+) {
+  const manifest = items.map((item) => ({
+    id: item.id,
+    fileName: item.fileName,
+    createdAt: item.createdAt,
+    hints: item.hints,
+    signals: item.signals,
+  }));
+  const content: OpenAiInputContent[] = [
+    {
+      type: "input_text",
+      text:
+        "Classify each Pictory photo into exactly one categoryId and one cleanBucketId. " +
+        "Return Korean reasons. Mark IDs, payment cards, bank documents, medical/financial documents, passwords, one-time codes, and contracts as privacy review or sensitive. " +
+        "Allowed categoryId values: capture, document, receipt, food, place, people, coupon, memory. " +
+        "Allowed cleanBucketId values: sensitive, needsReview, similar, dark, capturePile, keep. " +
+        `Items: ${JSON.stringify(manifest)}`,
+    },
+  ];
+
+  for (const item of items) {
+    content.push(
+      {
+        type: "input_text",
+        text: `Image item id: ${item.id}`,
+      },
+      {
+        type: "input_image",
+        image_url: item.imageDataUri,
+        detail: readImageDetail(env),
+      },
+    );
+  }
+
+  return content;
+}
+
+type OpenAiInputContent =
+  | { type: "input_text"; text: string }
+  | {
+      type: "input_image";
+      image_url: string;
+      detail: "low" | "high" | "auto";
+    };
+
+const OPENAI_CLASSIFICATION_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["items"],
+  properties: {
+    items: {
+      type: "array",
+      maxItems: MAX_ITEMS,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "id",
+          "categoryId",
+          "cleanBucketId",
+          "confidence",
+          "privacy",
+          "reasons",
+          "hints",
+        ],
+        properties: {
+          id: { type: "string" },
+          categoryId: {
+            type: "string",
+            enum: [...CATEGORY_IDS],
+          },
+          cleanBucketId: {
+            type: "string",
+            enum: [...CLEAN_BUCKET_IDS],
+          },
+          confidence: {
+            type: "number",
+            minimum: 0,
+            maximum: 1,
+          },
+          privacy: {
+            type: "string",
+            enum: [...PRIVACY_VALUES],
+          },
+          reasons: {
+            type: "array",
+            maxItems: 3,
+            items: { type: "string" },
+          },
+          hints: {
+            type: "array",
+            maxItems: 8,
+            items: { type: "string" },
+          },
+        },
+      },
+    },
+  },
+} as const;
+
+function parseOpenAiClassificationResponse(
+  value: unknown,
+): PictoryClassifyResponseItem[] {
+  const text = readOpenAiOutputText(value);
+  if (!text) {
+    throw new PictoryClassifyHttpError(
+      502,
+      "classifier_invalid_response",
+      "OpenAI classification response did not include JSON text.",
+    );
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new PictoryClassifyHttpError(
+      502,
+      "classifier_invalid_response",
+      "OpenAI classification response was not valid JSON.",
+    );
+  }
+
+  const payload = assertRecord(parsed, "OpenAI response");
+  if (!Array.isArray(payload.items)) {
+    throw new PictoryClassifyHttpError(
+      502,
+      "classifier_invalid_response",
+      "OpenAI classification response items must be an array.",
+    );
+  }
+
+  return payload.items.filter(isRecord).map((item) => ({
+    id: readOptionalString(item.id) ?? "",
+    categoryId: CATEGORY_IDS.has(item.categoryId as PictoryCategoryId)
+      ? (item.categoryId as PictoryCategoryId)
+      : undefined,
+    cleanBucketId: CLEAN_BUCKET_IDS.has(
+      item.cleanBucketId as PictoryCleanBucketId,
+    )
+      ? (item.cleanBucketId as PictoryCleanBucketId)
+      : undefined,
+    confidence:
+      typeof item.confidence === "number" && Number.isFinite(item.confidence)
+        ? item.confidence
+        : undefined,
+    privacy: PRIVACY_VALUES.has(item.privacy as PictoryPrivacy)
+      ? (item.privacy as PictoryPrivacy)
+      : undefined,
+    reasons: readStringArray(item.reasons),
+    hints: readStringArray(item.hints),
+  }));
+}
+
+function readOpenAiOutputText(value: unknown): string | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  if (typeof value.output_text === "string") {
+    return value.output_text;
+  }
+
+  if (!Array.isArray(value.output)) {
+    return undefined;
+  }
+
+  for (const output of value.output) {
+    if (!isRecord(output) || !Array.isArray(output.content)) {
+      continue;
+    }
+
+    for (const content of output.content) {
+      if (
+        isRecord(content) &&
+        content.type === "output_text" &&
+        typeof content.text === "string"
+      ) {
+        return content.text;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function classifyRedactedItem(
+  item: PictoryClassifyRequestItem,
+): PictoryClassifyResponseItem {
+  const categoryId = classifyCategoryFromHints(item);
+  const isSensitive = hasAnyHint(item, [
+    "id",
+    "card",
+    "bank",
+    "account",
+    "password",
+    "otp",
+    "sensitive",
+    "민감",
+    "신분증",
+    "카드",
+    "계좌",
+    "인증",
+    "비밀번호",
+  ]);
+
+  return {
+    id: item.id,
+    categoryId,
+    cleanBucketId: isSensitive ? "sensitive" : "needsReview",
+    confidence: isSensitive ? 0.82 : 0.68,
+    privacy: isSensitive ? "sensitive" : "review",
+    reasons: isSensitive
+      ? ["민감 후보", "원본 제외", "확인 필요"]
+      : ["원본 제외", "신호 기반", "확인 필요"],
+    hints: Array.from(new Set([...item.hints, "redacted"])).slice(0, 8),
+  };
+}
+
+function classifyCategoryFromHints(
+  item: PictoryClassifyRequestItem,
+): PictoryCategoryId {
+  if (hasAnyHint(item, ["receipt", "영수증"])) {
+    return "receipt";
+  }
+  if (hasAnyHint(item, ["coupon", "쿠폰"])) {
+    return "coupon";
+  }
+  if (hasAnyHint(item, ["document", "doc", "id", "문서", "신분증"])) {
+    return "document";
+  }
+  if (hasAnyHint(item, ["screenshot", "capture", "캡처", "스크린샷"])) {
+    return "capture";
+  }
+  if (hasAnyHint(item, ["food", "meal", "음식"])) {
+    return "food";
+  }
+  if (hasAnyHint(item, ["place", "map", "장소", "지도"])) {
+    return "place";
+  }
+  if (hasAnyHint(item, ["people", "person", "face", "사람", "인물"])) {
+    return "people";
+  }
+
+  return "memory";
+}
+
+function hasAnyHint(item: PictoryClassifyRequestItem, tokens: string[]) {
+  const text = item.hints.join(" ").toLocaleLowerCase();
+  return tokens.some((token) => text.includes(token.toLocaleLowerCase()));
+}
+
+function readImageDetail(
+  env: Record<string, string | undefined>,
+): "low" | "high" | "auto" {
+  const detail = env.OPENAI_IMAGE_DETAIL ?? env.PICTORY_OPENAI_IMAGE_DETAIL;
+  return detail === "high" || detail === "auto" ? detail : "low";
+}
+
+function hashSafetyIdentifier(subjectId: string) {
+  return createHash("sha256").update(subjectId).digest("hex").slice(0, 64);
 }
 
 function getBodySizeBytes(input: PictoryClassifyRequestInput) {

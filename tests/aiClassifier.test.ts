@@ -204,6 +204,27 @@ describe("aiClassifier", () => {
     expect(requestItems[0].createdAt).toBeUndefined();
     expect(requestItems[0].signals?.perceptualHash).toBeUndefined();
   });
+
+  it("sends server AI requests with session credentials and request id", async () => {
+    let requestInit: RequestInit | undefined;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+        requestInit = init;
+        return new Response(JSON.stringify({ items: [] }), { status: 200 });
+      }),
+    );
+
+    await refineWithAiClassifier([item], {
+      VITE_PICTORY_CLASSIFY_ENDPOINT: "https://classify.example.com",
+    });
+
+    const headers = requestInit?.headers as Record<string, string>;
+    expect(requestInit?.credentials).toBe("include");
+    expect(headers.Accept).toBe("application/json");
+    expect(headers["Content-Type"]).toBe("application/json");
+    expect(headers["X-Pictory-Request-Id"]).toMatch(/^pictory-/);
+  });
 });
 
 async function captureAiRequestItems(items: ClassifiedItem[]) {
