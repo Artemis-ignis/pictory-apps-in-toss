@@ -34,15 +34,30 @@ npm run build
 cp .env.example .env
 ```
 
-출시 빌드에서는 앱인토스 콘솔에서 발급받은 보상형 광고 그룹 ID를 `.env`에 넣어야 합니다.
+클라이언트 공개 환경 변수는 `VITE_` 접두사를 사용하며 앱 번들에 포함될 수 있습니다. 비밀값을 넣지 않습니다.
 
 ```bash
-VITE_TOSS_REWARDED_AD_GROUP_ID=콘솔에서_발급받은_보상형_광고_ID
-VITE_PICTORY_PLUS_SUBSCRIPTION_SKU=콘솔_PLUS_구독_SKU
-VITE_PICTORY_PRO_SUBSCRIPTION_SKU=콘솔_PRO_구독_SKU
+VITE_TOSS_REWARDED_AD_GROUP_ID=ait-ad-test-rewarded-id
+VITE_PICTORY_PLUS_SUBSCRIPTION_SKU=replace_with_toss_plus_subscription_sku
+VITE_PICTORY_PRO_SUBSCRIPTION_SKU=replace_with_toss_pro_subscription_sku
+VITE_PICTORY_CLASSIFY_ENDPOINT=https://your-api.example.com/pictory/classify
 ```
 
-개발 단계에서는 반드시 테스트 ID(`ait-ad-test-rewarded-id`)를 사용합니다. 실제 광고 ID로 개발 테스트를 반복하면 광고 정책 위반으로 간주될 수 있습니다.
+출시 빌드에서는 앱인토스 콘솔에서 발급받은 보상형 광고 그룹 ID와 구독 SKU로 바꿉니다. 개발 단계에서는 반드시 테스트 ID(`ait-ad-test-rewarded-id`)를 사용합니다. 실제 광고 ID로 개발 테스트를 반복하면 광고 정책 위반으로 간주될 수 있습니다.
+
+서버 AI 분류 API는 별도 서버 런타임에서만 아래 값을 사용합니다. OpenAI 키와 서버 secret에는 `VITE_` 접두사를 붙이지 않고, 프론트엔드 `.env`나 앱 코드에 실제 값을 넣지 않습니다.
+
+```bash
+PICTORY_SERVER_SECRET=replace_with_long_random_server_secret
+OPENAI_API_KEY=replace_with_openai_api_key_server_only
+OPENAI_MODEL=gpt-4.1-mini
+PICTORY_AI_FREE_MONTHLY_QUOTA=0
+PICTORY_AI_AD_CREDIT_QUOTA=100
+PICTORY_AI_PLUS_MONTHLY_QUOTA=500
+PICTORY_AI_PRO_MONTHLY_QUOTA=2000
+PICTORY_AI_RATE_LIMIT_PER_MINUTE=30
+PICTORY_AI_LOG_RAW_IMAGES=false
+```
 
 앱인토스 QR 테스트, 광고 운영, 서버 AI 분류 API 계약은 `docs/apps-in-toss-test-and-monetization.md`를 기준으로 확인합니다.
 
@@ -77,4 +92,5 @@ VITE_PICTORY_PRO_SUBSCRIPTION_SKU=콘솔_PRO_구독_SKU
 - 실제 토스 앱 또는 콘솔 QR 테스트에서 사진 권한 요청과 앨범 읽기 확인
 - 운영 광고 그룹 ID 적용 후 `userEarnedReward` 이벤트 발생 시에만 스캔권 지급되는지 확인
 - 광고 미지원/닫기/실패 상태에서 스캔권이 지급되지 않는지 확인
+- Plus/Pro 구독 SKU 적용 후 실기기에서 결제 성공, 미결 주문 복원, 구독 복원 상태 확인
 - `pictory.ait` 최신 빌드 업로드 전 `npm run test && npm run typecheck && npm run lint && npm run build` 재실행

@@ -1,0 +1,221 @@
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const rootDir = fileURLToPath(new URL("..", import.meta.url));
+const results = [];
+
+function projectPath(...segments) {
+  return join(rootDir, ...segments);
+}
+
+function record(ok, message) {
+  results.push({ ok, message });
+}
+
+function readText(relativePath) {
+  const fullPath = projectPath(relativePath);
+  if (!existsSync(fullPath)) {
+    record(false, `${relativePath} is missing`);
+    return "";
+  }
+
+  return readFileSync(fullPath, "utf8");
+}
+
+function parseEnvExample() {
+  const envText = readText(".env.example");
+  const env = new Map();
+
+  for (const line of envText.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) {
+      continue;
+    }
+
+    const match = trimmed.match(/^([A-Z0-9_]+)=(.*)$/);
+    if (match) {
+      env.set(match[1], match[2].trim());
+    }
+  }
+
+  return env;
+}
+
+function checkEnvExample() {
+  const env = parseEnvExample();
+  const requiredClientEnv = [
+    "VITE_TOSS_REWARDED_AD_GROUP_ID",
+    "VITE_PICTORY_PLUS_SUBSCRIPTION_SKU",
+    "VITE_PICTORY_PRO_SUBSCRIPTION_SKU",
+    "VITE_PICTORY_CLASSIFY_ENDPOINT",
+  ];
+  const requiredServerEnv = [
+    "PICTORY_SERVER_SECRET",
+    "OPENAI_API_KEY",
+    "OPENAI_MODEL",
+    "PICTORY_AI_FREE_MONTHLY_QUOTA",
+    "PICTORY_AI_AD_CREDIT_QUOTA",
+    "PICTORY_AI_PLUS_MONTHLY_QUOTA",
+    "PICTORY_AI_PRO_MONTHLY_QUOTA",
+    "PICTORY_AI_RATE_LIMIT_PER_MINUTE",
+    "PICTORY_AI_LOG_RAW_IMAGES",
+  ];
+
+  for (const key of [...requiredClientEnv, ...requiredServerEnv]) {
+    const value = env.get(key);
+    record(Boolean(value), `.env.example contains ${key}`);
+  }
+
+  record(
+    env.get("VITE_TOSS_REWARDED_AD_GROUP_ID") === "ait-ad-test-rewarded-id",
+    ".env.example uses the Apps in Toss test ad id by default",
+  );
+  record(
+    /your-api\.example\.com/.test(
+      env.get("VITE_PICTORY_CLASSIFY_ENDPOINT") ?? "",
+    ),
+    ".env.example classify endpoint is a placeholder URL",
+  );
+  record(
+    /^replace_with_/.test(env.get("PICTORY_SERVER_SECRET") ?? ""),
+    ".env.example server secret is a placeholder",
+  );
+  record(
+    /^replace_with_/.test(env.get("OPENAI_API_KEY") ?? "") &&
+      !/^sk-/.test(env.get("OPENAI_API_KEY") ?? ""),
+    ".env.example OpenAI key is a placeholder, not a live key",
+  );
+  record(
+    env.get("PICTORY_AI_LOG_RAW_IMAGES") === "false",
+    ".env.example keeps raw image logging disabled",
+  );
+
+  for (const key of [
+    "PICTORY_AI_FREE_MONTHLY_QUOTA",
+    "PICTORY_AI_AD_CREDIT_QUOTA",
+    "PICTORY_AI_PLUS_MONTHLY_QUOTA",
+    "PICTORY_AI_PRO_MONTHLY_QUOTA",
+    "PICTORY_AI_RATE_LIMIT_PER_MINUTE",
+  ]) {
+    record(/^\d+$/.test(env.get(key) ?? ""), `.env.example ${key} is numeric`);
+  }
+}
+
+function checkAitBundle() {
+  const aitPath = projectPath("pictory.ait");
+  record(existsSync(aitPath), "pictory.ait exists");
+
+  if (existsSync(aitPath)) {
+    record(statSync(aitPath).size > 0, "pictory.ait is not empty");
+  }
+}
+
+function checkGraniteConfig() {
+  const graniteConfig = readText("granite.config.ts");
+  const graniteApp = readText(".granite/app.json");
+
+  const requiredPatterns = [
+    ["granite.config.ts appName", /appName:\s*["']pictory["']/],
+    [
+      "granite.config.ts brand.displayName",
+      /brand:\s*{[\s\S]*displayName:\s*["'][^"']+["']/,
+    ],
+    [
+      "granite.config.ts brand.primaryColor",
+      /brand:\s*{[\s\S]*primaryColor:\s*["']#[0-9a-fA-F]{6}["']/,
+    ],
+    ["granite.config.ts brand.icon", /brand:\s*{[\s\S]*icon:\s*["'][^"']+["']/],
+    ["granite.config.ts web host", /web:\s*{[\s\S]*host:\s*["'][^"']+["']/],
+    ["granite.config.ts web port", /web:\s*{[\s\S]*port:\s*\d+/],
+    [
+      "granite.config.ts web dev command",
+      /commands:\s*{[\s\S]*dev:\s*["'][^"']+["']/,
+    ],
+    [
+      "granite.config.ts web build command",
+      /commands:\s*{[\s\S]*build:\s*["'][^"']+["']/,
+    ],
+    [
+      "granite.config.ts webViewProps.type",
+      /webViewProps:\s*{[\s\S]*type:\s*["'][^"']+["']/,
+    ],
+    [
+      "granite.config.ts photos read permission",
+      /permissions:\s*\[[\s\S]*name:\s*["']photos["'][\s\S]*access:\s*["']read["']/,
+    ],
+    ["granite.config.ts outdir", /outdir:\s*["']dist["']/],
+  ];
+
+  for (const [label, pattern] of requiredPatterns) {
+    record(pattern.test(graniteConfig), label);
+  }
+
+  try {
+    const app = JSON.parse(graniteApp);
+    record(app.appName === "pictory", ".granite/app.json appName");
+    record(
+      Array.isArray(app.permissions) &&
+        app.permissions.some(
+          (permission) =>
+            permission.name === "photos" && permission.access === "read",
+        ),
+      ".granite/app.json photos read permission",
+    );
+  } catch {
+    record(false, ".granite/app.json is valid JSON");
+  }
+}
+
+function listFiles(relativePath) {
+  const fullPath = projectPath(relativePath);
+  if (!existsSync(fullPath)) {
+    return [];
+  }
+
+  return readdirSync(fullPath, { withFileTypes: true }).flatMap((entry) => {
+    const childPath = join(relativePath, entry.name);
+    return entry.isDirectory() ? listFiles(childPath) : [childPath];
+  });
+}
+
+function checkPackageScripts() {
+  const packageJson = JSON.parse(readText("package.json"));
+  const scripts = packageJson.scripts ?? {};
+
+  for (const scriptName of [
+    "test",
+    "typecheck",
+    "lint",
+    "build",
+    "check:release",
+  ]) {
+    record(
+      Boolean(scripts[scriptName]),
+      `package.json has ${scriptName} script`,
+    );
+  }
+
+  record(
+    listFiles("tests").some((file) => /\.test\.[cm]?[jt]sx?$/.test(file)),
+    "tests directory contains test files",
+  );
+}
+
+checkEnvExample();
+checkAitBundle();
+checkGraniteConfig();
+checkPackageScripts();
+
+const failures = results.filter((result) => !result.ok);
+
+for (const result of results) {
+  console.log(`${result.ok ? "[OK]" : "[FAIL]"} ${result.message}`);
+}
+
+if (failures.length > 0) {
+  console.error(`Release readiness failed: ${failures.length} issue(s).`);
+  process.exitCode = 1;
+} else {
+  console.log("Release readiness passed.");
+}

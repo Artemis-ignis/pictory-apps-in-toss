@@ -13,6 +13,33 @@ npm run web:dev -- --host 127.0.0.1 --port 5173
 
 로컬 브라우저에서는 실제 파일 선택 fallback으로 사진 분류 UI를 확인한다.
 
+## 운영 환경 변수 분리
+
+클라이언트 공개 환경 변수는 `VITE_` 접두사를 사용한다. 이 값은 앱 번들에 포함될 수 있으므로 endpoint, 광고 ID, 구독 SKU처럼 공개되어도 되는 값만 둔다.
+
+```env
+VITE_TOSS_REWARDED_AD_GROUP_ID=ait-ad-test-rewarded-id
+VITE_PICTORY_PLUS_SUBSCRIPTION_SKU=replace_with_toss_plus_subscription_sku
+VITE_PICTORY_PRO_SUBSCRIPTION_SKU=replace_with_toss_pro_subscription_sku
+VITE_PICTORY_CLASSIFY_ENDPOINT=https://your-api.example.com/pictory/classify
+```
+
+서버 AI 런타임 환경 변수는 서버 배포 환경에만 설정한다. OpenAI 키, 서버 secret, 사용자별 quota 값에는 `VITE_` 접두사를 붙이지 않는다.
+
+```env
+PICTORY_SERVER_SECRET=replace_with_long_random_server_secret
+OPENAI_API_KEY=replace_with_openai_api_key_server_only
+OPENAI_MODEL=gpt-4.1-mini
+PICTORY_AI_FREE_MONTHLY_QUOTA=0
+PICTORY_AI_AD_CREDIT_QUOTA=100
+PICTORY_AI_PLUS_MONTHLY_QUOTA=500
+PICTORY_AI_PRO_MONTHLY_QUOTA=2000
+PICTORY_AI_RATE_LIMIT_PER_MINUTE=30
+PICTORY_AI_LOG_RAW_IMAGES=false
+```
+
+서버 로그에는 원본 이미지, base64 본문, 신분증/카드/계좌번호 같은 민감정보를 남기지 않는다.
+
 ## 앱인토스 빌드와 QR 테스트
 
 ```bash
@@ -20,9 +47,10 @@ npm run test
 npm run typecheck
 npm run lint
 npm run build
+npm run check:release
 ```
 
-`npm run build`가 만든 `pictory.ait`를 앱인토스 콘솔에 업로드한다.
+`npm run build`가 만든 `pictory.ait`를 앱인토스 콘솔에 업로드한다. `npm run check:release`는 업로드 전 `.env.example`, `pictory.ait`, Granite 필수 설정, 테스트 스크립트 존재 여부를 읽기 전용으로 확인한다.
 
 콘솔 경로:
 
@@ -32,12 +60,20 @@ npm run build
 4. `.ait` 업로드
 5. 테스트하기 QR 스캔
 
-QR 테스트 조건:
+실행자 체크리스트:
 
-- 토스 앱 로그인
-- 워크스페이스 멤버 계정
-- 만 19세 이상 계정
-- 출시 심사 전 최소 1회 이상 실제 테스트
+- [ ] `.env`에 실제 비밀값이 없고, 클라이언트 값은 `VITE_` 공개 값만 들어 있다.
+- [ ] 서버 OpenAI 키와 `PICTORY_SERVER_SECRET`은 서버 배포 환경에만 설정했다.
+- [ ] `npm run test`, `npm run typecheck`, `npm run lint`, `npm run build`, `npm run check:release`가 통과했다.
+- [ ] 업로드한 파일명이 최신 `pictory.ait`인지 확인했다.
+- [ ] 테스트 단말에서 토스 앱에 로그인했다.
+- [ ] 테스트 계정이 앱인토스 워크스페이스 멤버이고 만 19세 이상이다.
+- [ ] 콘솔의 `테스트하기` QR을 실제 단말 토스 앱으로 스캔했다.
+- [ ] 사진 권한 요청이 뜨고, 허용 후 앨범 선택 화면이 열린다.
+- [ ] 선택 취소 시 실패가 아니라 빈 결과/대기 상태로 돌아온다.
+- [ ] 실제 사진 선택 후 지도, 정리, 보관 화면의 분류 결과와 민감정보 흐림 처리를 확인했다.
+- [ ] 앱 재실행 후 최근 분류 지도, 보관 항목, 스캔 기록이 복원된다.
+- [ ] 실패가 있으면 단말 OS, 토스 앱 버전, 콘솔 앱 버전, QR 생성 시각, 재현 화면을 기록했다.
 
 ## 광고 운영
 
@@ -61,6 +97,17 @@ VITE_TOSS_REWARDED_AD_GROUP_ID=ait-ad-test-rewarded-id
 ```env
 VITE_TOSS_REWARDED_AD_GROUP_ID=콘솔_보상형_광고_그룹_ID
 ```
+
+실기기 광고 체크리스트:
+
+- [ ] 개발/반복 테스트 빌드는 `ait-ad-test-rewarded-id`를 사용한다.
+- [ ] 운영 후보 빌드는 콘솔에서 발급한 보상형 광고 그룹 ID를 사용한다.
+- [ ] QR 진입 직후 광고가 강제 노출되지 않는다.
+- [ ] `광고 +100`을 누르면 광고가 열리고, 닫기만 하면 스캔권이 지급되지 않는다.
+- [ ] 광고를 끝까지 보고 `userEarnedReward` 이벤트가 발생한 경우에만 스캔권 +100장이 지급된다.
+- [ ] `failedToShow`, 미지원, 네트워크 실패에서는 스캔권이 0장으로 유지된다.
+- [ ] 광고 종료 후 다음 광고 preload가 다시 시도된다.
+- [ ] 검증 증거로 광고 그룹 ID 종류, 단말, 토스 앱 버전, 지급 전/후 스캔권 화면을 남긴다.
 
 주의:
 
@@ -137,7 +184,23 @@ flowchart LR
 
 ## AI 분류 API 계약
 
-앱은 `VITE_PICTORY_CLASSIFY_ENDPOINT`가 있을 때만 서버 AI 분류를 호출한다.
+앱은 공개 클라이언트 값인 `VITE_PICTORY_CLASSIFY_ENDPOINT`가 있을 때만 서버 AI 분류를 호출한다. OpenAI 키, 서버 secret, quota 검증은 이 endpoint 뒤의 서버에서만 처리한다.
+
+운영 요청 헤더 예시:
+
+```http
+POST /pictory/classify HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer <user_or_session_token>
+x-pictory-server-secret: <server_to_server_secret>
+x-request-id: req_20260615_001
+```
+
+`Authorization`과 `x-pictory-server-secret`은 운영 서버의
+`verifyEntitlement`가 검증할 수 있도록 요청 컨텍스트에 전달한다. 핸들러
+자체는 secret 값을 하드코딩해서 비교하지 않는다. 서버는 이 헤더/토큰으로
+사용자 식별, 유료 권한, 광고 크레딧, 월간 quota를 검증해야 하며, 클라이언트
+`planId`나 로컬 상태만으로 entitlement/quota를 승인하지 않는다.
 
 요청:
 
@@ -267,6 +330,18 @@ Pro:
 VITE_PICTORY_PLUS_SUBSCRIPTION_SKU=콘솔_PLUS_구독_SKU
 VITE_PICTORY_PRO_SUBSCRIPTION_SKU=콘솔_PRO_구독_SKU
 ```
+
+실기기 IAP 체크리스트:
+
+- [ ] 앱인토스 콘솔에 Plus/Pro 구독 상품과 SKU가 등록되어 있다.
+- [ ] `.env`의 `VITE_PICTORY_PLUS_SUBSCRIPTION_SKU`, `VITE_PICTORY_PRO_SUBSCRIPTION_SKU`가 콘솔 SKU와 일치한다.
+- [ ] SKU가 비어 있거나 틀린 빌드에서는 Plus/Pro 구매 버튼이 결제 성공처럼 보이지 않는다.
+- [ ] 실제 단말 QR에서 Plus 결제를 시작하면 구독 주문 화면이 뜬다.
+- [ ] 결제 성공 후 상품 지급 콜백이 끝난 뒤에만 Plus 한도가 활성화된다.
+- [ ] 결제 중 취소하면 무료 플랜 상태와 기존 크레딧이 유지된다.
+- [ ] 상품 지급 실패 또는 앱 종료 후 재실행 시 미결 주문 복원 흐름이 먼저 실행된다.
+- [ ] 구독 정보 복원 성공 시 저장된 주문 ID 기준으로 유료 권한이 복원된다.
+- [ ] 검증 증거로 SKU, orderId 일부 마스킹 값, 지급 전/후 플랜 화면, 실패/취소 화면을 남긴다.
 
 운영 동작:
 
