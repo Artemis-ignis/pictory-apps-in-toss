@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -36,6 +37,47 @@ describe("device evidence preflight", () => {
         "Toss app version is at least 5.247.0",
         "photos-permission scenario exists",
         "evidence JSON does not contain secrets or raw base64 images",
+      ]),
+    );
+  });
+
+  it("rejects stale git commits and placeholder metadata", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "pictory-device-evidence-"));
+    await writeFile(join(dir, "pictory.ait"), "ait-bundle");
+    await writeFile(join(dir, "tracked.txt"), "tracked");
+    execFileSync("git", ["init"], { cwd: dir });
+    execFileSync("git", ["add", "."], { cwd: dir });
+    execFileSync(
+      "git",
+      [
+        "-c",
+        "user.name=Pictory QA",
+        "-c",
+        "user.email=pictory@example.com",
+        "commit",
+        "-m",
+        "init",
+      ],
+      { cwd: dir },
+    );
+    await mkdir(join(dir, "qa-evidence", "screens"), { recursive: true });
+    for (const id of requiredIds()) {
+      await writeFile(join(dir, "qa-evidence", "screens", `${id}.png`), id);
+    }
+
+    const evidence = completeEvidence();
+    evidence.release.gitCommit = "deadbeef";
+    evidence.app.consoleAppVersion = "앱인토스_콘솔_버전";
+    evidence.device.model = "실기기_모델명";
+
+    const result = validateDeviceEvidence(evidence, { cwd: dir });
+
+    expect(result.ok).toBe(false);
+    expect(result.failures.map((failure) => failure.message)).toEqual(
+      expect.arrayContaining([
+        "release gitCommit matches current checkout",
+        "console app version is not a placeholder",
+        "device model is not a placeholder",
       ]),
     );
   });

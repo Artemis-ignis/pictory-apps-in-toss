@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -88,12 +88,42 @@ export function validateProductionEnv(env, { cwd = rootDir } = {}) {
       value("PICTORY_PRO_SUBSCRIPTION_SKU"),
     "client and server Pro SKU match",
   );
+  add(
+    value("PICTORY_PLUS_SUBSCRIPTION_SKU") !==
+      value("PICTORY_PRO_SUBSCRIPTION_SKU"),
+    "Plus and Pro SKUs differ",
+  );
 
   for (const key of endpointKeys) {
     const endpoint = value(key);
     add(isHttpsUrl(endpoint), `${key} is an HTTPS URL`);
     add(!hasLocalOrExampleHost(endpoint), `${key} is not local/example host`);
   }
+  add(
+    endpointKeys
+      .map((key) => urlOrigin(value(key)))
+      .every((origin) => origin && origin === urlOrigin(value(endpointKeys[0]))),
+    "client API endpoints share one HTTPS origin",
+  );
+  add(
+    endpointPath(value("VITE_PICTORY_CLASSIFY_ENDPOINT")) ===
+      "/pictory/classify",
+    "classify endpoint path is /pictory/classify",
+  );
+  add(
+    endpointPath(value("VITE_PICTORY_REWARD_ENDPOINT")) === "/pictory/reward",
+    "reward endpoint path is /pictory/reward",
+  );
+  add(
+    endpointPath(value("VITE_PICTORY_ENTITLEMENT_ENDPOINT")) ===
+      "/pictory/entitlement",
+    "entitlement endpoint path is /pictory/entitlement",
+  );
+  add(
+    endpointPath(value("VITE_PICTORY_DELETE_ENDPOINT")) ===
+      "/pictory/account",
+    "delete endpoint path is /pictory/account",
+  );
 
   add(
     value("PICTORY_SERVER_SECRET").length >= 32,
@@ -138,8 +168,15 @@ export function validateProductionEnv(env, { cwd = rootDir } = {}) {
     "APPS_IN_TOSS_MTLS_CERT_PATH",
     "APPS_IN_TOSS_MTLS_KEY_PATH",
   ]) {
-    add(existsSync(resolve(cwd, value(key))), `${key} file exists`);
+    const fullPath = resolve(cwd, value(key));
+    add(existsSync(fullPath), `${key} file exists`);
+    add(fileHasContent(fullPath), `${key} file is not empty`);
   }
+  add(
+    value("APPS_IN_TOSS_MTLS_CERT_PATH") !==
+      value("APPS_IN_TOSS_MTLS_KEY_PATH"),
+    "mTLS cert and key paths differ",
+  );
 
   const failures = checks.filter((check) => !check.ok);
   return { ok: failures.length === 0, checks, failures };
@@ -222,6 +259,26 @@ function hasLocalOrExampleHost(value) {
   } catch {
     return true;
   }
+}
+
+function urlOrigin(value) {
+  try {
+    return new URL(value).origin;
+  } catch {
+    return "";
+  }
+}
+
+function endpointPath(value) {
+  try {
+    return new URL(value).pathname.replace(/\/+$/, "");
+  } catch {
+    return "";
+  }
+}
+
+function fileHasContent(path) {
+  return existsSync(path) && statSync(path).size > 0;
 }
 
 function readPositiveInteger(value) {

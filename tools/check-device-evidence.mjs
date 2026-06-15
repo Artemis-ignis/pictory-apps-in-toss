@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -39,6 +40,17 @@ export function validateDeviceEvidence(
     isNonEmptyString(evidence?.release?.gitCommit),
     "release gitCommit is recorded",
   );
+  add(
+    !isPlaceholderValue(evidence?.release?.gitCommit),
+    "release gitCommit is not a placeholder",
+  );
+  const gitCommit = readCurrentGitCommit(fileRoot);
+  if (gitCommit) {
+    add(
+      commitMatches(evidence?.release?.gitCommit, gitCommit),
+      "release gitCommit matches current checkout",
+    );
+  }
   add(existsSync(aitFullPath), "pictory.ait exists for hash check");
   add(
     evidence?.release?.aitSha256 === sha256File(aitFullPath),
@@ -52,6 +64,10 @@ export function validateDeviceEvidence(
   add(
     isNonEmptyString(evidence?.app?.consoleAppVersion),
     "console app version is recorded",
+  );
+  add(
+    !isPlaceholderValue(evidence?.app?.consoleAppVersion),
+    "console app version is not a placeholder",
   );
   add(
     isNonEmptyString(evidence?.app?.qrGeneratedAt) &&
@@ -69,6 +85,10 @@ export function validateDeviceEvidence(
   add(
     isNonEmptyString(evidence?.device?.model),
     "device model is recorded",
+  );
+  add(
+    !isPlaceholderValue(evidence?.device?.model),
+    "device model is not a placeholder",
   );
 
   const scenarios = Array.isArray(evidence?.scenarios)
@@ -178,6 +198,36 @@ function parseVersion(value) {
     .map((part) => Number.parseInt(part, 10));
   return [0, 1, 2].map((index) =>
     Number.isFinite(parts[index]) ? parts[index] : 0,
+  );
+}
+
+function readCurrentGitCommit(cwd) {
+  try {
+    return execFileSync("git", ["rev-parse", "--short=12", "HEAD"], {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return "";
+  }
+}
+
+function commitMatches(value, currentCommit) {
+  if (!isNonEmptyString(value)) {
+    return false;
+  }
+
+  return currentCommit.startsWith(value) || value.startsWith(currentCommit);
+}
+
+function isPlaceholderValue(value) {
+  if (!isNonEmptyString(value)) {
+    return true;
+  }
+
+  return /^(현재_|앱인토스_|실기기_|replace_with_|your_|current_)/i.test(
+    value.trim(),
   );
 }
 

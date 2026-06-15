@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -170,6 +171,40 @@ function checkAitBundle() {
 
   if (existsSync(aitPath)) {
     record(statSync(aitPath).size > 0, "pictory.ait is not empty");
+  }
+}
+
+function checkReleaseSnapshot() {
+  const snapshotText = readText("docs/release-snapshot.json");
+  if (!snapshotText) {
+    return;
+  }
+
+  try {
+    const snapshot = JSON.parse(snapshotText);
+    const currentAitSha = sha256File(projectPath("pictory.ait"));
+    const snapshotAitSha = String(snapshot.release?.aitSha256 ?? "");
+    const snapshotCommit = safeFileSegment(snapshot.release?.gitCommit);
+    const archivePath = projectPath(
+      "docs",
+      "release-snapshots",
+      `${snapshotCommit}-${safeFileSegment(snapshotAitSha).slice(0, 12)}.json`,
+    );
+
+    record(snapshot.schemaVersion === 1, "release snapshot schemaVersion");
+    record(Boolean(snapshot.release?.gitCommit), "release snapshot gitCommit");
+    record(
+      snapshotAitSha === currentAitSha,
+      "release snapshot matches current pictory.ait hash",
+    );
+    record(existsSync(archivePath), "release snapshot archive matches latest");
+    record(
+      snapshot.github?.isPrivate === true ||
+        snapshot.github?.visibility === "PRIVATE",
+      "release snapshot records private GitHub repo",
+    );
+  } catch {
+    record(false, "docs/release-snapshot.json is valid JSON");
   }
 }
 
@@ -375,11 +410,27 @@ checkEnvExample();
 checkAitBundle();
 checkGraniteConfig();
 checkPackageScripts();
+checkReleaseSnapshot();
 
 const failures = results.filter((result) => !result.ok);
 
 for (const result of results) {
   console.log(`${result.ok ? "[OK]" : "[FAIL]"} ${result.message}`);
+}
+
+function sha256File(path) {
+  if (!existsSync(path)) {
+    return "";
+  }
+
+  return createHash("sha256").update(readFileSync(path)).digest("hex");
+}
+
+function safeFileSegment(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 if (failures.length > 0) {
