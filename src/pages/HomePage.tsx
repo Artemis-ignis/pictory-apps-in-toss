@@ -16,6 +16,7 @@ import {
 import { BucketCard } from "../components/BucketCard";
 import { Mascot } from "../components/Mascot";
 import { MetricCard } from "../components/MetricCard";
+import { isCleanTabItem } from "../features/album/classifier";
 import {
   MAP_BUCKETS,
   type ClassifiedItem,
@@ -56,7 +57,7 @@ export function HomePage({
 }: HomePageProps) {
   const kindCount = new Set(items.map((item) => item.categoryId)).size;
   const periodCount = new Set(items.map((item) => item.periodKey)).size;
-  const cleanCount = items.filter((item) => item.status !== "saved").length;
+  const cleanCount = items.filter(isCleanTabItem).length;
   const bucketCounts = MAP_BUCKETS.map((bucket) => ({
     bucket,
     count: items.filter((item) => item.categoryId === bucket.id).length,

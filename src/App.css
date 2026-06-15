@@ -592,6 +592,20 @@
   background: #ffffff;
 }
 
+.photo-tile.is-saved {
+  border-color: rgba(57, 199, 137, 0.34);
+  background: #fbfffd;
+}
+
+.photo-tile.is-queued {
+  border-color: rgba(255, 91, 120, 0.28);
+  background: #fffafa;
+}
+
+.photo-tile.is-ignored {
+  opacity: 0.72;
+}
+
 .photo-tile.is-compact {
   grid-template-columns: 54px minmax(0, 1fr);
 }
@@ -631,7 +645,14 @@
   min-width: 0;
 }
 
-.photo-info strong,
+.photo-title-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.photo-title-row strong,
 .photo-info span {
   display: block;
   overflow: hidden;
@@ -639,9 +660,21 @@
   white-space: nowrap;
 }
 
-.photo-info strong {
+.photo-title-row strong {
+  min-width: 0;
   font-size: 15px;
   font-weight: 950;
+}
+
+.photo-title-row em {
+  flex: 0 0 auto;
+  padding: 3px 6px;
+  border-radius: 999px;
+  color: #1d65cb;
+  background: #eaf3ff;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
 }
 
 .photo-info span {
@@ -664,6 +697,14 @@
   border-radius: 10px;
   color: #6b7a90;
   background: #f1f5fb;
+  box-shadow:
+    0 5px 10px rgba(15, 44, 86, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.photo-actions button.is-active {
+  color: #ffffff;
+  background: var(--blue);
 }
 
 .queue-banner {

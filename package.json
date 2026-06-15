@@ -18,6 +18,10 @@
   "dependencies": {
     "@apps-in-toss/web-framework": "^2.7.0",
     "@emotion/react": "^11.14.0",
+    "@tensorflow-models/mobilenet": "^2.1.1",
+    "@tensorflow/tfjs-backend-cpu": "^4.22.0",
+    "@tensorflow/tfjs-converter": "^4.22.0",
+    "@tensorflow/tfjs-core": "^4.22.0",
     "@toss/tds-colors": "^0.1.0",
     "@toss/tds-mobile": "^2.4.1",
     "@toss/tds-mobile-ait": "^2.4.1",

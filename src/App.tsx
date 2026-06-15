@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import { AppHeader } from "./components/AppHeader";
 import { BottomNav, type TabId } from "./components/BottomNav";
@@ -14,6 +14,7 @@ import {
   classifyAlbumItems,
   getCategorySummary,
   getCleanSummary,
+  isCleanTabItem,
 } from "./features/album/classifier";
 import {
   clearPictoryState,
@@ -33,6 +34,7 @@ import type {
 import { showRewardedScanAd } from "./features/ads/rewardAd";
 
 function App() {
+  const screenFrameRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState<TabId>("home");
   const [items, setItems] = useState<ClassifiedItem[]>([]);
   const [state, setState] =
@@ -64,6 +66,10 @@ function App() {
       savePictoryState(state).catch(() => undefined);
     }
   }, [isHydrated, state]);
+
+  useEffect(() => {
+    screenFrameRef.current?.scrollTo({ top: 0 });
+  }, [activeTab]);
 
   const statusMap = useMemo(() => {
     const map = new Map<string, ClassifiedItem["status"]>();
@@ -227,7 +233,7 @@ function App() {
   return (
     <div className="app-shell">
       <AppHeader />
-      <div className="screen-frame">
+      <div className="screen-frame" ref={screenFrameRef}>
         {activeTab === "home" ? (
           <HomePage
             items={visibleItems}
@@ -278,9 +284,10 @@ function App() {
 function countCleanCandidates(items: ClassifiedItem[]) {
   return items.filter(
     (item) =>
-      item.cleanBucketId !== "keep" ||
-      item.privacy !== "normal" ||
-      item.status === "queued",
+      isCleanTabItem(item) &&
+      (item.cleanBucketId !== "keep" ||
+        item.privacy !== "normal" ||
+        item.status === "queued"),
   ).length;
 }
 

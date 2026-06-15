@@ -9,7 +9,10 @@ import {
 import { BucketCard } from "../components/BucketCard";
 import { Mascot } from "../components/Mascot";
 import { PhotoTile } from "../components/PhotoTile";
-import { cleanBucketMatches } from "../features/album/classifier";
+import {
+  cleanBucketMatches,
+  isCleanTabItem,
+} from "../features/album/classifier";
 import {
   CLEAN_BUCKETS,
   type ClassifiedItem,
@@ -44,7 +47,7 @@ export function CleanPage({
   onSave,
   onIgnore,
 }: CleanPageProps) {
-  const candidates = items.filter((item) => item.status !== "saved");
+  const candidates = items.filter(isCleanTabItem);
   const filtered =
     selectedBucket === "all"
       ? candidates

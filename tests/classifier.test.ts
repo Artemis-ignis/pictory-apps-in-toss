@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   classifyAlbumItems,
   classifyItem,
+  cleanBucketMatches,
   hammingDistance,
+  isCleanTabItem,
 } from "../src/features/album/classifier";
 import type { AlbumItem } from "../src/features/album/types";
 
@@ -72,6 +74,26 @@ describe("classifier", () => {
   it("calculates hamming distance for duplicate grouping", () => {
     expect(hammingDistance("1010", "1001")).toBe(2);
     expect(hammingDistance("1010", "1010")).toBe(0);
+  });
+
+  it("removes saved and ignored items from clean candidates", () => {
+    const item = classifyItem({
+      ...baseItem,
+      id: "candidate",
+      fileName: "receipt.png",
+      hints: ["영수증"],
+    });
+
+    expect(isCleanTabItem(item)).toBe(true);
+    expect(cleanBucketMatches(item, "needsReview")).toBe(true);
+    expect(isCleanTabItem({ ...item, status: "saved" })).toBe(false);
+    expect(
+      cleanBucketMatches({ ...item, status: "saved" }, "needsReview"),
+    ).toBe(false);
+    expect(isCleanTabItem({ ...item, status: "ignored" })).toBe(false);
+    expect(
+      cleanBucketMatches({ ...item, status: "ignored" }, "needsReview"),
+    ).toBe(false);
   });
 
   it("keeps sensitive priority above duplicate grouping", async () => {

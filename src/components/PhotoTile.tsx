@@ -17,9 +17,12 @@ export function PhotoTile({
   onIgnore,
 }: PhotoTileProps) {
   const sensitive = item.privacy === "sensitive";
+  const statusLabel = getStatusLabel(item.status);
 
   return (
-    <article className={`photo-tile ${compact ? "is-compact" : ""}`}>
+    <article
+      className={`photo-tile is-${item.status} ${compact ? "is-compact" : ""}`}
+    >
       <div className={`photo-frame ${sensitive ? "is-sensitive" : ""}`}>
         {item.dataUri ? (
           <img src={item.dataUri} alt={item.fileName ?? "사진"} />
@@ -27,9 +30,12 @@ export function PhotoTile({
         {sensitive ? <span className="sensitive-mask">민감</span> : null}
       </div>
       <div className="photo-info">
-        <strong>
-          {item.fileName?.replace(/^sample-/, "") ?? item.categoryId}
-        </strong>
+        <div className="photo-title-row">
+          <strong>
+            {item.fileName?.replace(/^sample-/, "") ?? item.categoryId}
+          </strong>
+          {statusLabel ? <em>{statusLabel}</em> : null}
+        </div>
         <span>{item.reasons.join(" · ")}</span>
       </div>
       {!compact ? (
@@ -38,6 +44,8 @@ export function PhotoTile({
             type="button"
             onClick={() => onSave?.(item.id)}
             aria-label="보관"
+            aria-pressed={item.status === "saved"}
+            className={item.status === "saved" ? "is-active" : ""}
           >
             <Archive size={16} />
           </button>
@@ -45,6 +53,8 @@ export function PhotoTile({
             type="button"
             onClick={() => onIgnore?.(item.id)}
             aria-label="제외"
+            aria-pressed={item.status === "ignored"}
+            className={item.status === "ignored" ? "is-active" : ""}
           >
             <Check size={16} />
           </button>
@@ -52,6 +62,8 @@ export function PhotoTile({
             type="button"
             onClick={() => onQueue?.(item.id)}
             aria-label="정리 후보"
+            aria-pressed={item.status === "queued"}
+            className={item.status === "queued" ? "is-active" : ""}
           >
             <Trash2 size={16} />
           </button>
@@ -59,4 +71,17 @@ export function PhotoTile({
       ) : null}
     </article>
   );
+}
+
+function getStatusLabel(status: ClassifiedItem["status"]) {
+  if (status === "saved") {
+    return "보관";
+  }
+  if (status === "queued") {
+    return "정리";
+  }
+  if (status === "ignored") {
+    return "제외";
+  }
+  return "";
 }

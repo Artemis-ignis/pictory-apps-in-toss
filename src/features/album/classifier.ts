@@ -1,4 +1,5 @@
 import { analyzeImageSource, emptySignals } from "./imageSignals";
+import { inferVisualHints } from "./visualClassifier";
 import type {
   AlbumItem,
   ClassifiedItem,
@@ -78,8 +79,19 @@ export async function classifyAlbumItems(
 ): Promise<ClassifiedItem[]> {
   const classified = await Promise.all(
     items.map(async (item) => {
-      const signals = item.signals ?? (await analyzeImageSource(item.dataUri));
-      return classifyItem({ ...item, signals: signals ?? item.signals });
+      const [signals, visualHints] = await Promise.all([
+        item.signals ?? analyzeImageSource(item.dataUri),
+        inferVisualHints(item.dataUri),
+      ]);
+      const hints = Array.from(
+        new Set([...(item.hints ?? []), ...visualHints]),
+      );
+
+      return classifyItem({
+        ...item,
+        hints,
+        signals: signals ?? item.signals,
+      });
     }),
   );
 
@@ -180,6 +192,10 @@ export function cleanBucketMatches(
   item: ClassifiedItem,
   bucketId: CleanBucketId,
 ) {
+  if (!isCleanTabItem(item)) {
+    return false;
+  }
+
   const joinedSignals = [item.fileName, ...(item.hints ?? []), ...item.reasons]
     .filter(Boolean)
     .join(" ")
@@ -197,7 +213,7 @@ export function cleanBucketMatches(
           !/screenshot|screen|캡처/.test(joinedSignals))
       );
     case "needsReview":
-      return item.status !== "saved";
+      return true;
     case "similar":
       if (item.source === "sample") {
         return !cleanBucketMatches(item, "dark");
@@ -213,6 +229,10 @@ export function cleanBucketMatches(
     case "keep":
       return item.cleanBucketId === "keep";
   }
+}
+
+export function isCleanTabItem(item: ClassifiedItem) {
+  return item.status !== "saved" && item.status !== "ignored";
 }
 
 export function hammingDistance(a: string, b: string) {
@@ -240,14 +260,14 @@ function tokenize(item: AlbumItem) {
 
 function scoreCategories(tokens: string[], signals: ImageSignals) {
   const scores: Record<MapBucketId, number> = {
-    capture: 0.28,
-    document: 0.26,
+    capture: 0.24,
+    document: 0.24,
     receipt: 0.25,
     food: 0.24,
     place: 0.24,
     people: 0.24,
     coupon: 0.24,
-    memory: 0.24,
+    memory: 0.26,
   };
 
   for (const bucketId of Object.keys(TOKEN_RULES) as MapBucketId[]) {
@@ -256,6 +276,8 @@ function scoreCategories(tokens: string[], signals: ImageSignals) {
     );
     scores[bucketId] += Math.min(0.52, matches.length * 0.17);
   }
+
+  boostFileNameToken(scores, tokens);
 
   if (signals.textLineScore > 0.22 && signals.edgeDensity > 0.2) {
     scores.document += 0.21;
@@ -291,6 +313,22 @@ function scoreCategories(tokens: string[], signals: ImageSignals) {
   }
 
   return scores;
+}
+
+function boostFileNameToken(
+  scores: Record<MapBucketId, number>,
+  tokens: string[],
+) {
+  if (tokens.some((value) => /receipt|영수증|invoice/.test(value))) {
+    scores.receipt += 0.38;
+  }
+  if (
+    tokens.some((value) =>
+      /screenshot|screen|capture|캡처|스크린샷/.test(value),
+    )
+  ) {
+    scores.capture += 0.38;
+  }
 }
 
 function scoreSensitivity(
