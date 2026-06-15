@@ -18,6 +18,7 @@ const env = {
   PICTORY_AI_FREE_MONTHLY_QUOTA: "0",
   PICTORY_AI_PLUS_MONTHLY_QUOTA: "500",
   PICTORY_AI_PRO_MONTHLY_QUOTA: "2000",
+  PICTORY_AI_DAILY_LIMIT_PER_USER: "1000",
 };
 
 describe("pictoryUsageLedger", () => {
@@ -91,16 +92,42 @@ describe("pictoryUsageLedger", () => {
     expect(nextMinute?.account.monthlyServerAiUsed).toBe(4);
   });
 
+  it("enforces per-user server AI daily limits", () => {
+    const limitedEnv = {
+      ...env,
+      PICTORY_AI_DAILY_LIMIT_PER_USER: "3",
+      PICTORY_AI_RATE_LIMIT_PER_MINUTE: "10",
+    };
+    const account = createNewUsageAccount("user-1", "plus", now());
+    const first = debitServerAiQuota(account, 2, limitedEnv, now());
+    const blocked = debitServerAiQuota(first!.account, 2, limitedEnv, now());
+    const nextDay = debitServerAiQuota(
+      first!.account,
+      2,
+      limitedEnv,
+      new Date("2026-06-16T00:00:00.000Z"),
+    );
+
+    expect(first?.account.serverAiDailyWindowStartedAt).toBe("2026-06-15");
+    expect(first?.account.serverAiDailyUsed).toBe(2);
+    expect(blocked).toBeNull();
+    expect(nextDay?.account.serverAiDailyWindowStartedAt).toBe("2026-06-16");
+    expect(nextDay?.account.serverAiDailyUsed).toBe(2);
+  });
+
   it("refunds reserved usage after a failed upstream classification", () => {
     const consumed = {
       ...createNewUsageAccount("user-1", "plus", now()),
       monthlyServerAiUsed: 5,
       serverAiCredits: 2,
+      serverAiDailyWindowStartedAt: "2026-06-15",
+      serverAiDailyUsed: 5,
     };
     const refunded = refundServerAiQuota(consumed, 3);
 
     expect(refunded.monthlyServerAiUsed).toBe(2);
     expect(refunded.serverAiCredits).toBe(2);
+    expect(refunded.serverAiDailyUsed).toBe(2);
   });
 
   it("normalizes monthly usage when the month changes", () => {

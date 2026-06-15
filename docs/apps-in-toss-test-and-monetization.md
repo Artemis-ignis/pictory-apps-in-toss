@@ -44,6 +44,7 @@ PICTORY_AI_FREE_MONTHLY_QUOTA=0
 PICTORY_AI_AD_CREDIT_QUOTA=100
 PICTORY_AI_PLUS_MONTHLY_QUOTA=500
 PICTORY_AI_PRO_MONTHLY_QUOTA=2000
+PICTORY_AI_DAILY_LIMIT_PER_USER=300
 PICTORY_AI_RATE_LIMIT_PER_MINUTE=30
 PICTORY_AI_LOG_RAW_IMAGES=false
 ```
@@ -212,7 +213,8 @@ flowchart LR
 - 광고를 본 뒤 받은 크레딧이 있을 때 서버 AI 정밀 분류를 열어준다.
 - 유료 사용자는 월 제공량 안에서 서버 AI 정밀 분류를 제공한다.
 - 같은 사진은 perceptual hash 기준으로 중복 과금하지 않는다.
-- 서버는 사용자별 월 한도와 분당 요청 한도를 강제하고, AI 호출 전에 quota를 예약한다.
+- 서버는 사용자별 월/일/분당 한도를 강제하고, AI 호출 전에 quota를 예약한다.
+- `PICTORY_AI_DAILY_LIMIT_PER_USER`는 사용자별 일일 서버 AI 이미지 수 한도다.
 - `PICTORY_AI_RATE_LIMIT_PER_MINUTE`는 사용자별 분당 서버 AI 이미지 수 한도다.
 - AI 호출 실패 시 예약 quota를 환불하되, 성공한 호출은 서버 원장에서 차감한다.
 - 서버 로그에는 base64 원본, 신분증, 카드번호, 계좌번호를 남기지 않는다.
@@ -384,6 +386,7 @@ Pro:
 - 무료 사용자는 서버 원장에 광고 보상 크레딧이 있을 때만 서버 AI를 사용할 수 있다.
 - Plus/Pro 사용자는 활성 구독과 월 quota 안에서 서버 AI를 사용할 수 있다.
 - 유료 월 quota를 먼저 쓰고, 부족분만 광고 크레딧에서 차감한다.
+- 사용자별 일일 한도에 걸리면 월 quota가 남아도 서버 AI 호출을 막아 비용 스파이크를 제한한다.
 - 광고 보상 이벤트 ID는 한 번만 지급해 중복 지급을 막는다.
 - 만료된 구독은 유료 quota를 받지 못하고, 남은 광고 크레딧이 있을 때만 credit 권한으로 서버 AI를 사용할 수 있다.
 - HTTP 어댑터는 `Cache-Control: no-store`를 반환해 분류 결과와 민감 힌트가 중간 캐시에 남지 않게 한다.

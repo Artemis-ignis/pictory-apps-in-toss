@@ -16,6 +16,8 @@ export interface PictoryUsageAccount {
   usageMonth: string;
   monthlyServerAiUsed: number;
   serverAiCredits: number;
+  serverAiDailyWindowStartedAt?: string;
+  serverAiDailyUsed?: number;
   serverAiRateWindowStartedAt?: string;
   serverAiRateWindowUsed?: number;
   grantedRewardIds: string[];
@@ -59,6 +61,7 @@ export const DEFAULT_SERVER_AI_CREDITS = {
   plusMonthlyQuota: 500,
   proMonthlyQuota: 2000,
   maxStoredCredits: 3000,
+  dailyLimitPerUser: 300,
   rateLimitPerMinute: 40,
 } as const;
 
@@ -92,9 +95,10 @@ export function createPictoryUsageLedgerDeps({
       );
       return account
         ? toQuota(
-            withEntitlementPlan(normalizeUsageMonth(account, now()), context),
-            env,
-          )
+          withEntitlementPlan(normalizeUsageMonth(account, now()), context),
+          env,
+          now(),
+        )
         : null;
     },
     consumeQuota: async (context) => {
@@ -240,6 +244,7 @@ export function toEntitlement(
       ? normalizeUsageMonth(account, date)
       : { ...normalizeUsageMonth(account, date), planId: "free" },
     env,
+    date,
   );
   if (!paid && quota.remaining <= 0) {
     return null;
@@ -256,13 +261,15 @@ export function toEntitlement(
 export function toQuota(
   account: PictoryUsageAccount,
   env: Record<string, string | undefined> = process.env,
+  date = new Date(),
 ): PictoryClassifyQuota {
   const monthlyQuota = getMonthlyServerAiQuota(account.planId, env);
   const monthlyLeft = Math.max(0, monthlyQuota - account.monthlyServerAiUsed);
   const creditLeft = Math.max(0, account.serverAiCredits);
+  const dailyLeft = getServerAiDailyLimitLeft(account, env, date);
 
   return {
-    remaining: monthlyLeft + creditLeft,
+    remaining: Math.min(monthlyLeft + creditLeft, dailyLeft),
   };
 }
 
@@ -287,19 +294,29 @@ export function debitServerAiQuota(
     monthlyServerAiUsed: account.monthlyServerAiUsed + monthlyUse,
     serverAiCredits: account.serverAiCredits - creditUse,
   };
-  const nextAccount = reserveServerAiRateLimit(
+  const dailyReservedAccount = reserveServerAiDailyLimit(
     debitedAccount,
     requested,
     env,
     date,
   );
-  if (!nextAccount) {
+  if (!dailyReservedAccount) {
+    return null;
+  }
+
+  const rateReservedAccount = reserveServerAiRateLimit(
+    dailyReservedAccount,
+    requested,
+    env,
+    date,
+  );
+  if (!rateReservedAccount) {
     return null;
   }
 
   return {
-    account: nextAccount,
-    quota: toQuota(nextAccount, env),
+    account: rateReservedAccount,
+    quota: toQuota(rateReservedAccount, env, date),
   };
 }
 
@@ -318,6 +335,10 @@ export function refundServerAiQuota(
       DEFAULT_SERVER_AI_CREDITS.maxStoredCredits,
       account.serverAiCredits + creditRefund,
     ),
+    serverAiDailyUsed:
+      account.serverAiDailyUsed == null
+        ? undefined
+        : Math.max(0, account.serverAiDailyUsed - requested),
     usageMonth: account.usageMonth || currentUsageMonth(),
   };
 }
@@ -351,6 +372,15 @@ export function getServerAiRateLimitPerMinute(
   return readIntegerEnv(
     env.PICTORY_AI_RATE_LIMIT_PER_MINUTE,
     DEFAULT_SERVER_AI_CREDITS.rateLimitPerMinute,
+  );
+}
+
+export function getServerAiDailyLimitPerUser(
+  env: Record<string, string | undefined> = process.env,
+) {
+  return readIntegerEnv(
+    env.PICTORY_AI_DAILY_LIMIT_PER_USER,
+    DEFAULT_SERVER_AI_CREDITS.dailyLimitPerUser,
   );
 }
 
@@ -406,6 +436,48 @@ function preserveAccountPlan(
   };
 }
 
+function getServerAiDailyLimitLeft(
+  account: PictoryUsageAccount,
+  env: Record<string, string | undefined>,
+  date = new Date(),
+) {
+  const limit = getServerAiDailyLimitPerUser(env);
+  const windowStartedAt = currentDayWindow(date);
+  const used =
+    account.serverAiDailyWindowStartedAt === windowStartedAt
+      ? account.serverAiDailyUsed ?? 0
+      : 0;
+  return Math.max(0, limit - used);
+}
+
+function reserveServerAiDailyLimit(
+  account: PictoryUsageAccount,
+  count: number,
+  env: Record<string, string | undefined>,
+  date: Date,
+): PictoryUsageAccount | null {
+  if (count <= 0) {
+    return account;
+  }
+
+  const limit = getServerAiDailyLimitPerUser(env);
+  const windowStartedAt = currentDayWindow(date);
+  const windowUsed =
+    account.serverAiDailyWindowStartedAt === windowStartedAt
+      ? account.serverAiDailyUsed ?? 0
+      : 0;
+
+  if (windowUsed + count > limit) {
+    return null;
+  }
+
+  return {
+    ...account,
+    serverAiDailyWindowStartedAt: windowStartedAt,
+    serverAiDailyUsed: windowUsed + count,
+  };
+}
+
 function reserveServerAiRateLimit(
   account: PictoryUsageAccount,
   count: number,
@@ -432,6 +504,10 @@ function reserveServerAiRateLimit(
     serverAiRateWindowStartedAt: windowStartedAt,
     serverAiRateWindowUsed: windowUsed + count,
   };
+}
+
+function currentDayWindow(date: Date) {
+  return date.toISOString().slice(0, 10);
 }
 
 function currentRateWindow(date: Date) {

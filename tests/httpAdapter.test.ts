@@ -40,6 +40,7 @@ describe("pictoryHttpAdapter", () => {
       env: {
         PICTORY_SERVER_SECRET: "server-secret",
         PICTORY_AI_PLUS_MONTHLY_QUOTA: "500",
+        PICTORY_AI_DAILY_LIMIT_PER_USER: "500",
       },
     });
 
