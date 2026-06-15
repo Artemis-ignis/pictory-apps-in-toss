@@ -15,6 +15,7 @@ export function validatePictoryRuntimeEnv(
     }
   };
 
+  require(value("NODE_ENV") === "production", "NODE_ENV must be production.");
   require(
     value("PICTORY_SERVER_SECRET").length >= 32,
     "PICTORY_SERVER_SECRET must be at least 32 chars.",

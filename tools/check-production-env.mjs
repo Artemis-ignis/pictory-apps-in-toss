@@ -13,6 +13,7 @@ const requiredKeys = [
   "VITE_PICTORY_REWARD_ENDPOINT",
   "VITE_PICTORY_ENTITLEMENT_ENDPOINT",
   "VITE_PICTORY_DELETE_ENDPOINT",
+  "NODE_ENV",
   "PICTORY_SERVER_SECRET",
   "PICTORY_SESSION_SECRET",
   "PICTORY_PLUS_SUBSCRIPTION_SKU",
@@ -74,6 +75,10 @@ export function validateProductionEnv(env, { cwd = rootDir } = {}) {
     add(!isPlaceholder(value(key)), `${key} is not a placeholder`);
   }
 
+  add(
+    value("NODE_ENV") === "production",
+    "NODE_ENV is production",
+  );
   add(
     value("VITE_TOSS_REWARDED_AD_GROUP_ID") !== TEST_REWARDED_AD_ID,
     "rewarded ad id is not the Apps-in-Toss test id",

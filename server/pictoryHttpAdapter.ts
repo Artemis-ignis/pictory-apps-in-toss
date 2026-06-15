@@ -97,6 +97,10 @@ export function resolveSubjectIdFromHeaders(
   context: PictoryClassifyRequestContext,
   env: Record<string, string | undefined> = process.env,
 ) {
+  if (!canResolveSubjectIdFromHeaders(env)) {
+    return null;
+  }
+
   const configuredSecret = env.PICTORY_SERVER_SECRET?.trim();
   const requestSecret = context.headers["x-pictory-server-secret"]?.trim();
   if (!configuredSecret || requestSecret !== configuredSecret) {
@@ -105,6 +109,12 @@ export function resolveSubjectIdFromHeaders(
 
   const subjectId = context.headers["x-pictory-subject-id"]?.trim();
   return subjectId || null;
+}
+
+export function canResolveSubjectIdFromHeaders(
+  env: Record<string, string | undefined> = process.env,
+) {
+  return env.NODE_ENV !== "production";
 }
 
 export function resolveSubjectIdFromTrustedRequest(

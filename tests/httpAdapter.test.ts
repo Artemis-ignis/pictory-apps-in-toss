@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createPictoryClassifyHttpHandler } from "../server/pictoryHttpAdapter";
+import { createSignedPictorySessionToken } from "../server/pictorySessionAuth";
 import {
   createNewUsageAccount,
   type PictoryUsageAccount,
@@ -119,6 +120,62 @@ describe("pictoryHttpAdapter", () => {
 
     expect(response.status).toBe(402);
     expect(JSON.parse(response.body).error.code).toBe("payment_required");
+  });
+
+  it("ignores trusted subject headers in production", async () => {
+    const classifyItems = vi.fn(async () => []);
+    const handler = createPictoryClassifyHttpHandler({
+      store: createMemoryStore(createNewUsageAccount("user-1", "plus")),
+      classifyItems,
+      env: {
+        NODE_ENV: "production",
+        PICTORY_SERVER_SECRET: "server-secret",
+        PICTORY_AI_PLUS_MONTHLY_QUOTA: "500",
+      },
+    });
+
+    const response = await handler({
+      method: "POST",
+      headers: {
+        "x-pictory-server-secret": "server-secret",
+        "x-pictory-subject-id": "user-1",
+      },
+      body: JSON.stringify(classifyBody),
+    });
+
+    expect(response.status).toBe(402);
+    expect(JSON.parse(response.body).error.code).toBe("payment_required");
+    expect(classifyItems).not.toHaveBeenCalled();
+  });
+
+  it("uses signed sessions for production classify requests", async () => {
+    const sessionSecret = "session-secret";
+    const token = createSignedPictorySessionToken(
+      { sub: "user-1", exp: 4_000_000_000, aud: "pictory" },
+      sessionSecret,
+    );
+    const store = createMemoryStore(createNewUsageAccount("user-1", "plus"));
+    const handler = createPictoryClassifyHttpHandler({
+      store,
+      classifyItems: vi.fn(async () => []),
+      env: {
+        NODE_ENV: "production",
+        PICTORY_SESSION_SECRET: sessionSecret,
+        PICTORY_SESSION_AUDIENCE: "pictory",
+        PICTORY_AI_PLUS_MONTHLY_QUOTA: "500",
+      },
+    });
+
+    const response = await handler({
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(classifyBody),
+    });
+
+    expect(response.status).toBe(200);
+    expect((await store.readAccount("user-1"))?.monthlyServerAiUsed).toBe(1);
   });
 
   it("supports injected subject resolution for real auth providers", async () => {

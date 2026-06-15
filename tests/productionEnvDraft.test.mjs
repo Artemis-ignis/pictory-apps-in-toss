@@ -19,6 +19,7 @@ describe("production env draft writer", () => {
     });
     const env = parseEnvText(draft);
 
+    expect(env.get("NODE_ENV")).toBe("production");
     expect(env.get("PICTORY_SERVER_SECRET")).toHaveLength(43);
     expect(env.get("PICTORY_SESSION_SECRET")).toHaveLength(43);
     expect(env.get("PICTORY_SERVER_SECRET")).not.toBe(

@@ -71,6 +71,7 @@ VITE_PICTORY_CLASSIFY_ENDPOINT=https://api.pictory.app/pictory/classify
 VITE_PICTORY_REWARD_ENDPOINT=https://api.pictory.app/pictory/reward
 VITE_PICTORY_ENTITLEMENT_ENDPOINT=https://api.pictory.app/pictory/entitlement
 VITE_PICTORY_DELETE_ENDPOINT=https://api.pictory.app/pictory/account
+NODE_ENV=production
 PICTORY_SERVER_SECRET=${"s".repeat(40)}
 PICTORY_SESSION_SECRET=${"t".repeat(40)}
 PICTORY_PLUS_SUBSCRIPTION_SKU=ait.plus.monthly

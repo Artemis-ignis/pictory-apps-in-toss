@@ -55,6 +55,7 @@ function checkEnvExample() {
     "VITE_PICTORY_DELETE_ENDPOINT",
   ];
   const requiredServerEnv = [
+    "NODE_ENV",
     "PICTORY_SERVER_SECRET",
     "PICTORY_SESSION_SECRET",
     "PICTORY_PLUS_SUBSCRIPTION_SKU",
@@ -108,6 +109,10 @@ function checkEnvExample() {
       env.get("VITE_PICTORY_DELETE_ENDPOINT") ?? "",
     ),
     ".env.example delete endpoint is a placeholder URL",
+  );
+  record(
+    env.get("NODE_ENV") === "production",
+    ".env.example sets production server NODE_ENV",
   );
   record(
     /^replace_with_/.test(env.get("PICTORY_SERVER_SECRET") ?? ""),

@@ -23,6 +23,7 @@ describe("pictory runtime env guard", () => {
   it("blocks unsafe production server startup values", () => {
     const result = validatePictoryRuntimeEnv({
       ...validEnv(),
+      NODE_ENV: "development",
       PICTORY_SERVER_SECRET: "short",
       PICTORY_SESSION_SECRET: "short",
       PICTORY_REWARD_REQUIRE_NATIVE_EVENT: "false",
@@ -39,6 +40,7 @@ describe("pictory runtime env guard", () => {
     expect(result.ok).toBe(false);
     expect(result.issues).toEqual(
       expect.arrayContaining([
+        "NODE_ENV must be production.",
         "PICTORY_SERVER_SECRET must be at least 32 chars.",
         "PICTORY_REWARD_REQUIRE_NATIVE_EVENT must be true.",
         "PICTORY_AI_FREE_MONTHLY_QUOTA must be 0.",
@@ -54,6 +56,7 @@ describe("pictory runtime env guard", () => {
 
 function validEnv() {
   return {
+    NODE_ENV: "production",
     PICTORY_SERVER_SECRET: "s".repeat(40),
     PICTORY_SESSION_SECRET: "t".repeat(40),
     PICTORY_REWARD_REQUIRE_NATIVE_EVENT: "true",

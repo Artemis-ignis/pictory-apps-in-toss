@@ -19,6 +19,7 @@ VITE_PICTORY_REWARD_ENDPOINT=https://your-api.example.com/pictory/reward
 VITE_PICTORY_ENTITLEMENT_ENDPOINT=https://your-api.example.com/pictory/entitlement
 VITE_PICTORY_DELETE_ENDPOINT=https://your-api.example.com/pictory/account
 
+NODE_ENV=production
 PICTORY_SERVER_SECRET=${serverSecret}
 PICTORY_SESSION_SECRET=${sessionSecret}
 PICTORY_PLUS_SUBSCRIPTION_SKU=replace_with_toss_plus_subscription_sku

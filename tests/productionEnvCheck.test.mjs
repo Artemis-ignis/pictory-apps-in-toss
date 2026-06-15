@@ -22,6 +22,7 @@ VITE_PICTORY_CLASSIFY_ENDPOINT=https://api.pictory.app/pictory/classify
 VITE_PICTORY_REWARD_ENDPOINT=https://api.pictory.app/pictory/reward
 VITE_PICTORY_ENTITLEMENT_ENDPOINT=https://api.pictory.app/pictory/entitlement
 VITE_PICTORY_DELETE_ENDPOINT=https://api.pictory.app/pictory/account
+NODE_ENV=production
 PICTORY_SERVER_SECRET=${"s".repeat(40)}
 PICTORY_SESSION_SECRET=${"t".repeat(40)}
 PICTORY_PLUS_SUBSCRIPTION_SKU=ait.plus.monthly
@@ -58,6 +59,7 @@ VITE_PICTORY_CLASSIFY_ENDPOINT=https://your-api.example.com/pictory/classify
 VITE_PICTORY_REWARD_ENDPOINT=http://localhost:8787/pictory/reward
 VITE_PICTORY_ENTITLEMENT_ENDPOINT=https://billing.pictory.app/pictory/entitlement
 VITE_PICTORY_DELETE_ENDPOINT=https://api.pictory.app/pictory/delete
+NODE_ENV=development
 PICTORY_SERVER_SECRET=short
 PICTORY_SESSION_SECRET=short
 PICTORY_PLUS_SUBSCRIPTION_SKU=server-plus
@@ -92,6 +94,7 @@ PICTORY_SKIP_RUNTIME_ENV_CHECK=true
         "Plus and Pro SKUs differ",
         "client API endpoints share one HTTPS origin",
         "delete endpoint path is /pictory/account",
+        "NODE_ENV is production",
         "OPENAI_API_KEY is not a placeholder",
         "raw image logging is disabled",
         "free server AI quota is zero",
