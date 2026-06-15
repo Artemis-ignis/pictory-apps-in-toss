@@ -1,5 +1,9 @@
 import { Archive, Check, Trash2 } from "lucide-react";
-import type { ClassifiedItem } from "../features/album/types";
+import {
+  CLEAN_BUCKETS,
+  MAP_BUCKETS,
+  type ClassifiedItem,
+} from "../features/album/types";
 
 interface PhotoTileProps {
   item: ClassifiedItem;
@@ -30,6 +34,8 @@ export function PhotoTile({
       ? "민감"
       : "확인";
   const statusLabel = getStatusLabel(item.status);
+  const title = getPhotoTitle(item);
+  const subtitle = getPhotoSubtitle(item);
 
   return (
     <article
@@ -53,12 +59,10 @@ export function PhotoTile({
         </div>
         <div className="photo-info">
           <div className="photo-title-row">
-            <strong>
-              {item.fileName?.replace(/^sample-/, "") ?? item.categoryId}
-            </strong>
+            <strong>{title}</strong>
             {statusLabel ? <em>{statusLabel}</em> : null}
           </div>
-          <span>{item.reasons.join(" · ")}</span>
+          <span>{subtitle}</span>
         </div>
       </button>
       {!compact ? (
@@ -94,6 +98,28 @@ export function PhotoTile({
       ) : null}
     </article>
   );
+}
+
+function getPhotoTitle(item: ClassifiedItem) {
+  const category = MAP_BUCKETS.find((bucket) => bucket.id === item.categoryId);
+  const cleanBucket = CLEAN_BUCKETS.find(
+    (bucket) => bucket.id === item.cleanBucketId,
+  );
+
+  if (item.privacy === "sensitive" || item.cleanBucketId === "sensitive") {
+    return "민감정보 후보";
+  }
+
+  return cleanBucket?.id === "needsReview"
+    ? `${category?.shortLabel ?? "사진"} 확인 필요`
+    : `${category?.shortLabel ?? "사진"} 사진`;
+}
+
+function getPhotoSubtitle(item: ClassifiedItem) {
+  const summary = [item.periodLabel, item.reasons[0]].filter(Boolean);
+  return summary.length > 0
+    ? summary.join(" · ")
+    : (item.fileName?.replace(/^sample-/, "") ?? "사진");
 }
 
 function getStatusLabel(status: ClassifiedItem["status"]) {

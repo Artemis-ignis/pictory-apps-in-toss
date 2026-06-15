@@ -1031,6 +1031,7 @@
   min-width: 0;
   font-size: 15px;
   font-weight: 950;
+  letter-spacing: 0;
 }
 
 .photo-title-row em {
@@ -1049,6 +1050,7 @@
   color: #758298;
   font-size: 12px;
   font-weight: 700;
+  letter-spacing: 0;
 }
 
 .photo-actions {
@@ -1142,28 +1144,35 @@
 }
 
 .detail-preview.is-protected img {
-  filter: blur(8px) saturate(0.62);
+  filter: blur(5px) saturate(0.72);
   transform: scale(1.04);
 }
 
 .detail-mask {
   position: absolute;
-  inset: 0;
-  display: grid;
-  place-content: center;
-  gap: 7px;
+  right: 12px;
+  bottom: 12px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 50px;
+  padding: 10px 12px;
+  border-radius: 16px;
   color: #ffffff;
-  background: rgba(7, 23, 53, 0.5);
+  background: rgba(7, 23, 53, 0.62);
+  box-shadow: 0 10px 20px rgba(7, 23, 53, 0.18);
   text-align: center;
 }
 
 .detail-mask strong {
-  font-size: 24px;
+  font-size: 16px;
   font-weight: 950;
 }
 
 .detail-mask span {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 850;
 }
 

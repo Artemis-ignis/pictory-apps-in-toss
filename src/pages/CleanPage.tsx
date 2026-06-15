@@ -115,19 +115,19 @@ export function CleanPage({
             type="button"
             className="soft-action"
             disabled={selectedIds.length === 0}
-            onClick={() => onApplyFolderStatus(selectedIds, "queued")}
+            onClick={() => onApplyFolderStatus(selectedIds, "saved")}
           >
-            <Trash2 size={16} />
-            <span>정리</span>
+            <Archive size={16} />
+            <span>보관</span>
           </button>
           <button
             type="button"
             className="soft-action"
             disabled={selectedIds.length === 0}
-            onClick={() => onApplyFolderStatus(selectedIds, "saved")}
+            onClick={() => onApplyFolderStatus(selectedIds, "queued")}
           >
-            <Archive size={16} />
-            <span>보관</span>
+            <Trash2 size={16} />
+            <span>정리</span>
           </button>
           <button
             type="button"

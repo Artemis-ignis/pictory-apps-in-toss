@@ -35,6 +35,7 @@ export function PhotoDetailPage({
     (bucket) => bucket.id === item.cleanBucketId,
   );
   const isSaved = item.status === "saved";
+  const fileName = item.fileName?.replace(/^sample-/, "");
 
   return (
     <main className="screen photo-detail-screen">
@@ -45,8 +46,10 @@ export function PhotoDetailPage({
         </button>
         <div>
           <p>검수</p>
-          <h1>{item.fileName?.replace(/^sample-/, "") ?? "사진"}</h1>
-          <span>{item.periodLabel}</span>
+          <h1>{getDetailTitle(item, category?.shortLabel)}</h1>
+          <span>
+            {[item.periodLabel, fileName].filter(Boolean).join(" · ")}
+          </span>
         </div>
       </section>
 
@@ -119,6 +122,16 @@ export function PhotoDetailPage({
       </section>
     </main>
   );
+}
+
+function getDetailTitle(item: ClassifiedItem, categoryLabel?: string) {
+  if (item.privacy === "sensitive" || item.cleanBucketId === "sensitive") {
+    return "민감정보 후보";
+  }
+
+  return item.cleanBucketId === "needsReview"
+    ? `${categoryLabel ?? "사진"} 확인 필요`
+    : `${categoryLabel ?? "사진"} 사진`;
 }
 
 function shouldProtectPreview(item: ClassifiedItem) {
