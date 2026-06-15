@@ -22,7 +22,7 @@ export function SavedPage({
         <div>
           <p>보관</p>
           <h1>다시 볼 것만 보관</h1>
-          <span>지도 기록도 함께 저장돼요</span>
+          <span>지도 기록도 같이 저장</span>
         </div>
         <Mascot variant="saved" />
       </section>

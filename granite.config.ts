@@ -5,7 +5,7 @@ export default defineConfig({
   brand: {
     displayName: "픽토리",
     primaryColor: "#2F80FF",
-    icon: "/pictory-icon.svg",
+    icon: "/pictory-icon.png",
   },
   web: {
     host: "localhost",

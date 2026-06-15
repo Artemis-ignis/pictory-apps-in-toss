@@ -24,7 +24,7 @@
 .screen-frame {
   height: calc(100svh - 78px);
   overflow-y: auto;
-  padding-bottom: 94px;
+  padding-bottom: 126px;
   scrollbar-width: none;
 }
 
@@ -57,9 +57,11 @@
 }
 
 .brand-icon {
-  width: 27px;
-  height: 27px;
-  border-radius: 10px;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  object-fit: cover;
+  box-shadow: 0 6px 14px rgba(47, 128, 255, 0.18);
 }
 
 .icon-button {
@@ -78,9 +80,9 @@
 
 .home-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 142px;
-  align-items: end;
-  min-height: 184px;
+  grid-template-columns: minmax(0, 1fr) 132px;
+  align-items: center;
+  min-height: 176px;
   padding-top: 12px;
 }
 
@@ -127,9 +129,8 @@
 }
 
 .mascot-hero {
-  width: 146px;
-  height: 146px;
-  animation: floaty 3.2s ease-in-out infinite;
+  width: 132px;
+  height: 132px;
 }
 
 .mascot-card {
@@ -140,22 +141,6 @@
 .mascot-empty {
   width: 88px;
   height: 88px;
-}
-
-@keyframes floaty {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-8px);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .mascot-hero {
-    animation: none;
-  }
 }
 
 .action-stack {
@@ -177,6 +162,21 @@
   font-size: 17px;
   font-weight: 900;
   letter-spacing: 0;
+  border: 1px solid rgba(47, 128, 255, 0.08);
+  box-shadow:
+    0 10px 18px rgba(24, 77, 150, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.76);
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    filter 160ms ease;
+}
+
+.primary-action:active,
+.soft-action:active,
+.danger-action:active {
+  transform: translateY(1px);
+  filter: brightness(0.98);
 }
 
 .primary-action {
@@ -184,7 +184,9 @@
   padding: 0 18px;
   color: #ffffff;
   background: var(--blue);
-  box-shadow: 0 14px 24px rgba(47, 128, 255, 0.24);
+  box-shadow:
+    0 14px 24px rgba(47, 128, 255, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.26);
 }
 
 .primary-action span {
@@ -194,7 +196,7 @@
 
 .soft-action {
   color: #1d65cb;
-  background: #eaf3ff;
+  background: linear-gradient(180deg, #f4f9ff 0%, #e7f1ff 100%);
 }
 
 .secondary-actions {
@@ -219,7 +221,7 @@
 
 .danger-action {
   color: #ff425f;
-  background: #fff0f2;
+  background: linear-gradient(180deg, #fff7f8 0%, #ffecef 100%);
 }
 
 .privacy-note,
@@ -247,9 +249,11 @@
 
 .metric-card {
   position: relative;
+  display: flex;
+  flex-direction: column;
   min-height: 118px;
   overflow: hidden;
-  padding: 12px 11px 10px;
+  padding: 12px 11px 12px;
   border: 1px solid var(--line);
   border-radius: 16px;
   background: #ffffff;
@@ -276,8 +280,8 @@
 .metric-card strong {
   display: block;
   margin-top: 4px;
-  font-size: 28px;
-  line-height: 1;
+  font-size: 25px;
+  line-height: 1.08;
   font-weight: 950;
   letter-spacing: 0;
 }
@@ -286,23 +290,26 @@
   display: block;
   margin-top: 2px;
   color: #76859a;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
+  line-height: 1.18;
+  word-break: keep-all;
 }
 
 .metric-bars {
-  position: absolute;
-  right: 8px;
-  bottom: 8px;
   display: flex;
+  width: 100%;
   align-items: end;
-  gap: 5px;
+  justify-content: space-between;
+  gap: 3px;
+  margin-top: auto;
+  padding-top: 6px;
 }
 
 .metric-bars i {
-  width: 8px;
+  width: 9px;
   border-radius: 6px 6px 0 0;
-  opacity: 0.42;
+  opacity: 0.38;
 }
 
 .metric-blue strong,
@@ -415,6 +422,7 @@
   color: var(--muted);
   font-size: 14px;
   font-weight: 850;
+  word-break: keep-all;
 }
 
 .map-hero {
@@ -430,7 +438,7 @@
 }
 
 .saved-hero > div {
-  flex: 0 1 180px;
+  flex: 0 1 188px;
 }
 
 .saved-hero .mascot-card {

@@ -4,7 +4,7 @@ export function AppHeader() {
   return (
     <header className="app-header">
       <div className="brand">
-        <img src="/pictory-icon.svg" alt="" className="brand-icon" />
+        <img src="/pictory-icon.png" alt="" className="brand-icon" />
         <strong>픽토리</strong>
       </div>
       <button className="icon-button" type="button" aria-label="알림">
