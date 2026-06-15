@@ -128,12 +128,26 @@ function App() {
 
   async function handleReward() {
     setScanMessage("광고 보상 확인 중이에요.");
-    const reward = await showRewardedScanAd();
+    const result = await showRewardedScanAd();
+
+    if (result.reward <= 0) {
+      const nextMessage =
+        result.source === "dismissed"
+          ? "광고를 끝까지 보면 스캔권이 지급돼요."
+          : "지금은 광고를 불러오지 못했어요. 잠시 후 다시 시도해주세요.";
+      setScanMessage(nextMessage);
+      return;
+    }
+
     setState((previous) => ({
       ...previous,
-      credits: Math.min(500, previous.credits + reward),
+      credits: Math.min(500, previous.credits + result.reward),
     }));
-    setScanMessage(`${reward}장 스캔권을 받았어요.`);
+    setScanMessage(
+      result.source === "localFallback"
+        ? `${result.reward}장 테스트 스캔권을 받았어요.`
+        : `${result.reward}장 스캔권을 받았어요.`,
+    );
   }
 
   function updateItemStatus(id: string, status: ClassifiedItem["status"]) {

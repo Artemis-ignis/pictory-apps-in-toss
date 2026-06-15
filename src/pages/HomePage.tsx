@@ -89,7 +89,7 @@ export function HomePage({
         <div className="secondary-actions">
           <button className="soft-action" type="button" onClick={onReward}>
             <Sparkles size={19} />
-            <span>광고 +100</span>
+            <span>광고 보기</span>
             {credits > 0 ? <b>{credits}</b> : null}
           </button>
           <button className="soft-action" type="button" onClick={onPick}>
