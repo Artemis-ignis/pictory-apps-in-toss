@@ -91,7 +91,7 @@ export function MapPage({
             onClick={() => onSelectFolder("all")}
           >
             <ArrowLeft size={19} />
-            <span>지도</span>
+            <span>{selectedCategoryFolder != null ? "종류별" : "기간별"}</span>
           </button>
           <div className={`folder-icon tone-${selectedFolderMeta.tone}`}>
             {selectedFolderMeta.icon}

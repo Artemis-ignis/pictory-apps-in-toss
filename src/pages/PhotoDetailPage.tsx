@@ -16,6 +16,7 @@ interface PhotoDetailPageProps {
   item: ClassifiedItem;
   onBack: () => void;
   onSave: (id: string) => void;
+  onUnsave: (id: string) => void;
   onQueue: (id: string) => void;
   onIgnore: (id: string) => void;
 }
@@ -24,6 +25,7 @@ export function PhotoDetailPage({
   item,
   onBack,
   onSave,
+  onUnsave,
   onQueue,
   onIgnore,
 }: PhotoDetailPageProps) {
@@ -32,6 +34,7 @@ export function PhotoDetailPage({
   const cleanBucket = CLEAN_BUCKETS.find(
     (bucket) => bucket.id === item.cleanBucketId,
   );
+  const isSaved = item.status === "saved";
 
   return (
     <main className="screen photo-detail-screen">
@@ -91,11 +94,11 @@ export function PhotoDetailPage({
       <section className="detail-actions" aria-label="사진 처리">
         <button
           type="button"
-          className={item.status === "saved" ? "is-active" : ""}
-          onClick={() => onSave(item.id)}
+          className={isSaved ? "is-active" : ""}
+          onClick={() => (isSaved ? onUnsave(item.id) : onSave(item.id))}
         >
           <Archive size={18} />
-          <span>보관</span>
+          <span>{isSaved ? "해제" : "보관"}</span>
         </button>
         <button
           type="button"

@@ -82,7 +82,7 @@ export function SavedPage({
             onClick={() => onSelectBucket("all")}
           >
             <ArrowLeft size={19} />
-            <span>보관함</span>
+            <span>보관 목록</span>
           </button>
           <div className={`folder-icon tone-${selectedBucketMeta.tone}`}>
             {icons[selectedBucketMeta.id] ?? <FolderOpen size={22} />}

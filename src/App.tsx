@@ -371,14 +371,16 @@ function App() {
 
   function handleTabChange(tabId: TabId) {
     setSelectedPhotoId(null);
-    if (tabId === "map") {
-      setSelectedMapFolder("all");
-    }
-    if (tabId === "clean") {
-      setSelectedCleanBucket("all");
-    }
-    if (tabId === "saved") {
-      setSelectedSavedBucket("all");
+    if (tabId === activeTab) {
+      if (tabId === "map") {
+        setSelectedMapFolder("all");
+      }
+      if (tabId === "clean") {
+        setSelectedCleanBucket("all");
+      }
+      if (tabId === "saved") {
+        setSelectedSavedBucket("all");
+      }
     }
     setActiveTab(tabId);
   }
@@ -463,6 +465,7 @@ function App() {
             item={selectedPhoto}
             onBack={() => setSelectedPhotoId(null)}
             onSave={(id) => updateItemStatus(id, "saved")}
+            onUnsave={(id) => updateItemStatus(id, "inbox")}
             onQueue={(id) => updateItemStatus(id, "queued")}
             onIgnore={(id) => updateItemStatus(id, "ignored")}
           />

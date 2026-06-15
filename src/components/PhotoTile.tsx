@@ -74,21 +74,21 @@ export function PhotoTile({
           </button>
           <button
             type="button"
-            onClick={() => onIgnore?.(item.id)}
-            aria-label="제외"
-            aria-pressed={item.status === "ignored"}
-            className={item.status === "ignored" ? "is-active" : ""}
-          >
-            <Check size={16} />
-          </button>
-          <button
-            type="button"
             onClick={() => onQueue?.(item.id)}
             aria-label="정리 후보"
             aria-pressed={item.status === "queued"}
             className={item.status === "queued" ? "is-active" : ""}
           >
             <Trash2 size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={() => onIgnore?.(item.id)}
+            aria-label="제외"
+            aria-pressed={item.status === "ignored"}
+            className={item.status === "ignored" ? "is-active" : ""}
+          >
+            <Check size={16} />
           </button>
         </div>
       ) : null}

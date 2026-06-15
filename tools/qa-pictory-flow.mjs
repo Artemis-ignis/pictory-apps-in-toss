@@ -152,6 +152,18 @@ async function runQa() {
 
     await clickBottomNav(page, "정리");
     await page.getByText("지울 후보만").waitFor();
+    await clickBottomNav(page, "지도");
+    await page
+      .locator(".folder-header")
+      .filter({ hasText: "기간 폴더" })
+      .waitFor();
+    const periodFolderPreservedAcrossTabs =
+      (await page
+        .locator(".folder-header")
+        .filter({ hasText: "기간 폴더" })
+        .count()) > 0;
+    await clickBottomNav(page, "정리");
+    await page.getByText("지울 후보만").waitFor();
     await page.getByRole("button", { name: /민감정보 후보/ }).click();
     await page.getByText("정리 폴더").waitFor();
     await page
@@ -203,6 +215,11 @@ async function runQa() {
     await waitForScreenTop(page);
     const savedPhotoDetailOpened =
       (await page.locator(".detail-actions button").count()) >= 3;
+    const savedDetailHasUnsave =
+      (await page
+        .locator(".detail-actions")
+        .getByRole("button", { name: /^해제$/ })
+        .count()) > 0;
     await page.screenshot({
       path: path.join(screenshotDir, "10-saved-photo-detail.png"),
     });
@@ -247,6 +264,7 @@ async function runQa() {
         homeShortcutOpened &&
         mapCategoryFolderOpened &&
         periodFolderOpened &&
+        periodFolderPreservedAcrossTabs &&
         cleanFolderOpened &&
         savedFolderOpened &&
         mapFolderActionsReady &&
@@ -255,6 +273,7 @@ async function runQa() {
         mapPhotoDetailOpened &&
         cleanPhotoDetailOpened &&
         savedPhotoDetailOpened &&
+        savedDetailHasUnsave &&
         detailProtectedMask &&
         dom.brokenImages === 0 &&
         dom.detailScreens >= 1 &&
@@ -270,6 +289,7 @@ async function runQa() {
         homeShortcutOpened,
         mapCategoryFolderOpened,
         periodFolderOpened,
+        periodFolderPreservedAcrossTabs,
         cleanFolderOpened,
         savedFolderOpened,
         mapFolderActionsReady,
@@ -278,6 +298,7 @@ async function runQa() {
         mapPhotoDetailOpened,
         cleanPhotoDetailOpened,
         savedPhotoDetailOpened,
+        savedDetailHasUnsave,
         detailProtectedMask,
       },
       dom,
