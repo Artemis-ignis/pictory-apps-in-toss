@@ -1,6 +1,9 @@
 import { createServer, type Server } from "node:http";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createPictoryNodeRequestListener } from "../server/pictoryNodeRuntime";
+import {
+  createPictoryNodeRequestListener,
+  shouldSkipRuntimeEnvCheck,
+} from "../server/pictoryNodeRuntime";
 import {
   createNewUsageAccount,
   type PictoryUsageAccount,
@@ -322,6 +325,21 @@ describe("pictoryNodeRuntime", () => {
 
     expect(missing.status).toBe(404);
     expect(tooLarge.status).toBe(413);
+  });
+
+  it("does not allow runtime env check skipping in production", () => {
+    expect(
+      shouldSkipRuntimeEnvCheck({
+        PICTORY_SKIP_RUNTIME_ENV_CHECK: "true",
+        NODE_ENV: "production",
+      }),
+    ).toBe(false);
+    expect(
+      shouldSkipRuntimeEnvCheck({
+        PICTORY_SKIP_RUNTIME_ENV_CHECK: "true",
+        NODE_ENV: "test",
+      }),
+    ).toBe(true);
   });
 });
 

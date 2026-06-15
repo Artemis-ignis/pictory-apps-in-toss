@@ -132,7 +132,7 @@ export function startPictoryNodeServer(
   options: PictoryNodeRuntimeOptions = {},
 ) {
   const env = options.env ?? processEnv;
-  if (env.PICTORY_SKIP_RUNTIME_ENV_CHECK !== "true") {
+  if (!shouldSkipRuntimeEnvCheck(env)) {
     assertPictoryRuntimeEnv(env);
   }
 
@@ -142,6 +142,15 @@ export function startPictoryNodeServer(
     console.log(`Pictory server listening on http://127.0.0.1:${port}`);
   });
   return server;
+}
+
+export function shouldSkipRuntimeEnvCheck(
+  env: Record<string, string | undefined>,
+) {
+  return (
+    env.PICTORY_SKIP_RUNTIME_ENV_CHECK === "true" &&
+    env.NODE_ENV !== "production"
+  );
 }
 
 function createDefaultFileStore(env: Record<string, string | undefined>) {
