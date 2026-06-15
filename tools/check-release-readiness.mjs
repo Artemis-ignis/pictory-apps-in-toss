@@ -201,6 +201,7 @@ function checkPackageScripts() {
     "lint",
     "build",
     "check:release",
+    "qa:server",
   ]) {
     record(
       Boolean(scripts[scriptName]),
@@ -225,6 +226,14 @@ function checkPackageScripts() {
     "server reward HTTP adapter exists",
   );
   record(
+    existsSync(projectPath("server", "pictoryNodeRuntime.ts")),
+    "server Node runtime exists",
+  );
+  record(
+    existsSync(projectPath("server", "pictoryFileUsageStore.ts")),
+    "server file usage store exists",
+  );
+  record(
     existsSync(projectPath("tests", "httpAdapter.test.ts")),
     "server classify HTTP adapter tests exist",
   );
@@ -235,6 +244,14 @@ function checkPackageScripts() {
   record(
     existsSync(projectPath("tests", "usageLedger.test.ts")),
     "server usage ledger tests exist",
+  );
+  record(
+    existsSync(projectPath("tests", "nodeRuntime.test.ts")),
+    "server Node runtime tests exist",
+  );
+  record(
+    existsSync(projectPath("tests", "fileUsageStore.test.ts")),
+    "server file usage store tests exist",
   );
 }
 

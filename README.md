@@ -72,11 +72,22 @@ PICTORY_AI_LOG_RAW_IMAGES=false
 - 서버 권위 광고 크레딧/유료 월 quota 원장 모듈
 - 배포 런타임에 붙일 수 있는 `POST /pictory/classify` HTTP 어댑터
 - 광고 보상 크레딧을 원장에 지급하는 `POST /pictory/reward` HTTP 어댑터
+- `health/classify/reward`를 실제 HTTP로 검증하는 Node 서버 런타임
 - 홈, 지도, 정리, 보관 4개 화면
 - 보상형 광고 연결부와 브라우저 fallback
 - 광고 보상 후 서버 원장 동기화 endpoint 연결부
 - 민감/확인 필요 후보 흐림 처리와 로컬 저장 상태 관리
 - 앱 재실행 후에도 최근 분류 지도, 보관 항목, 스캔 기록 복원
+
+## 서버 런타임 검증
+
+```bash
+npm run qa:server
+```
+
+`qa:server`는 Node HTTP 런타임으로 `/healthz`, `/pictory/reward`,
+`/pictory/classify`를 실제 포트에서 호출하고, 파일 원장 저장소가 이미지
+본문 없이 사용량만 저장하는지 확인합니다.
 
 ## 앨범 fallback 정책
 

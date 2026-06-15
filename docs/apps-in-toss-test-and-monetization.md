@@ -48,6 +48,7 @@ PICTORY_AI_LOG_RAW_IMAGES=false
 npm run test
 npm run typecheck
 npm run lint
+npm run qa:server
 npm run build
 npm run check:release
 ```
@@ -66,7 +67,7 @@ npm run check:release
 
 - [ ] `.env`에 실제 비밀값이 없고, 클라이언트 값은 `VITE_` 공개 값만 들어 있다.
 - [ ] 서버 OpenAI 키와 `PICTORY_SERVER_SECRET`은 서버 배포 환경에만 설정했다.
-- [ ] `npm run test`, `npm run typecheck`, `npm run lint`, `npm run build`, `npm run check:release`가 통과했다.
+- [ ] `npm run test`, `npm run typecheck`, `npm run lint`, `npm run qa:server`, `npm run build`, `npm run check:release`가 통과했다.
 - [ ] 업로드한 파일명이 최신 `pictory.ait`인지 확인했다.
 - [ ] 테스트 단말에서 토스 앱에 로그인했다.
 - [ ] 테스트 계정이 앱인토스 워크스페이스 멤버이고 만 19세 이상이다.
@@ -345,6 +346,11 @@ Pro:
 - 광고 보상 이벤트 ID는 한 번만 지급해 중복 지급을 막는다.
 - 만료된 구독은 유료 quota를 받지 못하고, 남은 광고 크레딧이 있을 때만 credit 권한으로 서버 AI를 사용할 수 있다.
 - HTTP 어댑터는 `Cache-Control: no-store`를 반환해 분류 결과와 민감 힌트가 중간 캐시에 남지 않게 한다.
+
+로컬 서버 검증은 `server/pictoryNodeRuntime.ts`가 담당한다. 이 런타임은
+`/healthz`, `/pictory/reward`, `/pictory/classify`를 Node HTTP 서버로
+노출하고, 기본값으로 `.pictory-ledger.json` 파일에 계정별 사용량만 저장한다.
+이 파일에는 원본 이미지나 base64 본문을 저장하지 않는다.
 
 ## 결제 권한 방어
 

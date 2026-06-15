@@ -21,6 +21,8 @@ playwright-report
 test-results
 temp_screenshots
 *.tsbuildinfo
+.pictory-ledger*.json
+server-data
 
 # Editor directories and files
 .vscode/*
