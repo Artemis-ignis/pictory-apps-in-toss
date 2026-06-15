@@ -77,21 +77,23 @@ export function canUseLocalPaidPlanPreview(runtime = getBillingRuntime()) {
 export function getEntitledPlanId(
   requestedPlanId: PlanId,
   runtime = getBillingRuntime(),
+  verifiedPlanId: PlanId = "free",
 ): PlanId {
   if (requestedPlanId === "free" || canUseLocalPaidPlanPreview(runtime)) {
     return requestedPlanId;
   }
 
-  return "free";
+  return verifiedPlanId === "free" ? "free" : verifiedPlanId;
 }
 
 export function getEntitledBillingState(
   state: PersistedPictoryState,
   runtime = getBillingRuntime(),
+  verifiedPlanId: PlanId = "free",
 ): PersistedPictoryState {
   return {
     ...state,
-    planId: getEntitledPlanId(state.planId, runtime),
+    planId: getEntitledPlanId(state.planId, runtime, verifiedPlanId),
   };
 }
 

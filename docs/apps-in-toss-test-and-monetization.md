@@ -234,3 +234,17 @@ Pro:
 - Plus/Pro 한도 미리보기는 `localhost`, `127.0.0.1`, `::1` 개발 환경에서만 허용한다.
 - 서버 AI 정밀 분류는 광고 크레딧이 있거나 검증된 유료 권한이 있을 때만 사용한다.
 - 결제 성공 후 상품 지급에 실패하면 사용자에게 실패를 알리고, 앱 재실행 시 미결 주문 복원을 먼저 처리해야 한다.
+
+현재 앱 코드는 앱인토스 구독 결제 SDK를 호출한다.
+
+```env
+VITE_PICTORY_PLUS_SUBSCRIPTION_SKU=콘솔_PLUS_구독_SKU
+VITE_PICTORY_PRO_SUBSCRIPTION_SKU=콘솔_PRO_구독_SKU
+```
+
+운영 동작:
+
+1. 앱 시작 시 저장된 `orderId`가 있으면 `getSubscriptionInfo`로 접근 가능 상태를 복원한다.
+2. 저장된 주문이 없거나 복원되지 않으면 `getPendingOrders`로 미지급 주문을 확인하고 `completeProductGrant`를 호출한다.
+3. Plus/Pro 버튼은 로컬 개발에서는 미리보기로 동작하고, 운영에서는 `createSubscriptionPurchaseOrder`로 구독 결제를 시작한다.
+4. `success` 이벤트와 상품 지급 콜백이 완료된 뒤에만 유료 플랜을 활성화한다.

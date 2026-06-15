@@ -140,9 +140,7 @@ export function CleanPage({
 
       <div className="section-heading">
         <h2>후보별</h2>
-        <button type="button" onClick={() => onSelectBucket("all")}>
-          {candidates.length}장
-        </button>
+        <span className="section-count">{candidates.length}장</span>
       </div>
 
       <section className="bucket-list">

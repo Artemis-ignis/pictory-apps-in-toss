@@ -28,6 +28,7 @@ import type {
   AlbumItem,
   ClassifiedItem,
   CleanBucketId,
+  MapFolderId,
   MapBucketId,
   PersistedPictoryState,
   PlanId,
@@ -46,6 +47,10 @@ import {
   getPlan,
   getScanAllowance,
 } from "./features/billing/plans";
+import {
+  purchaseSubscriptionPlan,
+  restoreIapEntitlement,
+} from "./features/billing/iap";
 
 function App() {
   const screenFrameRef = useRef<HTMLDivElement>(null);
@@ -55,11 +60,13 @@ function App() {
     useState<PersistedPictoryState>(defaultPictoryState);
   const [isHydrated, setIsHydrated] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+  const [verifiedPlanId, setVerifiedPlanId] = useState<PlanId>("free");
+  const restoreAttemptedRef = useRef(false);
   const [scanMessage, setScanMessage] = useState(
     "개발 환경이라도 실제 파일 선택으로 동작을 확인할 수 있어요.",
   );
-  const [selectedMapBucket, setSelectedMapBucket] = useState<
-    MapBucketId | "all"
+  const [selectedMapFolder, setSelectedMapFolder] = useState<
+    MapFolderId | "all"
   >("all");
   const [selectedCleanBucket, setSelectedCleanBucket] = useState<
     CleanBucketId | "all"
@@ -87,11 +94,47 @@ function App() {
 
   useEffect(() => {
     screenFrameRef.current?.scrollTo({ top: 0 });
-  }, [activeTab, selectedCleanBucket, selectedMapBucket, selectedSavedBucket]);
+  }, [activeTab, selectedCleanBucket, selectedMapFolder, selectedSavedBucket]);
 
   useEffect(() => {
     preloadRewardedScanAd().catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    if (
+      !isHydrated ||
+      restoreAttemptedRef.current ||
+      canUseLocalPaidPlanPreview(billingRuntime)
+    ) {
+      return;
+    }
+
+    restoreAttemptedRef.current = true;
+    restoreIapEntitlement(state).then((result) => {
+      if (result.status === "restored") {
+        setVerifiedPlanId(result.entitlement.planId);
+        setState((previous) => ({
+          ...previous,
+          planId: result.entitlement.planId,
+          iapEntitlement: result.entitlement,
+        }));
+        setScanMessage(
+          `${getPlan(result.entitlement.planId).label} 플랜 권한을 복원했어요.`,
+        );
+        return;
+      }
+
+      if (result.status === "expired") {
+        setVerifiedPlanId("free");
+        setState((previous) => ({
+          ...previous,
+          planId: "free",
+          iapEntitlement: undefined,
+        }));
+        setScanMessage(result.message);
+      }
+    });
+  }, [billingRuntime, isHydrated, state]);
 
   const statusMap = useMemo(() => {
     const map = new Map<string, ClassifiedItem["status"]>();
@@ -123,8 +166,8 @@ function App() {
     (item) => item.status === "queued",
   ).length;
   const entitledState = useMemo(
-    () => getEntitledBillingState(state, billingRuntime),
-    [billingRuntime, state],
+    () => getEntitledBillingState(state, billingRuntime, verifiedPlanId),
+    [billingRuntime, state, verifiedPlanId],
   );
   const scanAllowance = getScanAllowance(entitledState);
   const currentPlan = getPlan(entitledState.planId);
@@ -180,7 +223,7 @@ function App() {
 
       const result = await requestAlbumScan(allowance.nextBatchLimit);
       await analyzeIncoming(result.items, result.message);
-      setSelectedMapBucket("all");
+      setSelectedMapFolder("all");
       setActiveTab("map");
     } catch {
       setScanMessage(
@@ -206,7 +249,7 @@ function App() {
         return;
       }
       await analyzeIncoming(result.items, result.message);
-      setSelectedMapBucket("all");
+      setSelectedMapFolder("all");
       setActiveTab("map");
     } catch {
       setScanMessage(
@@ -276,7 +319,7 @@ function App() {
     await clearPictoryState();
     setState(defaultPictoryState);
     setItems([]);
-    setSelectedMapBucket("all");
+    setSelectedMapFolder("all");
     setSelectedCleanBucket("all");
     setSelectedSavedBucket("all");
     setScanMessage("픽토리 내부 기록을 비웠어요.");
@@ -284,7 +327,7 @@ function App() {
 
   function handleTabChange(tabId: TabId) {
     if (tabId === "map") {
-      setSelectedMapBucket("all");
+      setSelectedMapFolder("all");
     }
     if (tabId === "clean") {
       setSelectedCleanBucket("all");
@@ -296,8 +339,17 @@ function App() {
   }
 
   function handleViewAll() {
-    setSelectedMapBucket("all");
+    setSelectedMapFolder("all");
     setActiveTab("map");
+  }
+
+  function handleOpenMapFolder(folderId: MapFolderId) {
+    setSelectedMapFolder(folderId);
+    setActiveTab("map");
+  }
+
+  function handleNotify() {
+    setScanMessage("정리 완료 알림은 토스 알림 권한 연결 후 켤 수 있어요.");
   }
 
   function handleShare() {
@@ -317,25 +369,47 @@ function App() {
     setScanMessage("요약을 클립보드에 복사했어요.");
   }
 
-  function handleSelectPlan(planId: PlanId) {
-    if (planId !== "free" && !canUseLocalPaidPlanPreview(billingRuntime)) {
+  async function handleSelectPlan(planId: PlanId) {
+    if (planId === "free") {
+      setVerifiedPlanId("free");
+      setState((previous) => ({
+        ...previous,
+        planId,
+      }));
+      setScanMessage("무료 플랜으로 전환했어요.");
+      return;
+    }
+
+    if (canUseLocalPaidPlanPreview(billingRuntime)) {
+      setState((previous) => ({ ...previous, planId }));
       setScanMessage(
-        `${getPlan(planId).label} 플랜은 인앱결제 지급·복원 검증이 붙은 뒤에만 활성화돼요.`,
+        `${getPlan(planId).label} 플랜 기준으로 한도 미리보기를 적용했어요. 실제 결제는 토스 결제 연동 후 활성화해요.`,
       );
       return;
     }
 
-    setState((previous) => ({ ...previous, planId }));
-    setScanMessage(
-      planId === "free"
-        ? "무료 플랜으로 전환했어요."
-        : `${getPlan(planId).label} 플랜 기준으로 한도 미리보기를 적용했어요. 실제 결제는 토스 결제 연동 후 활성화해요.`,
-    );
+    setScanMessage(`${getPlan(planId).label} 구독 결제를 준비하고 있어요.`);
+    const result = await purchaseSubscriptionPlan(planId);
+
+    if (result.status === "purchased") {
+      setVerifiedPlanId(result.entitlement.planId);
+      setState((previous) => ({
+        ...previous,
+        planId: result.entitlement.planId,
+        iapEntitlement: result.entitlement,
+      }));
+      setScanMessage(
+        `${getPlan(result.entitlement.planId).label} 플랜이 활성화됐어요.`,
+      );
+      return;
+    }
+
+    setScanMessage(result.message);
   }
 
   return (
     <div className="app-shell">
-      <AppHeader />
+      <AppHeader onNotify={handleNotify} />
       <div className="screen-frame" ref={screenFrameRef}>
         {activeTab === "home" ? (
           <HomePage
@@ -352,13 +426,14 @@ function App() {
             onReward={handleReward}
             onSelectPlan={handleSelectPlan}
             onViewAll={handleViewAll}
+            onOpenMapFolder={handleOpenMapFolder}
           />
         ) : null}
         {activeTab === "map" ? (
           <MapPage
             items={visibleItems}
-            selectedBucket={selectedMapBucket}
-            onSelectBucket={setSelectedMapBucket}
+            selectedFolder={selectedMapFolder}
+            onSelectFolder={setSelectedMapFolder}
             onSave={(id) => updateItemStatus(id, "saved")}
             onQueue={(id) => updateItemStatus(id, "queued")}
             onIgnore={(id) => updateItemStatus(id, "ignored")}

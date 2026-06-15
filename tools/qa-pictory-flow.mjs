@@ -78,22 +78,63 @@ async function runQa() {
     await page.getByRole("button", { name: /픽토리 데이터 삭제/ }).click();
     await clickBottomNav(page, "홈");
     await page.screenshot({ path: path.join(screenshotDir, "00-home.png") });
+    await page
+      .locator(".plan-strip")
+      .getByRole("button", { name: /플러스/ })
+      .click();
+    await page.getByText("플러스 플랜 기준").waitFor();
+    await page.screenshot({
+      path: path.join(screenshotDir, "00-home-plus-preview.png"),
+    });
 
     await page.getByRole("button", { name: /지도 만들기/ }).click();
-    await page.getByText("종류별로 한눈에").waitFor({ timeout: 25_000 });
+    await page.getByText("종류와 기간으로").waitFor({ timeout: 25_000 });
     await page.screenshot({ path: path.join(screenshotDir, "01-map.png") });
 
-    await page.getByRole("button", { name: /음식/ }).click();
-    await page.getByText("지도 폴더").waitFor();
-    await page.locator(".folder-header").filter({ hasText: "음식" }).waitFor();
+    await clickBottomNav(page, "홈");
+    await page.locator(".home-bucket-list .bucket-card").first().click();
+    await page.getByText("종류 폴더").waitFor();
+    const homeShortcutOpened =
+      (await page
+        .locator(".folder-header")
+        .filter({ hasText: "종류 폴더" })
+        .count()) > 0;
     await page.screenshot({
-      path: path.join(screenshotDir, "02-map-food-folder.png"),
+      path: path.join(screenshotDir, "02-home-shortcut-folder.png"),
+    });
+    await page.locator(".folder-back").click();
+
+    await page.getByRole("button", { name: /음식/ }).click();
+    await page.getByText("종류 폴더").waitFor();
+    await page.locator(".folder-header").filter({ hasText: "음식" }).waitFor();
+    const mapCategoryFolderOpened =
+      (await page
+        .locator(".folder-header")
+        .filter({ hasText: "종류 폴더" })
+        .count()) > 0;
+    await page.screenshot({
+      path: path.join(screenshotDir, "03-map-food-folder.png"),
     });
     await page
       .locator(".folder-photo-list")
       .locator('button[aria-label="보관"]')
       .first()
       .click();
+    await page.locator(".folder-back").click();
+    await page
+      .locator(".folder-mode-tabs")
+      .getByRole("button", { name: /기간별/ })
+      .click();
+    await page.locator(".period-bucket-list .bucket-card").first().click();
+    await page.getByText("기간 폴더").waitFor();
+    const periodFolderOpened =
+      (await page
+        .locator(".folder-header")
+        .filter({ hasText: "기간 폴더" })
+        .count()) > 0;
+    await page.screenshot({
+      path: path.join(screenshotDir, "04-map-period-folder.png"),
+    });
 
     await clickBottomNav(page, "정리");
     await page.getByText("지울 후보만").waitFor();
@@ -103,18 +144,28 @@ async function runQa() {
       .locator(".folder-header")
       .filter({ hasText: "민감정보 후보" })
       .waitFor();
+    const cleanFolderOpened =
+      (await page
+        .locator(".folder-header")
+        .filter({ hasText: "정리 폴더" })
+        .count()) > 0;
     await page.screenshot({
-      path: path.join(screenshotDir, "03-clean-sensitive-folder.png"),
+      path: path.join(screenshotDir, "05-clean-sensitive-folder.png"),
     });
 
     await clickBottomNav(page, "보관");
     await page.getByText("다시 볼 것만 보관").waitFor();
-    await page.screenshot({ path: path.join(screenshotDir, "04-saved.png") });
+    await page.screenshot({ path: path.join(screenshotDir, "06-saved.png") });
     await page.getByRole("button", { name: /음식/ }).click();
     await page.getByText("보관 폴더").waitFor();
     await page.locator(".folder-header").filter({ hasText: "음식" }).waitFor();
+    const savedFolderOpened =
+      (await page
+        .locator(".folder-header")
+        .filter({ hasText: "보관 폴더" })
+        .count()) > 0;
     await page.screenshot({
-      path: path.join(screenshotDir, "05-saved-food-folder.png"),
+      path: path.join(screenshotDir, "07-saved-food-folder.png"),
     });
 
     const state = await page.evaluate(() => {
@@ -148,17 +199,31 @@ async function runQa() {
       ok:
         (state?.recentItems?.length ?? 0) >= 20 &&
         (state?.savedIds?.length ?? 0) >= 1 &&
+        state?.planId === "plus" &&
         categoryCoverage &&
+        homeShortcutOpened &&
+        mapCategoryFolderOpened &&
+        periodFolderOpened &&
+        cleanFolderOpened &&
+        savedFolderOpened &&
         dom.brokenImages === 0 &&
         dom.folderHeaders >= 1 &&
         dom.photoTiles >= 1 &&
         dom.navItems.join(",") === "홈,지도,정리,보관",
       url: baseUrl,
       screenshots: screenshotDir,
+      planId: state?.planId ?? "unknown",
       recentItems: state?.recentItems?.length ?? 0,
       savedIds: state?.savedIds?.length ?? 0,
       categoryCounts,
       cleanCounts,
+      flow: {
+        homeShortcutOpened,
+        mapCategoryFolderOpened,
+        periodFolderOpened,
+        cleanFolderOpened,
+        savedFolderOpened,
+      },
       dom,
       consoleIssues,
     };

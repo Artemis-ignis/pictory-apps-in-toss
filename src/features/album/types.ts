@@ -16,6 +16,8 @@ export type MapBucketId =
   | "coupon"
   | "memory";
 
+export type MapFolderId = `category:${MapBucketId}` | `period:${string}`;
+
 export type CleanBucketId =
   | "sensitive"
   | "needsReview"
@@ -88,12 +90,23 @@ export interface ScanHistoryEntry {
   mapBucketCount: number;
 }
 
+export interface IapEntitlement {
+  planId: Exclude<PlanId, "free">;
+  orderId: string;
+  sku: string;
+  subscriptionId?: string;
+  verifiedAt: string;
+  expiresAt?: string | null;
+  status?: string;
+}
+
 export interface PersistedPictoryState {
   savedIds: string[];
   queuedIds: string[];
   ignoredIds: string[];
   credits: number;
   planId: PlanId;
+  iapEntitlement?: IapEntitlement;
   usageMonth: string;
   monthlyScanUsed: number;
   recentItems: ClassifiedItem[];

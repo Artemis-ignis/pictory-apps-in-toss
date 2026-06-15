@@ -119,9 +119,9 @@ export function SavedPage({
 
       <div className="section-heading">
         <h2>보관 폴더</h2>
-        <button type="button">
+        <span className="section-count">
           {savedItems.length}/{plan.storageLimit}장
-        </button>
+        </span>
       </div>
 
       {savedItems.length > 0 ? (
@@ -151,7 +151,7 @@ export function SavedPage({
         <>
           <div className="section-heading">
             <h2>최근 보관</h2>
-            <button type="button">{savedItems.length}장</button>
+            <span className="section-count">{savedItems.length}장</span>
           </div>
           <section className="photo-list">
             {savedItems.slice(0, 4).map((item) => (
@@ -163,7 +163,7 @@ export function SavedPage({
 
       <div className="section-heading">
         <h2>최근 지도 기록</h2>
-        <button type="button">{historyEntries.length}개</button>
+        <span className="section-count">{historyEntries.length}개</span>
       </div>
 
       <section className="history-list">

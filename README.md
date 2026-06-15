@@ -38,6 +38,8 @@ cp .env.example .env
 
 ```bash
 VITE_TOSS_REWARDED_AD_GROUP_ID=콘솔에서_발급받은_보상형_광고_ID
+VITE_PICTORY_PLUS_SUBSCRIPTION_SKU=콘솔_PLUS_구독_SKU
+VITE_PICTORY_PRO_SUBSCRIPTION_SKU=콘솔_PRO_구독_SKU
 ```
 
 개발 단계에서는 반드시 테스트 ID(`ait-ad-test-rewarded-id`)를 사용합니다. 실제 광고 ID로 개발 테스트를 반복하면 광고 정책 위반으로 간주될 수 있습니다.
@@ -68,6 +70,7 @@ VITE_TOSS_REWARDED_AD_GROUP_ID=콘솔에서_발급받은_보상형_광고_ID
 - 민감정보 후보는 실제 이미지 썸네일 대신 차단용 대체 이미지를 저장합니다.
 - `픽토리 데이터 삭제`를 누르면 저장된 보관 상태, 정리 후보, 최근 분류 결과, 스캔 기록을 모두 삭제합니다.
 - 운영 환경에서는 로컬 저장소의 유료 플랜 값을 실제 권한으로 믿지 않습니다. 인앱결제 지급·복원·주문 상태 검증이 붙기 전까지 Plus/Pro는 로컬 개발 미리보기에서만 한도로 적용됩니다.
+- 운영 Plus/Pro 활성화는 앱인토스 구독 결제 성공, 상품 지급 콜백, 구독 정보 복원 또는 미결 주문 복원 이후에만 적용됩니다.
 
 ## 운영 전 확인해야 할 것
 

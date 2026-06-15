@@ -21,6 +21,7 @@ import {
   MAP_BUCKETS,
   type ClassifiedItem,
   type MapBucketId,
+  type MapFolderId,
   type PlanId,
 } from "../features/album/types";
 import {
@@ -43,6 +44,7 @@ interface HomePageProps {
   onReward: () => void;
   onSelectPlan: (planId: PlanId) => void;
   onViewAll: () => void;
+  onOpenMapFolder: (folderId: MapFolderId) => void;
 }
 
 const homeIcons: Record<MapBucketId, JSX.Element> = {
@@ -70,6 +72,7 @@ export function HomePage({
   onReward,
   onSelectPlan,
   onViewAll,
+  onOpenMapFolder,
 }: HomePageProps) {
   const kindCount = new Set(items.map((item) => item.categoryId)).size;
   const periodCount = new Set(items.map((item) => item.periodKey)).size;
@@ -205,6 +208,7 @@ export function HomePage({
               bucket={bucket}
               count={count}
               icon={homeIcons[bucket.id]}
+              onClick={() => onOpenMapFolder(`category:${bucket.id}`)}
             />
           ))}
         </div>

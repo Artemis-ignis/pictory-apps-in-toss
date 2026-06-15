@@ -79,6 +79,19 @@ describe("usage plans", () => {
     ).toBe("free");
   });
 
+  it("treats paid plans as entitlement in production only after IAP verification", () => {
+    const productionRuntime = { hostname: "pictory.apps.tossmini.com" };
+
+    expect(getEntitledPlanId("plus", productionRuntime, "plus")).toBe("plus");
+    expect(
+      getEntitledBillingState(
+        { ...defaultPictoryState, planId: "pro" },
+        productionRuntime,
+        "pro",
+      ).planId,
+    ).toBe("pro");
+  });
+
   it("allows paid plan previews only on local development hosts", () => {
     expect(getEntitledPlanId("plus", { hostname: "localhost" })).toBe("plus");
     expect(getEntitledPlanId("pro", { hostname: "127.0.0.1" })).toBe("pro");

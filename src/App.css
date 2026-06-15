@@ -332,6 +332,33 @@
   font-weight: 850;
 }
 
+.folder-mode-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+  padding: 5px;
+  border-radius: 17px;
+  background: #eef4ff;
+}
+
+.folder-mode-tabs button {
+  min-height: 42px;
+  border-radius: 13px;
+  color: #647187;
+  background: transparent;
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.folder-mode-tabs button.is-active {
+  color: var(--blue);
+  background: #ffffff;
+  box-shadow:
+    0 8px 16px rgba(18, 60, 120, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -459,7 +486,8 @@
   letter-spacing: 0;
 }
 
-.section-heading button {
+.section-heading button,
+.section-count {
   display: inline-flex;
   align-items: center;
   gap: 2px;
