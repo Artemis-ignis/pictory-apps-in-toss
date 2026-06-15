@@ -242,6 +242,10 @@ function checkPackageScripts() {
     "server account HTTP adapter exists",
   );
   record(
+    existsSync(projectPath("server", "pictoryEntitlementHttpAdapter.ts")),
+    "server entitlement HTTP adapter exists",
+  );
+  record(
     existsSync(projectPath("server", "pictoryNodeRuntime.ts")),
     "server Node runtime exists",
   );
@@ -264,6 +268,10 @@ function checkPackageScripts() {
   record(
     existsSync(projectPath("tests", "accountHttpAdapter.test.ts")),
     "server account HTTP adapter tests exist",
+  );
+  record(
+    existsSync(projectPath("tests", "entitlementHttpAdapter.test.ts")),
+    "server entitlement HTTP adapter tests exist",
   );
   record(
     existsSync(projectPath("tests", "pictorySessionAuth.test.ts")),

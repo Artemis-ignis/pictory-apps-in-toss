@@ -195,6 +195,68 @@ describe("pictoryNodeRuntime", () => {
     });
   });
 
+  it("syncs verified paid entitlement before allowing session-based server AI", async () => {
+    const store = createMemoryStore(createNewUsageAccount("paid-user", "free"));
+    const classifyItems = vi.fn(async () => [
+      {
+        id: "photo-1",
+        categoryId: "receipt" as const,
+        cleanBucketId: "needsReview" as const,
+        confidence: 0.9,
+        privacy: "review" as const,
+      },
+    ]);
+    const token = createSignedPictorySessionToken(
+      { sub: "paid-user", exp: 4_000_000_000, aud: "pictory" },
+      "session-secret",
+    );
+    const baseUrl = await listen({
+      store,
+      classifyItems,
+      env: {
+        PICTORY_SERVER_SECRET: "server-secret",
+        PICTORY_SESSION_SECRET: "session-secret",
+        PICTORY_SESSION_AUDIENCE: "pictory",
+        PICTORY_AI_PLUS_MONTHLY_QUOTA: "500",
+      },
+    });
+
+    const sync = await fetch(`${baseUrl}/pictory/entitlement`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-pictory-server-secret": "server-secret",
+        "x-pictory-subject-id": "paid-user",
+      },
+      body: JSON.stringify({
+        planId: "plus",
+        subscriptionExpiresAt: "2026-07-15T00:00:00.000Z",
+      }),
+    });
+    const classify = await fetch(`${baseUrl}/pictory/classify`, {
+      method: "POST",
+      headers: {
+        Cookie: `pictory_session=${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(classifyBody),
+    });
+
+    expect(sync.status).toBe(200);
+    expect(await sync.json()).toMatchObject({
+      subjectId: "paid-user",
+      planId: "plus",
+    });
+    expect(classify.status).toBe(200);
+    expect(await classify.json()).toMatchObject({
+      items: [{ id: "photo-1", categoryId: "receipt" }],
+    });
+    expect(await store.readAccount("paid-user")).toMatchObject({
+      planId: "plus",
+      monthlyServerAiUsed: 1,
+    });
+  });
+
   it("rejects unknown routes and oversized bodies", async () => {
     const baseUrl = await listen({
       store: createMemoryStore(createNewUsageAccount("user-1", "plus")),

@@ -108,6 +108,11 @@ npm run check:release
 원장 계정 데이터를 삭제한다. 실제 서비스에서는 토스 세션 또는 게이트웨이
 검증으로 subject를 해결하고, 프론트엔드 번들에 서버 secret을 넣지 않는다.
 
+결제 검증 서버/게이트웨이는 구독 결제 성공 또는 복원 검증 뒤
+`POST /pictory/entitlement`를 내부 secret과 subject로 호출한다. 이 API는
+`planId`와 `subscriptionExpiresAt`를 서버 원장에 반영해 유료 서버 AI 월 quota를
+열어준다. 프론트엔드가 직접 plan을 승급시키는 용도로 쓰지 않는다.
+
 개발 중에는 반드시 테스트 광고 ID를 사용한다.
 
 ```env
@@ -377,6 +382,7 @@ Pro:
 클라이언트에 저장된 `planId`는 실제 결제 권한으로 보지 않는다.
 
 - 운영 환경에서는 인앱결제 상품 지급, 미결 주문 복원, 주문 상태 조회 API 중 하나로 검증된 권한만 유료 플랜으로 인정한다.
+- 검증된 유료 권한은 서버에서 `POST /pictory/entitlement`로 원장에 반영한다.
 - 서버 결제 검증이 붙기 전까지 운영 빌드는 무료 플랜과 광고 보상 크레딧만 실제 한도로 사용한다.
 - Plus/Pro 한도 미리보기는 `localhost`, `127.0.0.1`, `::1` 개발 환경에서만 허용한다.
 - 서버 AI 정밀 분류는 광고 크레딧이 있거나 검증된 유료 권한이 있을 때만 사용한다.
@@ -406,4 +412,5 @@ VITE_PICTORY_PRO_SUBSCRIPTION_SKU=콘솔_PRO_구독_SKU
 1. 앱 시작 시 저장된 `orderId`가 있으면 `getSubscriptionInfo`로 접근 가능 상태를 복원한다.
 2. 저장된 주문이 없거나 복원되지 않으면 `getPendingOrders`로 미지급 주문을 확인하고 `completeProductGrant`를 호출한다.
 3. Plus/Pro 버튼은 로컬 개발에서는 미리보기로 동작하고, 운영에서는 `createSubscriptionPurchaseOrder`로 구독 결제를 시작한다.
+4. 결제 검증 서버가 성공한 주문을 확인한 뒤 `/pictory/entitlement`로 서버 원장을 갱신한다.
 4. `success` 이벤트와 상품 지급 콜백이 완료된 뒤에만 유료 플랜을 활성화한다.

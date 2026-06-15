@@ -8,6 +8,7 @@ import { cwd, env as processEnv } from "node:process";
 import { createPictoryClassifyHttpHandler } from "./pictoryHttpAdapter";
 import { createPictoryRewardHttpHandler } from "./pictoryRewardHttpAdapter";
 import { createPictoryAccountHttpHandler } from "./pictoryAccountHttpAdapter";
+import { createPictoryEntitlementHttpHandler } from "./pictoryEntitlementHttpAdapter";
 import { PictoryFileUsageLedgerStore } from "./pictoryFileUsageStore";
 import type {
   PictoryClassifyDeps,
@@ -56,6 +57,10 @@ export function createPictoryNodeRequestListener({
     resolveSubjectId,
     corsOrigin,
   });
+  const entitlementHandler = createPictoryEntitlementHttpHandler({
+    store: usageStore,
+    env,
+  });
 
   return async function pictoryNodeRequestListener(
     request: IncomingMessage,
@@ -71,7 +76,8 @@ export function createPictoryNodeRequestListener({
       if (
         path !== "/pictory/classify" &&
         path !== "/pictory/reward" &&
-        path !== "/pictory/account"
+        path !== "/pictory/account" &&
+        path !== "/pictory/entitlement"
       ) {
         writeJson(response, 404, {
           error: { code: "not_found", message: "Endpoint not found." },
@@ -91,7 +97,9 @@ export function createPictoryNodeRequestListener({
           ? await classifyHandler(httpRequest)
           : path === "/pictory/reward"
             ? await rewardHandler(httpRequest)
-            : await accountHandler(httpRequest);
+            : path === "/pictory/account"
+              ? await accountHandler(httpRequest)
+              : await entitlementHandler(httpRequest);
 
       writeResponse(response, result.status, result.headers, result.body);
     } catch (error) {

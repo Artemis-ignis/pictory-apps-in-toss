@@ -45,6 +45,14 @@ export interface PictoryRewardGrantInput {
   maxCredits?: number;
 }
 
+export interface PictoryPlanSyncInput {
+  store: PictoryUsageLedgerStore;
+  subjectId: string;
+  planId: PictoryPlanId;
+  subscriptionExpiresAt?: string | null;
+  now?: () => Date;
+}
+
 export const DEFAULT_SERVER_AI_CREDITS = {
   freeMonthlyQuota: 0,
   rewardCredits: 100,
@@ -159,6 +167,28 @@ export async function deleteUsageAccount(
 
   const deleted = await store.deleteAccount(subjectId);
   return { supported: true, deleted: deleted !== false };
+}
+
+export async function syncUsageAccountPlan({
+  store,
+  subjectId,
+  planId,
+  subscriptionExpiresAt,
+  now = () => new Date(),
+}: PictoryPlanSyncInput) {
+  const existing =
+    (await store.readAccount(subjectId)) ??
+    createNewUsageAccount(subjectId, "free", now());
+  const account = normalizeUsageMonth(existing, now());
+  const next: PictoryUsageAccount = {
+    ...account,
+    planId,
+    subscriptionExpiresAt:
+      planId === "free" ? undefined : subscriptionExpiresAt ?? undefined,
+  };
+
+  await store.writeAccount(next);
+  return next;
 }
 
 export function grantRewardCredits({

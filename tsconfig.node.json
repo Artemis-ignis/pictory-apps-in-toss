@@ -23,6 +23,7 @@
     "vite.config.ts",
     "server",
     "tests/accountHttpAdapter.test.ts",
+    "tests/entitlementHttpAdapter.test.ts",
     "tests/fileUsageStore.test.ts",
     "tests/httpAdapter.test.ts",
     "tests/nodeRuntime.test.ts",
