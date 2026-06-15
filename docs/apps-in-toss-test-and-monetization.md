@@ -23,6 +23,7 @@ VITE_PICTORY_PLUS_SUBSCRIPTION_SKU=replace_with_toss_plus_subscription_sku
 VITE_PICTORY_PRO_SUBSCRIPTION_SKU=replace_with_toss_pro_subscription_sku
 VITE_PICTORY_CLASSIFY_ENDPOINT=https://your-api.example.com/pictory/classify
 VITE_PICTORY_REWARD_ENDPOINT=https://your-api.example.com/pictory/reward
+VITE_PICTORY_ENTITLEMENT_ENDPOINT=https://your-api.example.com/pictory/entitlement
 VITE_PICTORY_DELETE_ENDPOINT=https://your-api.example.com/pictory/account
 ```
 
@@ -31,6 +32,11 @@ VITE_PICTORY_DELETE_ENDPOINT=https://your-api.example.com/pictory/account
 ```env
 PICTORY_SERVER_SECRET=replace_with_long_random_server_secret
 PICTORY_SESSION_SECRET=replace_with_long_random_session_secret
+PICTORY_PLUS_SUBSCRIPTION_SKU=replace_with_toss_plus_subscription_sku
+PICTORY_PRO_SUBSCRIPTION_SKU=replace_with_toss_pro_subscription_sku
+PICTORY_SUBSCRIPTION_VALID_DAYS=32
+APPS_IN_TOSS_MTLS_CERT_PATH=replace_with_server_only_mtls_cert_path
+APPS_IN_TOSS_MTLS_KEY_PATH=replace_with_server_only_mtls_key_path
 OPENAI_API_KEY=replace_with_openai_api_key_server_only
 OPENAI_MODEL=gpt-4.1-mini
 OPENAI_IMAGE_DETAIL=low
@@ -109,10 +115,12 @@ npm run check:release
 원장 계정 데이터를 삭제한다. 실제 서비스에서는 토스 세션 또는 게이트웨이
 검증으로 subject를 해결하고, 프론트엔드 번들에 서버 secret을 넣지 않는다.
 
-결제 검증 서버/게이트웨이는 구독 결제 성공 또는 복원 검증 뒤
-`POST /pictory/entitlement`를 내부 secret과 subject로 호출한다. 이 API는
-`planId`와 `subscriptionExpiresAt`를 서버 원장에 반영해 유료 서버 AI 월 quota를
-열어준다. 프론트엔드가 직접 plan을 승급시키는 용도로 쓰지 않는다.
+구독 결제 상품 지급 콜백은 `POST /pictory/entitlement`에 `orderId`와
+`expectedPlanId`를 보낸다. 서버는 앱인토스 주문 상태 조회 API를 mTLS로 호출해
+주문 SKU와 상태(`PAYMENT_COMPLETED` 또는 `PURCHASED`)를 확인한 뒤에만 서버
+원장에 Plus/Pro 권한을 반영한다. 내부 운영 도구나 결제 알림 서버는 기존처럼
+서버 secret과 subject로 검증된 plan을 직접 동기화할 수 있지만, 프론트엔드는
+직접 plan을 승급시키는 용도로 쓰지 않는다.
 
 개발 중에는 반드시 테스트 광고 ID를 사용한다.
 
@@ -398,12 +406,20 @@ Pro:
 ```env
 VITE_PICTORY_PLUS_SUBSCRIPTION_SKU=콘솔_PLUS_구독_SKU
 VITE_PICTORY_PRO_SUBSCRIPTION_SKU=콘솔_PRO_구독_SKU
+VITE_PICTORY_ENTITLEMENT_ENDPOINT=https://운영서버.example.com/pictory/entitlement
+PICTORY_PLUS_SUBSCRIPTION_SKU=콘솔_PLUS_구독_SKU
+PICTORY_PRO_SUBSCRIPTION_SKU=콘솔_PRO_구독_SKU
+APPS_IN_TOSS_MTLS_CERT_PATH=/secure/apps-in-toss/client-cert.pem
+APPS_IN_TOSS_MTLS_KEY_PATH=/secure/apps-in-toss/client-key.pem
 ```
 
 실기기 IAP 체크리스트:
 
 - [ ] 앱인토스 콘솔에 Plus/Pro 구독 상품과 SKU가 등록되어 있다.
 - [ ] `.env`의 `VITE_PICTORY_PLUS_SUBSCRIPTION_SKU`, `VITE_PICTORY_PRO_SUBSCRIPTION_SKU`가 콘솔 SKU와 일치한다.
+- [ ] 운영 서버의 `PICTORY_PLUS_SUBSCRIPTION_SKU`, `PICTORY_PRO_SUBSCRIPTION_SKU`가 콘솔 SKU와 일치한다.
+- [ ] 운영 서버에 앱인토스 mTLS 인증서/키 경로가 설정되어 주문 상태 조회 API를 호출할 수 있다.
+- [ ] `VITE_PICTORY_ENTITLEMENT_ENDPOINT`가 운영 서버의 `/pictory/entitlement`를 가리킨다.
 - [ ] SKU가 비어 있거나 틀린 빌드에서는 Plus/Pro 구매 버튼이 결제 성공처럼 보이지 않는다.
 - [ ] 실제 단말 QR에서 Plus 결제를 시작하면 구독 주문 화면이 뜬다.
 - [ ] 결제 성공 후 상품 지급 콜백이 끝난 뒤에만 Plus 한도가 활성화된다.
@@ -417,5 +433,5 @@ VITE_PICTORY_PRO_SUBSCRIPTION_SKU=콘솔_PRO_구독_SKU
 1. 앱 시작 시 저장된 `orderId`가 있으면 `getSubscriptionInfo`로 접근 가능 상태를 복원한다.
 2. 저장된 주문이 없거나 복원되지 않으면 `getPendingOrders`로 미지급 주문을 확인하고 `completeProductGrant`를 호출한다.
 3. Plus/Pro 버튼은 로컬 개발에서는 미리보기로 동작하고, 운영에서는 `createSubscriptionPurchaseOrder`로 구독 결제를 시작한다.
-4. 결제 검증 서버가 성공한 주문을 확인한 뒤 `/pictory/entitlement`로 서버 원장을 갱신한다.
-4. `success` 이벤트와 상품 지급 콜백이 완료된 뒤에만 유료 플랜을 활성화한다.
+4. 상품 지급 콜백은 `/pictory/entitlement`로 `orderId`를 보내고 서버 주문 상태 검증이 성공해야 `true`를 반환한다.
+5. `success` 이벤트와 상품 지급 콜백이 완료된 뒤에만 유료 플랜을 활성화한다.

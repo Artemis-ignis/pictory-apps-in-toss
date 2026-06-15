@@ -257,6 +257,54 @@ describe("pictoryNodeRuntime", () => {
     });
   });
 
+  it("verifies an Apps-in-Toss order through the entitlement route", async () => {
+    const store = createMemoryStore(createNewUsageAccount("order-user", "free"));
+    const token = createSignedPictorySessionToken(
+      { sub: "order-user", exp: 4_000_000_000, aud: "pictory" },
+      "session-secret",
+    );
+    const baseUrl = await listen({
+      store,
+      fetchOrderStatus: async () => ({
+        orderId: "order-plus-1",
+        sku: "pictory.plus.monthly",
+        status: "PAYMENT_COMPLETED",
+        statusDeterminedAt: "2026-06-15T12:00:00",
+      }),
+      env: {
+        PICTORY_SESSION_SECRET: "session-secret",
+        PICTORY_SESSION_AUDIENCE: "pictory",
+        PICTORY_PLUS_SUBSCRIPTION_SKU: "pictory.plus.monthly",
+        PICTORY_SUBSCRIPTION_VALID_DAYS: "30",
+      },
+    });
+
+    const sync = await fetch(`${baseUrl}/pictory/entitlement`, {
+      method: "POST",
+      headers: {
+        Cookie: `pictory_session=${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        orderId: "order-plus-1",
+        expectedPlanId: "plus",
+      }),
+    });
+
+    expect(sync.status).toBe(200);
+    expect(await sync.json()).toMatchObject({
+      subjectId: "order-user",
+      planId: "plus",
+      orderId: "order-plus-1",
+      orderStatus: "PAYMENT_COMPLETED",
+      subscriptionExpiresAt: "2026-07-15T03:00:00.000Z",
+    });
+    expect(await store.readAccount("order-user")).toMatchObject({
+      planId: "plus",
+      subscriptionExpiresAt: "2026-07-15T03:00:00.000Z",
+    });
+  });
+
   it("rejects unknown routes and oversized bodies", async () => {
     const baseUrl = await listen({
       store: createMemoryStore(createNewUsageAccount("user-1", "plus")),

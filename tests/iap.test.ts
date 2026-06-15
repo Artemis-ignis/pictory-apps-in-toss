@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { defaultPictoryState } from "../src/features/album/storage";
 import {
   getConfiguredPlanSku,
@@ -29,17 +29,22 @@ function createMockClient(overrides: Partial<IapClient> = {}): IapClient {
         },
       ],
     }),
-    createSubscriptionPurchaseOrder: ({ onEvent, options }) => {
+    createSubscriptionPurchaseOrder: ({ onError, onEvent, options }) => {
       void Promise.resolve(
         options.processProductGrant({
           orderId: "order-plus-1",
           subscriptionId: "sub-plus-1",
         }),
-      ).then(() => {
-        void onEvent({
-          type: "success",
-          data: { orderId: "order-plus-1" },
-        });
+      ).then((granted) => {
+        if (granted) {
+          void onEvent({
+            type: "success",
+            data: { orderId: "order-plus-1" },
+          });
+          return;
+        }
+
+        void onError({ code: "PRODUCT_NOT_GRANTED_BY_PARTNER" });
       });
       return () => undefined;
     },
@@ -82,6 +87,66 @@ describe("pictory iap adapter", () => {
         sku: "pictory.plus.monthly",
         orderId: "order-plus-1",
       },
+    });
+  });
+
+  it("verifies a purchased order with the server before granting the plan", async () => {
+    const fetchImpl = vi.fn(async () =>
+      Response.json({
+        planId: "plus",
+        orderId: "order-plus-1",
+        subscriptionExpiresAt: "2026-07-15T00:00:00.000Z",
+      }),
+    );
+
+    const result = await purchaseSubscriptionPlan("plus", {
+      env: {
+        ...env,
+        VITE_PICTORY_ENTITLEMENT_ENDPOINT:
+          "https://api.example.com/pictory/entitlement",
+      },
+      fetch: fetchImpl,
+      client: createMockClient(),
+      timeoutMs: 100,
+    });
+
+    expect(result).toMatchObject({
+      status: "purchased",
+      entitlement: {
+        planId: "plus",
+        orderId: "order-plus-1",
+        expiresAt: "2026-07-15T00:00:00.000Z",
+      },
+    });
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "https://api.example.com/pictory/entitlement",
+      expect.objectContaining({
+        method: "POST",
+        credentials: "include",
+        body: JSON.stringify({
+          orderId: "order-plus-1",
+          expectedPlanId: "plus",
+        }),
+      }),
+    );
+  });
+
+  it("fails the grant when server order verification fails", async () => {
+    const result = await purchaseSubscriptionPlan("plus", {
+      env: {
+        ...env,
+        VITE_PICTORY_ENTITLEMENT_ENDPOINT:
+          "https://api.example.com/pictory/entitlement",
+      },
+      fetch: vi.fn(async () => Response.json({}, { status: 409 })),
+      client: createMockClient(),
+      timeoutMs: 100,
+    });
+
+    expect(result).toMatchObject({
+      status: "failed",
+      message:
+        "결제는 완료됐지만 플랜 지급에 실패했어요. 복원을 다시 시도해주세요.",
     });
   });
 

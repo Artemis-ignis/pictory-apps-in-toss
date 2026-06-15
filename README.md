@@ -46,6 +46,7 @@ VITE_PICTORY_PLUS_SUBSCRIPTION_SKU=replace_with_toss_plus_subscription_sku
 VITE_PICTORY_PRO_SUBSCRIPTION_SKU=replace_with_toss_pro_subscription_sku
 VITE_PICTORY_CLASSIFY_ENDPOINT=https://your-api.example.com/pictory/classify
 VITE_PICTORY_REWARD_ENDPOINT=https://your-api.example.com/pictory/reward
+VITE_PICTORY_ENTITLEMENT_ENDPOINT=https://your-api.example.com/pictory/entitlement
 VITE_PICTORY_DELETE_ENDPOINT=https://your-api.example.com/pictory/account
 ```
 
@@ -56,6 +57,11 @@ VITE_PICTORY_DELETE_ENDPOINT=https://your-api.example.com/pictory/account
 ```bash
 PICTORY_SERVER_SECRET=replace_with_long_random_server_secret
 PICTORY_SESSION_SECRET=replace_with_long_random_session_secret
+PICTORY_PLUS_SUBSCRIPTION_SKU=replace_with_toss_plus_subscription_sku
+PICTORY_PRO_SUBSCRIPTION_SKU=replace_with_toss_pro_subscription_sku
+PICTORY_SUBSCRIPTION_VALID_DAYS=32
+APPS_IN_TOSS_MTLS_CERT_PATH=replace_with_server_only_mtls_cert_path
+APPS_IN_TOSS_MTLS_KEY_PATH=replace_with_server_only_mtls_key_path
 OPENAI_API_KEY=replace_with_openai_api_key_server_only
 OPENAI_MODEL=gpt-4.1-mini
 OPENAI_IMAGE_DETAIL=low
@@ -79,7 +85,7 @@ PICTORY_AI_LOG_RAW_IMAGES=false
 - 서명 세션 쿠키/Authorization 토큰 기반 서버 subject 검증
 - 사용자별 서버 AI 분당 이미지 수 제한
 - 배포 런타임에 붙일 수 있는 `POST /pictory/classify` HTTP 어댑터
-- 검증된 구독 권한을 서버 원장에 반영하는 `POST /pictory/entitlement` HTTP 어댑터
+- 앱인토스 주문 상태 조회 결과로 구독 권한을 서버 원장에 반영하는 `POST /pictory/entitlement` HTTP 어댑터
 - 광고 보상 크레딧을 원장에 지급하는 `POST /pictory/reward` HTTP 어댑터
 - 서버 원장 계정을 지우는 `DELETE /pictory/account` HTTP 어댑터
 - `health/classify/reward`를 실제 HTTP로 검증하는 Node 서버 런타임
@@ -106,9 +112,10 @@ npm run qa:server:built
 토큰, `resolveSubjectId` 옵션, 또는 게이트웨이 미들웨어로 동일 출처 세션
 쿠키/토스 세션을 검증해 subject를 주입해야 합니다. 기본 헤더 secret 방식은
 서버 간 호출 검증용입니다.
-구독 결제 검증이 끝난 서버/게이트웨이는 `POST /pictory/entitlement`를 내부
-secret과 subject로 호출해 `planId`와 `subscriptionExpiresAt`를 원장에 반영해야
-유료 서버 AI quota가 활성화됩니다.
+구독 결제 상품 지급 콜백은 `VITE_PICTORY_ENTITLEMENT_ENDPOINT`로 `orderId`를
+보내고, 서버는 앱인토스 주문 상태 조회 API를 mTLS로 호출해 SKU와 상태를
+검증한 뒤 원장에 Plus/Pro 권한을 반영합니다. 운영 서버에는 앱인토스 콘솔에서
+발급한 mTLS 인증서/키 경로와 서버용 SKU 환경 변수를 설정해야 합니다.
 
 ## 앨범 fallback 정책
 

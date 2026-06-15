@@ -10,6 +10,7 @@ type PaidPlanId = Exclude<PlanId, "free">;
 interface IapEnv {
   VITE_PICTORY_PLUS_SUBSCRIPTION_SKU?: string;
   VITE_PICTORY_PRO_SUBSCRIPTION_SKU?: string;
+  VITE_PICTORY_ENTITLEMENT_ENDPOINT?: string;
 }
 
 export interface IapClient {
@@ -60,6 +61,7 @@ export interface PurchasePlanOptions {
   timeoutMs?: number;
   env?: IapEnv;
   client?: IapClient;
+  fetch?: typeof fetch;
 }
 
 export type PurchasePlanResult =
@@ -136,7 +138,12 @@ export async function purchaseSubscriptionPlan(
   return new Promise((resolve) => {
     let cleanup: (() => void) | undefined;
     let purchasedOrder:
-      | { orderId: string; subscriptionId?: string; verifiedAt: string }
+      | {
+          orderId: string;
+          subscriptionId?: string;
+          verifiedAt: string;
+          expiresAt?: string;
+        }
       | undefined;
     let finished = false;
 
@@ -163,11 +170,23 @@ export async function purchaseSubscriptionPlan(
         options: {
           sku,
           offerId,
-          processProductGrant: ({ orderId, subscriptionId }) => {
+          processProductGrant: async ({ orderId, subscriptionId }) => {
+            const serverGrant = await verifyPurchaseGrantWithServer({
+              env,
+              fetchImpl: options.fetch ?? globalThis.fetch,
+              orderId,
+              planId,
+            });
+            if (!serverGrant.ok) {
+              return false;
+            }
+
             purchasedOrder = {
               orderId,
               subscriptionId,
-              verifiedAt: new Date().toISOString(),
+              verifiedAt:
+                serverGrant.verifiedAt ?? new Date().toISOString(),
+              expiresAt: serverGrant.expiresAt,
             };
             return true;
           },
@@ -195,6 +214,7 @@ export async function purchaseSubscriptionPlan(
               subscriptionId: purchasedOrder?.subscriptionId,
               verifiedAt:
                 purchasedOrder?.verifiedAt ?? new Date().toISOString(),
+              expiresAt: purchasedOrder?.expiresAt,
               status: "PURCHASED",
             },
           });
@@ -205,6 +225,50 @@ export async function purchaseSubscriptionPlan(
       finish(classifyPurchaseError(error));
     }
   });
+}
+
+async function verifyPurchaseGrantWithServer({
+  env,
+  fetchImpl,
+  orderId,
+  planId,
+}: {
+  env: IapEnv;
+  fetchImpl: typeof fetch;
+  orderId: string;
+  planId: PaidPlanId;
+}) {
+  const endpoint = env.VITE_PICTORY_ENTITLEMENT_ENDPOINT?.trim();
+  if (!endpoint) {
+    return { ok: true };
+  }
+
+  try {
+    const response = await fetchImpl(endpoint, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Pictory-Request-Id": `iap-verify-${orderId}`,
+      },
+      body: JSON.stringify({ orderId, expectedPlanId: planId }),
+    });
+    if (!response.ok) {
+      return { ok: false };
+    }
+
+    const body = (await response.json()) as {
+      planId?: PlanId;
+      subscriptionExpiresAt?: string;
+    };
+    return {
+      ok: body.planId === planId,
+      verifiedAt: new Date().toISOString(),
+      expiresAt: body.subscriptionExpiresAt,
+    };
+  } catch {
+    return { ok: false };
+  }
 }
 
 export async function restoreIapEntitlement(

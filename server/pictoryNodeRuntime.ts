@@ -10,6 +10,7 @@ import { createPictoryRewardHttpHandler } from "./pictoryRewardHttpAdapter";
 import { createPictoryAccountHttpHandler } from "./pictoryAccountHttpAdapter";
 import { createPictoryEntitlementHttpHandler } from "./pictoryEntitlementHttpAdapter";
 import { PictoryFileUsageLedgerStore } from "./pictoryFileUsageStore";
+import type { PictoryIapOrderStatusFetcher } from "./pictoryIapOrderStatus";
 import type {
   PictoryClassifyDeps,
   PictoryClassifyRequestContext,
@@ -23,6 +24,7 @@ export interface PictoryNodeRuntimeOptions {
   store?: PictoryUsageLedgerStore;
   env?: Record<string, string | undefined>;
   classifyItems?: PictoryClassifyDeps["classifyItems"];
+  fetchOrderStatus?: PictoryIapOrderStatusFetcher;
   resolveSubjectId?: (
     context: PictoryClassifyRequestContext,
   ) => MaybePromise<string | null | undefined>;
@@ -33,6 +35,7 @@ export function createPictoryNodeRequestListener({
   store,
   env = processEnv,
   classifyItems,
+  fetchOrderStatus,
   resolveSubjectId,
   bodyLimitBytes = DEFAULT_BODY_LIMIT_BYTES,
 }: PictoryNodeRuntimeOptions = {}) {
@@ -60,6 +63,8 @@ export function createPictoryNodeRequestListener({
   const entitlementHandler = createPictoryEntitlementHttpHandler({
     store: usageStore,
     env,
+    fetchOrderStatus,
+    corsOrigin,
   });
 
   return async function pictoryNodeRequestListener(

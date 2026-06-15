@@ -50,11 +50,17 @@ function checkEnvExample() {
     "VITE_PICTORY_PRO_SUBSCRIPTION_SKU",
     "VITE_PICTORY_CLASSIFY_ENDPOINT",
     "VITE_PICTORY_REWARD_ENDPOINT",
+    "VITE_PICTORY_ENTITLEMENT_ENDPOINT",
     "VITE_PICTORY_DELETE_ENDPOINT",
   ];
   const requiredServerEnv = [
     "PICTORY_SERVER_SECRET",
     "PICTORY_SESSION_SECRET",
+    "PICTORY_PLUS_SUBSCRIPTION_SKU",
+    "PICTORY_PRO_SUBSCRIPTION_SKU",
+    "PICTORY_SUBSCRIPTION_VALID_DAYS",
+    "APPS_IN_TOSS_MTLS_CERT_PATH",
+    "APPS_IN_TOSS_MTLS_KEY_PATH",
     "OPENAI_API_KEY",
     "OPENAI_MODEL",
     "OPENAI_IMAGE_DETAIL",
@@ -89,6 +95,12 @@ function checkEnvExample() {
   );
   record(
     /your-api\.example\.com/.test(
+      env.get("VITE_PICTORY_ENTITLEMENT_ENDPOINT") ?? "",
+    ),
+    ".env.example entitlement endpoint is a placeholder URL",
+  );
+  record(
+    /your-api\.example\.com/.test(
       env.get("VITE_PICTORY_DELETE_ENDPOINT") ?? "",
     ),
     ".env.example delete endpoint is a placeholder URL",
@@ -100,6 +112,22 @@ function checkEnvExample() {
   record(
     /^replace_with_/.test(env.get("PICTORY_SESSION_SECRET") ?? ""),
     ".env.example session secret is a placeholder",
+  );
+  record(
+    /^replace_with_/.test(env.get("PICTORY_PLUS_SUBSCRIPTION_SKU") ?? ""),
+    ".env.example plus SKU is a placeholder",
+  );
+  record(
+    /^replace_with_/.test(env.get("PICTORY_PRO_SUBSCRIPTION_SKU") ?? ""),
+    ".env.example pro SKU is a placeholder",
+  );
+  record(
+    /^replace_with_/.test(env.get("APPS_IN_TOSS_MTLS_CERT_PATH") ?? ""),
+    ".env.example mTLS cert path is a placeholder",
+  );
+  record(
+    /^replace_with_/.test(env.get("APPS_IN_TOSS_MTLS_KEY_PATH") ?? ""),
+    ".env.example mTLS key path is a placeholder",
   );
   record(
     /^replace_with_/.test(env.get("OPENAI_API_KEY") ?? "") &&
@@ -121,6 +149,7 @@ function checkEnvExample() {
     "PICTORY_AI_PLUS_MONTHLY_QUOTA",
     "PICTORY_AI_PRO_MONTHLY_QUOTA",
     "PICTORY_AI_RATE_LIMIT_PER_MINUTE",
+    "PICTORY_SUBSCRIPTION_VALID_DAYS",
   ]) {
     record(/^\d+$/.test(env.get(key) ?? ""), `.env.example ${key} is numeric`);
   }
@@ -247,6 +276,10 @@ function checkPackageScripts() {
   record(
     existsSync(projectPath("server", "pictoryEntitlementHttpAdapter.ts")),
     "server entitlement HTTP adapter exists",
+  );
+  record(
+    existsSync(projectPath("server", "pictoryIapOrderStatus.ts")),
+    "server IAP order status verifier exists",
   );
   record(
     existsSync(projectPath("server", "pictoryNodeRuntime.ts")),
