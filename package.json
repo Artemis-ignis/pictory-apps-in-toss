@@ -17,6 +17,7 @@
     "check:release": "node tools/check-release-readiness.mjs",
     "check:production-env": "node tools/check-production-env.mjs",
     "check:device-evidence": "node tools/check-device-evidence.mjs",
+    "evidence:device:draft": "node tools/write-device-evidence-draft.mjs",
     "snapshot:release": "node tools/write-release-snapshot.mjs",
     "qa:server": "vitest run tests/nodeRuntime.test.ts tests/fileUsageStore.test.ts tests/httpAdapter.test.ts tests/rewardHttpAdapter.test.ts tests/accountHttpAdapter.test.ts tests/entitlementHttpAdapter.test.ts tests/pictorySessionAuth.test.ts tests/usageLedger.test.ts tests/serverClassify.test.ts",
     "qa:server:built": "npm run server:build && node tools/qa-built-server.mjs",
