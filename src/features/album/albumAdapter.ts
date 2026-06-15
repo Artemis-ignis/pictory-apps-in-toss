@@ -8,6 +8,10 @@ type NativeAlbumItem = {
   type?: "PHOTO" | "VIDEO";
 };
 
+interface AlbumFallbackEnv {
+  DEV?: boolean;
+}
+
 export async function requestAlbumScan(maxCount = 120): Promise<ScanResult> {
   try {
     const response = await fetchAlbumPhotos({
@@ -30,6 +34,10 @@ export async function requestAlbumScan(maxCount = 120): Promise<ScanResult> {
       message: `${items.length}장을 앨범에서 가져왔어요.`,
     };
   } catch {
+    if (!isLocalAlbumFallbackAllowed()) {
+      throw new Error("ALBUM_SCAN_FAILED");
+    }
+
     return {
       items: sampleAlbumItems,
       source: "sample",
@@ -60,6 +68,10 @@ export async function pickAlbumItems(maxCount = 20): Promise<ScanResult> {
           : `${items.length}장을 선택했어요.`,
     };
   } catch {
+    if (!isLocalAlbumFallbackAllowed()) {
+      throw new Error("ALBUM_PICK_FAILED");
+    }
+
     const localItems = await pickLocalFiles(maxCount);
     return {
       items: localItems,
@@ -70,6 +82,13 @@ export async function pickAlbumItems(maxCount = 20): Promise<ScanResult> {
           : `${localItems.length}장을 직접 넣었어요.`,
     };
   }
+}
+
+export function isLocalAlbumFallbackAllowed(
+  env: AlbumFallbackEnv = import.meta.env,
+  hostname = window.location.hostname,
+) {
+  return env.DEV || hostname === "localhost" || hostname === "127.0.0.1";
 }
 
 export function mergeAlbumItems(

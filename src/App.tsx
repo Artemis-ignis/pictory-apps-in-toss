@@ -129,7 +129,9 @@ function App() {
       await analyzeIncoming(result.items, result.message);
       setActiveTab("map");
     } catch {
-      setScanMessage("사진을 가져오지 못했어요. 다시 시도해주세요.");
+      setScanMessage(
+        "앨범을 열지 못했어요. 사진 권한이나 토스 앱 버전을 확인해주세요.",
+      );
       setIsScanning(false);
     }
   }
@@ -144,7 +146,9 @@ function App() {
       await analyzeIncoming(result.items, result.message);
       setActiveTab("map");
     } catch {
-      setScanMessage("선택한 사진을 읽지 못했어요.");
+      setScanMessage(
+        "사진 선택을 열지 못했어요. 사진 권한이나 토스 앱 버전을 확인해주세요.",
+      );
     }
   }
 
