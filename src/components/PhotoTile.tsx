@@ -61,7 +61,7 @@ export function PhotoTile({
           <button
             type="button"
             onClick={() => onSave?.(item.id)}
-            aria-label="보관"
+            aria-label="킵"
             aria-pressed={item.status === "saved"}
             className={item.status === "saved" ? "is-active" : ""}
           >
@@ -70,7 +70,7 @@ export function PhotoTile({
           <button
             type="button"
             onClick={() => onQueue?.(item.id)}
-            aria-label="정리 후보"
+            aria-label="제외 후보"
             aria-pressed={item.status === "queued"}
             className={item.status === "queued" ? "is-active" : ""}
           >
@@ -103,7 +103,7 @@ function getPhotoTitle(item: ClassifiedItem) {
 
   return cleanBucket?.id === "needsReview"
     ? `${category?.shortLabel ?? "사진"} 확인 필요`
-    : `${category?.shortLabel ?? "사진"} 사진`;
+    : `${category?.shortLabel ?? "사진"} 컷`;
 }
 
 function getPhotoSubtitle(item: ClassifiedItem) {
@@ -115,13 +115,13 @@ function getPhotoSubtitle(item: ClassifiedItem) {
 
 function getStatusLabel(status: ClassifiedItem["status"]) {
   if (status === "saved") {
-    return "보관";
+    return "킵";
   }
   if (status === "queued") {
-    return "정리";
+    return "제외";
   }
   if (status === "ignored") {
-    return "제외";
+    return "숨김";
   }
   return "";
 }

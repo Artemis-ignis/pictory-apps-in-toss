@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+﻿import { spawn } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import path from "node:path";
@@ -78,7 +78,7 @@ async function runQa() {
     await page.goto(baseUrl, { waitUntil: "networkidle" });
     await page.evaluate(() => window.localStorage.clear());
     await page.reload({ waitUntil: "networkidle" });
-    await clickBottomNav(page, "보관");
+    await clickBottomNav(page, "킵");
     page.once("dialog", (dialog) => dialog.accept());
     await page.getByRole("button", { name: /픽토리 데이터 삭제/ }).click();
     await clickBottomNav(page, "홈");
@@ -107,17 +107,17 @@ async function runQa() {
       path: path.join(screenshotDir, "00-import-modes.png"),
     });
 
-    await page.getByRole("button", { name: /앨범 정리 시작/ }).click();
-    await page.getByText("사진 묶음을").waitFor({ timeout: 25_000 });
+    await page.getByRole("button", { name: /베스트컷 찾기/ }).click();
+    await page.getByText("여행 흐름을").waitFor({ timeout: 25_000 });
     await page.screenshot({ path: path.join(screenshotDir, "01-map.png") });
 
     await clickBottomNav(page, "홈");
     await page.locator(".home-bucket-list .bucket-card").first().click();
-    await page.getByText("종류 폴더").waitFor();
+    await page.locator(".folder-header").filter({ hasText: "콘텐츠 묶음" }).waitFor();
     const homeShortcutOpened =
       (await page
         .locator(".folder-header")
-        .filter({ hasText: "종류 폴더" })
+        .filter({ hasText: "콘텐츠 묶음" })
         .count()) > 0;
     await page.screenshot({
       path: path.join(screenshotDir, "02-home-shortcut-folder.png"),
@@ -125,12 +125,12 @@ async function runQa() {
     await page.locator(".folder-back").click();
 
     await page.locator(".bucket-list .bucket-card").filter({ hasText: /^음식/ }).click();
-    await page.getByText("종류 폴더").waitFor();
+    await page.locator(".folder-header").filter({ hasText: "콘텐츠 묶음" }).waitFor();
     await page.locator(".folder-header").filter({ hasText: "음식" }).waitFor();
     const mapCategoryFolderOpened =
       (await page
         .locator(".folder-header")
-        .filter({ hasText: "종류 폴더" })
+        .filter({ hasText: "콘텐츠 묶음" })
         .count()) > 0;
     const mapFolderActionsReady =
       (await page.locator(".folder-action-bar button").count()) >= 3;
@@ -152,13 +152,13 @@ async function runQa() {
     const browserBackReturnedToMapFolder =
       (await page
         .locator(".folder-header")
-        .filter({ hasText: "종류 폴더" })
+        .filter({ hasText: "콘텐츠 묶음" })
         .count()) > 0;
     await page.locator(".folder-photo-list .photo-open").first().click();
     await page.locator(".photo-detail-screen").waitFor();
     await page
       .locator(".detail-actions")
-      .getByRole("button", { name: /^보관$/ })
+      .getByRole("button", { name: /^킵$/ })
       .click();
     await page.waitForFunction((previousCount) => {
       const raw = window.localStorage.getItem("pictory:v1");
@@ -174,7 +174,7 @@ async function runQa() {
     const savedBeforeFolderSave = await readStoredIdCount(page, "savedIds");
     await page
       .locator(".folder-action-bar")
-      .getByRole("button", { name: /^보관$/ })
+      .getByRole("button", { name: /^킵$/ })
       .click();
     await page.waitForFunction((previousCount) => {
       const raw = window.localStorage.getItem("pictory:v1");
@@ -189,21 +189,21 @@ async function runQa() {
     await page.locator(".folder-back").click();
     await page
       .locator(".folder-mode-tabs")
-      .getByRole("button", { name: /사진 월/ })
+      .getByRole("button", { name: /날짜/ })
       .click();
     await page.locator(".period-bucket-list .bucket-card").first().click();
-    await page.getByText("사진 날짜 기준").waitFor();
+    await page.locator(".folder-header").filter({ hasText: "날짜 흐름" }).waitFor();
     const periodFolderOpened =
       (await page
         .locator(".folder-header")
-        .filter({ hasText: "사진 날짜 기준" })
+        .filter({ hasText: "날짜 흐름" })
         .count()) > 0;
     await page.screenshot({
       path: path.join(screenshotDir, "05-map-period-folder.png"),
     });
 
-    await clickBottomNav(page, "정리");
-    await page.getByText("지울 후보만").waitFor();
+    await clickBottomNav(page, "선별");
+    await page.getByText("올릴 컷만").waitFor();
     const cleanReviewInputs = page.locator(".clean-review-card input");
     const cleanBulkSelectionReady =
       (await cleanReviewInputs.count()) > 0 &&
@@ -231,20 +231,20 @@ async function runQa() {
         raw != null && (JSON.parse(raw).queuedIds?.length ?? 0) > previousCount
       );
     }, queuedBeforeBulk);
-    await clickBottomNav(page, "분류");
+    await clickBottomNav(page, "묶음");
     await page
       .locator(".folder-header")
-      .filter({ hasText: "사진 날짜 기준" })
+      .filter({ hasText: "날짜 흐름" })
       .waitFor();
     const periodFolderPreservedAcrossTabs =
       (await page
         .locator(".folder-header")
-        .filter({ hasText: "사진 날짜 기준" })
+        .filter({ hasText: "날짜 흐름" })
         .count()) > 0;
-    await clickBottomNav(page, "정리");
-    await page.getByText("지울 후보만").waitFor();
+    await clickBottomNav(page, "선별");
+    await page.getByText("올릴 컷만").waitFor();
     await page.getByRole("button", { name: /민감정보 후보/ }).click();
-    await page.getByText("정리 폴더").waitFor();
+    await page.locator(".folder-header").filter({ hasText: "선별 폴더" }).waitFor();
     await page
       .locator(".folder-header")
       .filter({ hasText: "민감정보 후보" })
@@ -252,7 +252,7 @@ async function runQa() {
     const cleanFolderOpened =
       (await page
         .locator(".folder-header")
-        .filter({ hasText: "정리 폴더" })
+        .filter({ hasText: "선별 폴더" })
         .count()) > 0;
     const cleanFolderActionsReady =
       (await page.locator(".folder-action-bar button").count()) >= 3;
@@ -283,7 +283,7 @@ async function runQa() {
     const ignoredBeforeCleanFolder = await readStoredIdCount(page, "ignoredIds");
     await page
       .locator(".folder-action-bar")
-      .getByRole("button", { name: /^제외$/ })
+      .getByRole("button", { name: /^숨김$/ })
       .click();
     await page.waitForFunction((previousCount) => {
       const raw = window.localStorage.getItem("pictory:v1");
@@ -296,16 +296,16 @@ async function runQa() {
       ignoredBeforeCleanFolder,
     );
 
-    await clickBottomNav(page, "보관");
-    await page.getByText("다시 볼 것만").waitFor();
+    await clickBottomNav(page, "킵");
+    await page.getByText("공유할 사진 세트로 저장").waitFor();
     await page.screenshot({ path: path.join(screenshotDir, "08-saved.png") });
     await page.locator(".bucket-list .bucket-card").filter({ hasText: /^음식/ }).click();
-    await page.getByText("보관 폴더").waitFor();
+    await page.locator(".folder-header").filter({ hasText: "킵 폴더" }).waitFor();
     await page.locator(".folder-header").filter({ hasText: "음식" }).waitFor();
     const savedFolderOpened =
       (await page
         .locator(".folder-header")
-        .filter({ hasText: "보관 폴더" })
+        .filter({ hasText: "킵 폴더" })
         .count()) > 0;
     const savedFolderActionsReady =
       (await page.locator(".folder-action-bar button").count()) >= 1;
@@ -401,7 +401,7 @@ async function runQa() {
         browserBackReturnedToMapFolder &&
         dom.brokenImages === 0 &&
         dom.detailScreens >= 1 &&
-        dom.navItems.join(",") === "홈,분류,정리,보관",
+        dom.navItems.join(",") === "홈,묶음,선별,킵",
       url: baseUrl,
       screenshots: screenshotDir,
       planId: state?.planId ?? "unknown",
@@ -454,9 +454,9 @@ async function runQa() {
 async function verifyAppFunctionLinks(page) {
   const entries = [
     ["home", "홈"],
-    ["map", "분류"],
-    ["clean", "정리"],
-    ["saved", "보관"],
+    ["map", "묶음"],
+    ["clean", "선별"],
+    ["saved", "킵"],
   ];
   const result = {};
 
@@ -488,7 +488,7 @@ async function verifyImportModes(page) {
   const oldestReady =
     (await page
       .locator(".primary-action")
-      .filter({ hasText: "오래된 후보 정리" })
+      .filter({ hasText: "오래된 컷 보기" })
       .count()) > 0;
 
   await page
@@ -498,7 +498,7 @@ async function verifyImportModes(page) {
   const dateReady =
     (await page
       .locator(".primary-action")
-      .filter({ hasText: "날짜 후보 찾기" })
+      .filter({ hasText: "날짜별 컷 찾기" })
       .count()) > 0 &&
     (await page.locator(".import-date-input").count()) === 1;
 
@@ -509,7 +509,7 @@ async function verifyImportModes(page) {
   const instagramReady =
     (await page
       .locator(".primary-action")
-      .filter({ hasText: "인스타 후보 고르기" })
+      .filter({ hasText: "인스타 세트 만들기" })
       .count()) > 0;
 
   await page
@@ -519,7 +519,7 @@ async function verifyImportModes(page) {
   const recentReady =
     (await page
       .locator(".primary-action")
-      .filter({ hasText: "앨범 정리 시작" })
+      .filter({ hasText: "베스트컷 찾기" })
       .count()) > 0;
 
   return oldestReady && dateReady && instagramReady && recentReady;

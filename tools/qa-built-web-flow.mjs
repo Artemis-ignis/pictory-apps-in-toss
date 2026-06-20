@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+﻿import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
@@ -87,22 +87,22 @@ async function runQa() {
   try {
     const appFunctionDeepLinks = await verifyAppFunctionLinks(page);
     await page.goto(baseUrl, { waitUntil: "networkidle" });
-    await page.getByText("사진첩이 많을 때").waitFor();
+    await page.getByText("여행 다녀온 뒤").waitFor();
     await page.screenshot({ path: path.join(screenshotDir, "00-home.png") });
     const importModesReady = await verifyImportModes(page);
     await page.screenshot({
       path: path.join(screenshotDir, "00-import-modes.png"),
     });
 
-    await clickBottomNav(page, "분류");
-    await page.getByText("사진 묶음을").waitFor();
+    await clickBottomNav(page, "묶음");
+    await page.getByText("여행 흐름을").waitFor();
     await page.screenshot({ path: path.join(screenshotDir, "01-map.png") });
     await page.locator(".bucket-list .bucket-card").filter({ hasText: /^음식/ }).click();
     await page.locator(".folder-header").filter({ hasText: "음식" }).waitFor();
     const mapFolderOpened =
       (await page
         .locator(".folder-header")
-        .filter({ hasText: "종류 폴더" })
+        .filter({ hasText: "콘텐츠 묶음" })
         .count()) > 0;
     await page.locator(".folder-photo-list .photo-open").first().click();
     await page.locator(".photo-detail-screen").waitFor();
@@ -112,8 +112,8 @@ async function runQa() {
       path: path.join(screenshotDir, "02-map-detail.png"),
     });
 
-    await clickBottomNav(page, "정리");
-    await page.getByText("지울 후보만").waitFor();
+    await clickBottomNav(page, "선별");
+    await page.getByText("올릴 컷만").waitFor();
     await page.getByRole("button", { name: /민감정보 후보/ }).click();
     await page
       .locator(".folder-header")
@@ -122,7 +122,7 @@ async function runQa() {
     const cleanFolderOpened =
       (await page
         .locator(".folder-header")
-        .filter({ hasText: "정리 폴더" })
+        .filter({ hasText: "선별 폴더" })
         .count()) > 0;
     await page.locator(".folder-photo-list .photo-open").first().click();
     await page.locator(".photo-detail-screen").waitFor();
@@ -137,14 +137,14 @@ async function runQa() {
       path: path.join(screenshotDir, "03-clean-detail.png"),
     });
 
-    await clickBottomNav(page, "보관");
-    await page.getByText("다시 볼 것만").waitFor();
+    await clickBottomNav(page, "킵");
+    await page.getByText("공유할 사진 세트로 저장").waitFor();
     await page.locator(".bucket-list .bucket-card").filter({ hasText: /^음식/ }).click();
     await page.locator(".folder-header").filter({ hasText: "음식" }).waitFor();
     const savedFolderOpened =
       (await page
         .locator(".folder-header")
-        .filter({ hasText: "보관 폴더" })
+        .filter({ hasText: "킵 폴더" })
         .count()) > 0;
     await page.locator(".folder-photo-list .photo-open").first().click();
     await page.locator(".photo-detail-screen").waitFor();
@@ -181,7 +181,7 @@ async function runQa() {
       ok:
         Object.values(flow).every(Boolean) &&
         dom.brokenImages === 0 &&
-        dom.navItems.join(",") === "홈,분류,정리,보관" &&
+        dom.navItems.join(",") === "홈,묶음,선별,킵" &&
         consoleIssues.length === 0,
       url: baseUrl,
       screenshots: screenshotDir,
@@ -205,9 +205,9 @@ async function runQa() {
 async function verifyAppFunctionLinks(page) {
   const entries = [
     ["home", "홈"],
-    ["map", "분류"],
-    ["clean", "정리"],
-    ["saved", "보관"],
+    ["map", "묶음"],
+    ["clean", "선별"],
+    ["saved", "킵"],
   ];
   const result = {};
 
@@ -239,7 +239,7 @@ async function verifyImportModes(page) {
   const oldestReady =
     (await page
       .locator(".primary-action")
-      .filter({ hasText: "오래된 후보 정리" })
+      .filter({ hasText: "오래된 컷 보기" })
       .count()) > 0;
 
   await page
@@ -249,7 +249,7 @@ async function verifyImportModes(page) {
   const dateReady =
     (await page
       .locator(".primary-action")
-      .filter({ hasText: "날짜 후보 찾기" })
+      .filter({ hasText: "날짜별 컷 찾기" })
       .count()) > 0 &&
     (await page.locator(".import-date-input").count()) === 1;
 
@@ -260,7 +260,7 @@ async function verifyImportModes(page) {
   const instagramReady =
     (await page
       .locator(".primary-action")
-      .filter({ hasText: "인스타 후보 고르기" })
+      .filter({ hasText: "인스타 세트 만들기" })
       .count()) > 0;
 
   await page
@@ -270,7 +270,7 @@ async function verifyImportModes(page) {
   const recentReady =
     (await page
       .locator(".primary-action")
-      .filter({ hasText: "앨범 정리 시작" })
+      .filter({ hasText: "베스트컷 찾기" })
       .count()) > 0;
 
   return oldestReady && dateReady && instagramReady && recentReady;

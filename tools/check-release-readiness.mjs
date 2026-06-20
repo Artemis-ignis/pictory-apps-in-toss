@@ -329,7 +329,7 @@ export function validateRuntimeFlowEvidence(evidence) {
       message: "runtime flow QA has no broken images",
     },
     {
-      ok: navItems.join(",") === "홈,분류,정리,보관",
+      ok: navItems.join(",") === "홈,묶음,선별,킵",
       message: "runtime flow QA bottom navigation is complete",
     },
     {
@@ -375,7 +375,7 @@ export function validateBuiltFlowEvidence(evidence) {
       message: "built web flow QA has no broken images",
     },
     {
-      ok: navItems.join(",") === "홈,분류,정리,보관",
+      ok: navItems.join(",") === "홈,묶음,선별,킵",
       message: "built web flow QA bottom navigation is complete",
     },
     {

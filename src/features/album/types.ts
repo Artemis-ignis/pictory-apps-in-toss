@@ -141,8 +141,8 @@ export const MAP_BUCKETS: BucketMeta<MapBucketId>[] = [
   { id: "document", label: "문서", shortLabel: "문서", tone: "slate" },
   { id: "receipt", label: "영수증", shortLabel: "영수증", tone: "cyan" },
   { id: "food", label: "음식", shortLabel: "음식", tone: "orange" },
-  { id: "place", label: "장소", shortLabel: "장소", tone: "green" },
-  { id: "people", label: "사람", shortLabel: "사람", tone: "blue" },
+  { id: "place", label: "여행지", shortLabel: "여행", tone: "green" },
+  { id: "people", label: "인물", shortLabel: "인물", tone: "blue" },
   { id: "coupon", label: "쿠폰", shortLabel: "쿠폰", tone: "red" },
   { id: "memory", label: "기록", shortLabel: "기록", tone: "slate" },
 ];
@@ -156,27 +156,27 @@ export const CLEAN_BUCKETS: BucketMeta<CleanBucketId>[] = [
   },
   {
     id: "needsReview",
-    label: "확인 필요",
+    label: "올릴지 확인",
     shortLabel: "확인",
     tone: "purple",
   },
   {
     id: "similar",
-    label: "비슷한 사진",
+    label: "비슷한 컷",
     shortLabel: "유사",
     tone: "red",
   },
   {
     id: "dark",
-    label: "어두운·흐린 사진",
+    label: "흐린 컷",
     shortLabel: "품질",
     tone: "dark",
   },
   {
     id: "capturePile",
-    label: "캡처 더미",
+    label: "캡처 제외",
     shortLabel: "캡처",
     tone: "violet",
   },
-  { id: "keep", label: "보관 후보", shortLabel: "보관", tone: "cyan" },
+  { id: "keep", label: "업로드 후보", shortLabel: "킵", tone: "cyan" },
 ];

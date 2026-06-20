@@ -112,7 +112,7 @@ function App() {
   const [verifiedPlanId, setVerifiedPlanId] = useState<PlanId>("free");
   const restoreAttemptedRef = useRef(false);
   const [scanMessage, setScanMessage] = useState(
-    "사진을 선택하면 분류, 정리 후보, 보관까지 이어져요.",
+    "사진을 선택하면 베스트컷, 묶음, 킵앨범까지 이어져요.",
   );
   const [importMode, setImportMode] = useState<AlbumImportMode>("recent");
   const [importDate, setImportDate] = useState(currentDateInputValue());
@@ -390,7 +390,7 @@ function App() {
       const allowance = getScanAllowance(entitledState);
       if (allowance.nextBatchLimit <= 0) {
         setScanMessage(
-          "이번 달 정리 가능 장수를 다 썼어요. 광고나 플랜으로 늘린 뒤 사진을 선택할 수 있어요.",
+          "이번 달 선별 가능 장수를 다 썼어요. 광고나 플랜으로 늘린 뒤 사진을 선택할 수 있어요.",
         );
         setIsScanning(false);
         return;
@@ -425,7 +425,7 @@ function App() {
       const allowance = getScanAllowance(entitledState);
       if (allowance.nextBatchLimit <= 0) {
         setScanMessage(
-          "이번 달 정리 가능 장수를 다 썼어요. 광고나 플랜으로 늘린 뒤 사진을 선택할 수 있어요.",
+          "이번 달 선별 가능 장수를 다 썼어요. 광고나 플랜으로 늘린 뒤 사진을 선택할 수 있어요.",
         );
         return;
       }
@@ -454,7 +454,7 @@ function App() {
     if (result.reward <= 0) {
       const nextMessage =
         result.source === "dismissed"
-          ? "광고를 끝까지 보면 AI 정밀분류권이 지급돼요."
+          ? "광고를 끝까지 보면 AI 큐레이션권이 지급돼요."
           : "지금은 광고를 불러오지 못했어요. 잠시 후 다시 시도해주세요.";
       setScanMessage(nextMessage);
       return;
@@ -465,7 +465,7 @@ function App() {
       setScanMessage(
         grant.duplicated
           ? "이미 지급된 광고 보상이에요."
-          : "오늘 받을 수 있는 AI 정밀분류권을 모두 받았어요.",
+          : "오늘 받을 수 있는 AI 큐레이션권을 모두 받았어요.",
       );
       return;
     }
@@ -477,7 +477,7 @@ function App() {
     const appliedGrant = Math.max(0, nextCredits - state.credits);
 
     if (appliedGrant <= 0) {
-      setScanMessage("AI 정밀분류권이 이미 300장까지 차 있어요.");
+      setScanMessage("AI 큐레이션권이 이미 300장까지 차 있어요.");
       return;
     }
 
@@ -487,8 +487,8 @@ function App() {
     }));
     setScanMessage(
       grant.source === "localFallback"
-        ? `${appliedGrant}장 보너스 AI 정밀분류권을 받았어요.`
-        : `${appliedGrant}장 AI 정밀분류권을 받았어요.`,
+        ? `${appliedGrant}장 보너스 AI 큐레이션권을 받았어요.`
+        : `${appliedGrant}장 AI 큐레이션권을 받았어요.`,
     );
   }
 
@@ -508,7 +508,7 @@ function App() {
       currentPlan.storageLimit,
     );
     if (result.changedCount === 0) {
-      setScanMessage(`${currentPlan.label} 플랜의 보관 한도에 도달했어요.`);
+      setScanMessage(`${currentPlan.label} 플랜의 킵 한도에 도달했어요.`);
       return;
     }
 
@@ -517,19 +517,19 @@ function App() {
     if (status === "saved") {
       setScanMessage(
         result.skippedSaveCount > 0
-          ? `${result.changedCount}장만 보관했어요. ${currentPlan.label} 보관 한도에 걸렸어요.`
-          : `${result.changedCount}장을 보관했어요.`,
+          ? `${result.changedCount}장만 킵했어요. ${currentPlan.label} 킵 한도에 걸렸어요.`
+          : `${result.changedCount}장을 킵했어요.`,
       );
       return;
     }
 
     if (status === "queued") {
-      setScanMessage(`${result.changedCount}장을 정리 후보로 표시했어요.`);
+      setScanMessage(`${result.changedCount}장을 제외 후보로 표시했어요.`);
       return;
     }
 
     if (status === "ignored") {
-      setScanMessage(`${result.changedCount}장을 이번 정리에서 제외했어요.`);
+      setScanMessage(`${result.changedCount}장을 이번 큐레이션에서 숨겼어요.`);
       return;
     }
 
@@ -626,24 +626,24 @@ function App() {
   }
 
   function handleNotify() {
-    setScanMessage("정리 완료 알림은 토스 알림 권한 연결 후 켤 수 있어요.");
+    setScanMessage("큐레이션 완료 알림은 토스 알림 권한 연결 후 켤 수 있어요.");
   }
 
   function handleShare() {
-    const text = `픽토리 요약: ${visibleItems.length}장, 종류 ${
+    const text = `픽토리 큐레이션: ${visibleItems.length}장, 묶음 ${
       Object.keys(summaries.map).length
-    }개, 정리 후보 ${Object.values(summaries.clean).reduce(
+    }개, 제외 후보 ${Object.values(summaries.clean).reduce(
       (sum, count) => sum + count,
       0,
     )}장`;
 
     if (navigator.share) {
-      navigator.share({ title: "픽토리 요약", text }).catch(() => undefined);
+      navigator.share({ title: "픽토리 큐레이션", text }).catch(() => undefined);
       return;
     }
 
     navigator.clipboard?.writeText(text).catch(() => undefined);
-    setScanMessage("요약을 클립보드에 복사했어요.");
+    setScanMessage("큐레이션 요약을 클립보드에 복사했어요.");
   }
 
   async function handleSelectPlan(planId: PlanId) {

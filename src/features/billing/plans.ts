@@ -33,7 +33,7 @@ export const USAGE_PLANS: UsagePlan[] = [
     monthlyScanCredits: 40,
     storageLimit: 10,
     perRunLimit: 40,
-    description: "가끔 정리하는 기본 사용자",
+    description: "가끔 여행 사진을 고르는 사용자",
   },
   {
     id: "plus",
@@ -42,7 +42,7 @@ export const USAGE_PLANS: UsagePlan[] = [
     monthlyScanCredits: 500,
     storageLimit: 200,
     perRunLimit: 180,
-    description: "사진첩이 자주 쌓이는 사용자",
+    description: "주말마다 올릴 컷을 고르는 사용자",
   },
   {
     id: "pro",
@@ -51,7 +51,7 @@ export const USAGE_PLANS: UsagePlan[] = [
     monthlyScanCredits: 2000,
     storageLimit: 1000,
     perRunLimit: 300,
-    description: "수백 장 단위로 정리하는 사용자",
+    description: "여행·콘텐츠 사진을 대량 선별하는 사용자",
   },
 ];
 

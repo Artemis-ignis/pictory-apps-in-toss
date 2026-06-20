@@ -104,11 +104,11 @@ export function HomePage({
     <main className="screen home-screen">
       <section className="home-hero">
         <div>
-          <p>사진첩이 많을 때</p>
+          <p>여행 다녀온 뒤</p>
           <h1>
-            사진 정리
+            올릴 사진
             <br />
-            한눈에
+            한 번에
           </h1>
         </div>
         <Mascot variant="home" size="hero" />
@@ -160,7 +160,7 @@ export function HomePage({
         ) : null}
       </section>
 
-      <section className="action-stack" aria-label="사진 정리 시작">
+      <section className="action-stack" aria-label="사진 큐레이션 시작">
         <button className="primary-action" type="button" onClick={onScan}>
           <Image size={22} />
           <span>{primaryLabel}</span>
@@ -179,29 +179,29 @@ export function HomePage({
         </div>
       </section>
 
-      <p className="privacy-note">원본 저장 안 함 · 기기 안에서 분석</p>
+      <p className="privacy-note">원본 저장 안 함 · 기기 안에서 먼저 선별</p>
       <p className="dev-note">{scanMessage}</p>
 
       <BucketPhotoTray items={albumPreviewItems} title="최근 앨범" />
 
-      <section className="capacity-panel" aria-label="정리 한도">
+      <section className="capacity-panel" aria-label="큐레이션 한도">
         <div className="capacity-row">
           <div>
             <span>현재 플랜</span>
             <strong>{plan.label}</strong>
           </div>
           <div>
-            <span>이번 배치</span>
+            <span>이번 선별</span>
             <strong>{scanAllowance.nextBatchLimit}장</strong>
           </div>
           <div>
-            <span>보관함</span>
+            <span>킵앨범</span>
             <strong>
               {savedCount}/{plan.storageLimit}
             </strong>
           </div>
         </div>
-        <div className="credit-meter" aria-label="남은 정리 가능 장수">
+        <div className="credit-meter" aria-label="남은 큐레이션 가능 장수">
           <span
             style={{
               width: `${Math.min(
@@ -214,7 +214,7 @@ export function HomePage({
           />
         </div>
         <p>
-          남은 정리 {scanAllowance.totalLeft}장 · AI 정밀분류권 {credits}장
+          남은 선별 {scanAllowance.totalLeft}장 · AI 큐레이션권 {credits}장
         </p>
       </section>
 
@@ -234,23 +234,23 @@ export function HomePage({
 
       <section className="metric-grid" aria-label="요약">
         <MetricCard
-          label="분류 결과"
+          label="묶음 결과"
           value={`${kindCount || 0}개`}
-          caption={`${items.length}장 분류됨`}
+          caption={`${items.length}장 선별됨`}
           tone="blue"
           icon={<UserRound size={18} />}
         />
         <MetricCard
-          label="사진 월"
+          label="여행 흐름"
           value={`${periodCount || 0}개`}
           caption="사진 날짜 기준"
           tone="green"
           icon={<CalendarDays size={18} />}
         />
         <MetricCard
-          label="정리 후보"
+          label="제외 후보"
           value={`${cleanCount}장`}
-          caption="삭제 전 검토"
+          caption="업로드 전 검토"
           tone="orange"
           icon={<Images size={18} />}
         />
@@ -258,7 +258,7 @@ export function HomePage({
 
       <section className="preview-section">
         <div className="section-heading">
-          <h2>최근 결과</h2>
+          <h2>최근 큐레이션</h2>
           <button type="button" onClick={onViewAll}>
             전체 <ChevronRight size={16} />
           </button>
@@ -281,20 +281,20 @@ export function HomePage({
 
 function getPrimaryActionLabel(mode: AlbumImportMode, isScanning: boolean) {
   if (isScanning) {
-    return "사진 분류 중";
+    return "사진 고르는 중";
   }
 
   if (mode === "oldest") {
-    return "오래된 후보 정리";
+    return "오래된 컷 보기";
   }
 
   if (mode === "date") {
-    return "날짜 후보 찾기";
+    return "날짜별 컷 찾기";
   }
 
   if (mode === "instagram") {
-    return "인스타 후보 고르기";
+    return "인스타 세트 만들기";
   }
 
-  return "앨범 정리 시작";
+  return "베스트컷 찾기";
 }

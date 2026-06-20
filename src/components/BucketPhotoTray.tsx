@@ -40,7 +40,7 @@ export function BucketPhotoTray({
                   {onSave ? (
                     <button
                       type="button"
-                      aria-label="보관"
+                      aria-label="킵"
                       onClick={() => onSave(item.id)}
                     >
                       <Archive size={13} />
@@ -58,7 +58,7 @@ export function BucketPhotoTray({
                   {onQueue ? (
                     <button
                       type="button"
-                      aria-label="정리 후보"
+                      aria-label="제외 후보"
                       onClick={() => onQueue(item.id)}
                     >
                       <Trash2 size={13} />

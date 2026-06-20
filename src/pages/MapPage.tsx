@@ -67,7 +67,7 @@ export function MapPage({
     id: `category:${bucket.id}` as MapFolderId,
     label: bucket.label,
     shortLabel: bucket.shortLabel,
-    caption: "종류 폴더",
+    caption: "콘텐츠 묶음",
     tone: bucket.tone,
     icon: icons[bucket.id] ?? <FolderOpen size={22} />,
     count: items.filter((item) => item.categoryId === bucket.id).length,
@@ -104,7 +104,7 @@ export function MapPage({
           >
             <ArrowLeft size={19} />
             <span>
-              {selectedCategoryFolder != null ? "사진 종류" : "사진 월"}
+              {selectedCategoryFolder != null ? "콘텐츠 묶음" : "날짜 흐름"}
             </span>
           </button>
           <div className={`folder-icon tone-${selectedFolderMeta.tone}`}>
@@ -125,7 +125,7 @@ export function MapPage({
             onClick={() => onApplyFolderStatus(selectedIds, "saved")}
           >
             <Archive size={16} />
-            <span>보관</span>
+            <span>킵</span>
           </button>
           <button
             type="button"
@@ -134,7 +134,7 @@ export function MapPage({
             onClick={() => onApplyFolderStatus(selectedIds, "queued")}
           >
             <Trash2 size={16} />
-            <span>정리 후보</span>
+            <span>제외 후보</span>
           </button>
           <button
             type="button"
@@ -143,7 +143,7 @@ export function MapPage({
             onClick={() => onApplyFolderStatus(selectedIds, "ignored")}
           >
             <Check size={16} />
-            <span>제외</span>
+            <span>숨김</span>
           </button>
         </div>
 
@@ -177,13 +177,13 @@ export function MapPage({
     <main className="screen">
       <section className="summary-hero map-hero">
         <div>
-          <p>분류</p>
+          <p>묶음</p>
           <h1>
-            사진 묶음을
+            여행 흐름을
             <br />
             한눈에
           </h1>
-          <span>사진 종류와 날짜 흐름으로 묶었어요</span>
+          <span>올릴 컷을 종류와 날짜로 묶었어요</span>
         </div>
         <Mascot variant="map" />
       </section>
@@ -195,7 +195,7 @@ export function MapPage({
       />
 
       {visibleMapRows.length > 0 ? (
-        <section className="map-summary-list" aria-label="대표 사진 묶음">
+        <section className="map-summary-list" aria-label="대표 큐레이션 묶음">
           {visibleMapRows.map((folder) => (
             <button
               key={folder.id}
@@ -216,16 +216,16 @@ export function MapPage({
         </section>
       ) : null}
 
-      <BucketPhotoTray items={mapPreviewItems} title="분류된 사진" />
+      <BucketPhotoTray items={mapPreviewItems} title="올릴 후보 사진" />
 
-      <div className="folder-mode-tabs" aria-label="분류 보기 방식">
+      <div className="folder-mode-tabs" aria-label="묶음 보기 방식">
         <button
           type="button"
           className={viewMode === "category" ? "is-active" : ""}
           aria-pressed={viewMode === "category"}
           onClick={() => onViewModeChange("category")}
         >
-          사진 종류
+          콘텐츠별
         </button>
         <button
           type="button"
@@ -233,14 +233,14 @@ export function MapPage({
           aria-pressed={viewMode === "period"}
           onClick={() => onViewModeChange("period")}
         >
-          사진 월
+          날짜별
         </button>
       </div>
 
       {viewMode === "category" ? (
         <>
           <div className="section-heading">
-            <h2>사진 종류</h2>
+            <h2>콘텐츠 묶음</h2>
             <span className="section-count">
               {categoryFolders.filter(({ count }) => count > 0).length}개 묶음
             </span>
@@ -262,7 +262,7 @@ export function MapPage({
       ) : (
         <>
           <div className="section-heading">
-            <h2>사진 월</h2>
+            <h2>날짜 흐름</h2>
             <span className="section-count">{periodFolders.length}개 묶음</span>
           </div>
 
@@ -283,8 +283,8 @@ export function MapPage({
             <section className="empty-mini">
               <FolderOpen size={24} />
               <div>
-                <strong>아직 월별 묶음이 없어요</strong>
-                <span>사진을 정리하면 사진 날짜 기준으로 나눠요.</span>
+                <strong>아직 날짜 흐름이 없어요</strong>
+                <span>사진을 고르면 날짜 기준으로 나눠요.</span>
               </div>
             </section>
           )}
@@ -320,7 +320,7 @@ function AlbumMapPreview({
   onSelectFolder: (folder: MapFolderId | "all") => void;
 }) {
   return (
-    <section className="album-map-preview" aria-label="앨범 분류 요약">
+    <section className="album-map-preview" aria-label="앨범 큐레이션 요약">
       <div className="album-map-flow">
         {folders.length > 0 ? (
           folders.map((folder, index) => (
@@ -337,8 +337,8 @@ function AlbumMapPreview({
           ))
         ) : (
           <div className="album-map-empty" role="status">
-            <strong>아직 분류 묶음이 없어요</strong>
-            <span>사진을 불러오면 앨범 구조가 자동으로 생겨요.</span>
+            <strong>아직 사진 묶음이 없어요</strong>
+            <span>사진을 불러오면 올릴 컷 흐름이 생겨요.</span>
           </div>
         )}
       </div>
@@ -369,7 +369,7 @@ function getPeriodFolders(items: ClassifiedItem[]): MapFolder[] {
       id: `period:${periodKey}` as MapFolderId,
       label: periodItems[0]?.periodLabel ?? "기간 없음",
       shortLabel: "월",
-      caption: "사진 날짜 기준",
+      caption: "날짜 흐름",
       tone: "blue",
       icon: <CalendarDays size={20} />,
       count: periodItems.length,

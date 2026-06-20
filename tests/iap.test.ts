@@ -28,7 +28,7 @@ function createMockClient(overrides: Partial<IapClient> = {}): IapClient {
           displayName: "픽토리 플러스",
           displayAmount: "월 2,900원",
           iconUrl: "",
-          description: "월 정리 500장",
+          description: "월 큐레이션 500장",
           renewalCycle: "MONTHLY",
           offers: [],
         },

@@ -9,9 +9,9 @@ interface BottomNavProps {
 
 const tabs = [
   { id: "home", label: "홈", icon: Home },
-  { id: "map", label: "분류", icon: Images },
-  { id: "clean", label: "정리", icon: BrushCleaning },
-  { id: "saved", label: "보관", icon: Archive },
+  { id: "map", label: "묶음", icon: Images },
+  { id: "clean", label: "선별", icon: BrushCleaning },
+  { id: "saved", label: "킵", icon: Archive },
 ] satisfies Array<{
   id: TabId;
   label: string;

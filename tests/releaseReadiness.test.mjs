@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 import {
   getTarUnpackedSize,
   listReleaseDemoAlbumArtifacts,
@@ -67,7 +67,7 @@ describe("release readiness", () => {
           "browserBackReturnedToMapFolder",
         ].map((flag) => [flag, true]),
       ),
-      dom: { brokenImages: 0, navItems: ["홈", "분류", "정리", "보관"] },
+      dom: { brokenImages: 0, navItems: ["홈", "묶음", "선별", "킵"] },
       consoleIssues: [],
     });
 
@@ -80,7 +80,7 @@ describe("release readiness", () => {
       recentItems: 20,
       savedIds: 1,
       flow: { homeShortcutOpened: true },
-      dom: { brokenImages: 1, navItems: ["홈", "분류"] },
+      dom: { brokenImages: 1, navItems: ["홈", "묶음"] },
       consoleIssues: ["error: boom"],
     });
 
@@ -113,7 +113,7 @@ describe("release readiness", () => {
         savedFolderOpened: true,
         savedDetailHasUnsave: true,
       },
-      dom: { brokenImages: 0, navItems: ["홈", "분류", "정리", "보관"] },
+      dom: { brokenImages: 0, navItems: ["홈", "묶음", "선별", "킵"] },
       consoleIssues: [],
     });
 
@@ -146,30 +146,30 @@ describe("release readiness", () => {
       appName: "pictory",
       functions: [
         {
-          id: "organize-photos",
-          koreanName: "사진정리하기",
-          englishName: "Organize photos",
+          id: "find-best-shots",
+          koreanName: "베스트컷찾기",
+          englishName: "Find best shots",
           targetTab: "home",
           url: "intoss://pictory/?tab=home",
         },
         {
-          id: "view-photo-map",
-          koreanName: "분류결과보기",
-          englishName: "View photo map",
+          id: "view-photo-groups",
+          koreanName: "사진묶음보기",
+          englishName: "View groups",
           targetTab: "map",
           url: "intoss://pictory/?tab=map",
         },
         {
-          id: "view-cleanup",
-          koreanName: "정리후보보기",
-          englishName: "View cleanup",
+          id: "pick-posting-cuts",
+          koreanName: "올릴컷고르기",
+          englishName: "Pick cuts",
           targetTab: "clean",
           url: "intoss://pictory/?tab=clean",
         },
         {
-          id: "open-archive",
-          koreanName: "보관함열기",
-          englishName: "Open archive",
+          id: "open-keep-album",
+          koreanName: "킵앨범열기",
+          englishName: "Open keep",
           targetTab: "saved",
           url: "intoss://pictory/?tab=saved",
         },

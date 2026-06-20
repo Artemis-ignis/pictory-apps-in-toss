@@ -1,15 +1,15 @@
 # 픽토리 앱 내 기능 등록안
 
 앱인토스 문서 기준으로 비게임 앱은 앱 내 기능을 최소 1개 이상 등록해야 한다.
-픽토리는 콘솔 검토 반려를 줄이기 위해 홈/분류/정리/보관 주요 진입점을 모두
+픽토리는 콘솔 검토 반려를 줄이기 위해 홈/묶음/선별/킵 주요 진입점을 모두
 `intoss://pictory/?tab=...` 형식으로 준비한다.
 
 | 한국어 기능 이름 | 영어 기능 이름 | 이동 URL | 진입 화면 |
 | --- | --- | --- | --- |
-| 사진정리하기 | Organize photos | `intoss://pictory/?tab=home` | 홈 |
-| 분류결과보기 | View categories | `intoss://pictory/?tab=map` | 분류 |
-| 정리후보보기 | View cleanup | `intoss://pictory/?tab=clean` | 정리 |
-| 보관함열기 | Open archive | `intoss://pictory/?tab=saved` | 보관 |
+| 베스트컷찾기 | Find best shots | `intoss://pictory/?tab=home` | 홈 |
+| 사진묶음보기 | View groups | `intoss://pictory/?tab=map` | 묶음 |
+| 올릴컷고르기 | Pick cuts | `intoss://pictory/?tab=clean` | 선별 |
+| 킵앨범열기 | Open keep | `intoss://pictory/?tab=saved` | 킵 |
 
 ## 콘솔 입력 기준
 

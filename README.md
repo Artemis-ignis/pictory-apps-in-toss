@@ -55,7 +55,7 @@ AI provider, 무료 서버 AI quota, raw image logging, Toss SKU, mTLS 파일 �
 `npm run check:device-evidence -- --file qa-evidence/device-smoke.json`은
 앱인토스 콘솔 QR을 실제 토스 앱에서 스캔한 증거를 검사합니다. 증거 JSON에는
 현재 `pictory.ait` SHA-256, 토스 앱 버전, QR 시각, 사진 권한, 앨범 선택,
-분류 탭, 민감정보 흐림, 보상형 광고, 결제 지급, 미결 주문 복원, 계정 삭제
+묶음 탭, 민감정보 흐림, 보상형 광고, 결제 지급, 미결 주문 복원, 계정 삭제
 스크린샷 경로가 있어야 합니다. 현재 Git commit과도 맞아야 하며 템플릿
 placeholder 값은 그대로 통과하지 않습니다. 형식 예시는
 `docs/device-smoke-evidence.example.json`입니다. `npm run evidence:device:draft`는
@@ -65,14 +65,14 @@ placeholder 값은 그대로 통과하지 않습니다. 형식 예시는
 `npm run snapshot:release`는 현재 Git commit, GitHub private repo 상태,
 `pictory.ait` SHA-256, 필수 검증 명령을 로컬 최신본
 `docs/release-snapshot.json`과 Git 보존용 `docs/release-snapshots/*.json`에
-남깁니다. `npm run qa:flow`는 dev 서버에서 실제 sample import 기반 홈/분류/정리/보관 런타임 플로우 결과를
-`qa-evidence/runtime-flow.json`에 남깁니다. `npm run qa:flow:built`는 `dist/web` preview에서 저장된 분류 상태 기반 화면 흐름을 검증하고
+남깁니다. `npm run qa:flow`는 dev 서버에서 실제 sample import 기반 홈/묶음/선별/킵 런타임 플로우 결과를
+`qa-evidence/runtime-flow.json`에 남깁니다. `npm run qa:flow:built`는 `dist/web` preview에서 저장된 큐레이션 상태 기반 화면 흐름을 검증하고
 `qa-evidence/built-flow.json`에 남깁니다. `npm run check:release`는 이 증거들이
 핵심 화면 진입, 상세 화면, 민감정보 마스킹, 깨진 이미지 0개, 하단 내비게이션을
 통과했는지 확인합니다. 릴리즈 스냅샷의 필수 검증 목록에는 최종 관문인
 `npm run check:launch`도 포함됩니다. `npm run check:upload-assets`는
 `apps-in-toss-upload-images`의 콘솔 제출 이미지가 아이콘 `600x600`,
-썸네일 `1932x828`, 홈/분류/정리/보관 스크린샷 `636x1048`인지 확인합니다.
+썸네일 `1932x828`, 홈/묶음/선별/킵 스크린샷 `636x1048`인지 확인합니다.
 `npm run check:privacy`는 `pictory.ait`, `dist`, `dist-server`에
 서버 전용 env 이름이나 실제 키/secret 할당값이 섞이지 않았는지 검사합니다.
 `npm run check:release`는 최신 스냅샷의 `.ait` 해시와 archive 존재도까지
@@ -111,7 +111,7 @@ VITE_PICTORY_DELETE_ENDPOINT=https://your-api.example.com/pictory/account
 ```
 
 출시 빌드에서는 앱인토스 콘솔에서 발급받은 보상형 광고 그룹 ID와 구독 SKU로 바꿉니다. 개발 단계에서는 반드시 테스트 ID(`ait-ad-test-rewarded-id`)를 사용합니다. 실제 광고 ID로 개발 테스트를 반복하면 광고 정책 위반으로 간주될 수 있습니다.
-분류 화면은 실제 거리 지도가 아니라 앱 내부 사진 분류 결과입니다. 외부 지도 SDK나 GPS 지도 키 없이 사진 종류와 날짜 흐름으로 묶음을 안내합니다.
+묶음 화면은 실제 거리 지도가 아니라 앱 내부 사진 큐레이션 결과입니다. 외부 지도 SDK나 GPS 지도 키 없이 콘텐츠 종류와 날짜 흐름으로 올릴 컷 묶음을 안내합니다.
 
 서버 AI 분류 API는 별도 서버 런타임에서만 아래 값을 사용합니다. Gemini/OpenAI 키와 서버 secret에는 `VITE_` 접두사를 붙이지 않고, 프론트엔드 `.env`나 앱 코드에 실제 값을 넣지 않습니다. 기본 provider는 비용 방어를 위해 Gemini입니다.
 
@@ -151,19 +151,19 @@ PICTORY_AI_LOG_RAW_IMAGES=false
 
 | 한국어 기능 이름 | 영어 기능 이름 | 이동 URL |
 | --- | --- | --- |
-| 사진정리하기 | Organize photos | `intoss://pictory/?tab=home` |
-| 분류결과보기 | View categories | `intoss://pictory/?tab=map` |
-| 정리후보보기 | View cleanup | `intoss://pictory/?tab=clean` |
-| 보관함열기 | Open archive | `intoss://pictory/?tab=saved` |
+| 베스트컷찾기 | Find best shots | `intoss://pictory/?tab=home` |
+| 사진묶음보기 | View groups | `intoss://pictory/?tab=map` |
+| 올릴컷고르기 | Pick cuts | `intoss://pictory/?tab=clean` |
+| 킵앨범열기 | Open keep | `intoss://pictory/?tab=saved` |
 
 `npm run qa:flow`, `npm run qa:flow:built`, `npm run check:release`는 위
-앱 내 기능 URL이 실제 홈/분류/정리/보관 화면으로 진입하는지도 검사합니다.
+앱 내 기능 URL이 실제 홈/묶음/선별/킵 화면으로 진입하는지도 검사합니다.
 
 ## 구현 범위
 
 - Apps in Toss `photos` 권한과 `fetchAlbumPhotos`/`fetchAlbumItems` 연결
 - 브라우저 개발 환경용 실제 이미지 파일 선택
-- 캔버스 기반 이미지 신호 분석과 종류/정리 후보 분류
+- 캔버스 기반 이미지 신호 분석과 콘텐츠 묶음/선별 후보 분류
 - 운영 서버 AI 분류 endpoint 연결부와 Gemini 우선, OpenAI fallback 서버 분류기
 - 네이티브 보상형 광고 이벤트 증거를 요구하는 서버 권위 광고 크레딧/유료 월 quota 원장 모듈
 - 서명 세션 쿠키/Authorization 토큰 기반 서버 subject 검증
@@ -173,11 +173,11 @@ PICTORY_AI_LOG_RAW_IMAGES=false
 - 광고 보상 크레딧을 원장에 지급하는 `POST /pictory/reward` HTTP 어댑터
 - 서버 원장 계정을 지우는 `DELETE /pictory/account` HTTP 어댑터
 - `health/classify/reward`를 실제 HTTP로 검증하는 Node 서버 런타임
-- 홈, 분류, 정리, 보관 4개 화면
+- 홈, 묶음, 선별, 킵 4개 화면
 - 보상형 광고 연결부와 브라우저 fallback
 - 광고 보상 후 서버 원장 동기화 endpoint 연결부
 - 민감/확인 필요 후보 흐림 처리와 로컬 저장 상태 관리
-- 앱 재실행 후에도 최근 분류 결과, 보관 항목, 스캔 기록 복원
+- 앱 재실행 후에도 최근 큐레이션 결과, 킵 항목, 스캔 기록 복원
 
 ## 서버 런타임 검증
 
@@ -222,8 +222,8 @@ npm run qa:server:built
 ## 운영 전 확인해야 할 것
 
 - 실제 토스 앱 또는 콘솔 QR 테스트에서 사진 권한 요청과 앨범 읽기 확인
-- 운영 광고 그룹 ID 적용 후 `userEarnedReward` 이벤트 발생 시에만 AI 정밀분류권이 지급되는지 확인
-- 광고 미지원/닫기/실패 상태에서 AI 정밀분류권이 지급되지 않는지 확인
+- 운영 광고 그룹 ID 적용 후 `userEarnedReward` 이벤트 발생 시에만 AI 큐레이션권이 지급되는지 확인
+- 광고 미지원/닫기/실패 상태에서 AI 큐레이션권이 지급되지 않는지 확인
 - Plus/Pro 구독 SKU 적용 후 실기기에서 결제 성공, 미결 주문 복원, 구독 복원 상태 확인
 - `pictory.ait` 최신 빌드 업로드 전 `npm run test && npm run typecheck && npm run lint && npm run build && npm run snapshot:release && npm run check:launch` 재실행
 

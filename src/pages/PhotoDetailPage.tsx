@@ -50,7 +50,7 @@ export function PhotoDetailPage({
           <span>사진</span>
         </button>
         <div>
-          <p>분류 결과</p>
+          <p>큐레이션 결과</p>
           <h1>{getDetailTitle(item, category?.shortLabel)}</h1>
           <span>{item.periodLabel} · 원본은 기기 안에 있어요</span>
         </div>
@@ -103,7 +103,7 @@ export function PhotoDetailPage({
           <strong>{category?.label ?? item.categoryId}</strong>
         </article>
         <article>
-          <span>추천 처리</span>
+          <span>추천 선택</span>
           <strong>{cleanBucket?.label ?? item.cleanBucketId}</strong>
         </article>
       </section>
@@ -120,7 +120,7 @@ export function PhotoDetailPage({
           onClick={() => (isSaved ? onUnsave(item.id) : onSave(item.id))}
         >
           <Archive size={18} />
-          <span>{isSaved ? "해제" : "보관"}</span>
+          <span>{isSaved ? "해제" : "킵"}</span>
         </button>
         <button
           type="button"
@@ -128,7 +128,7 @@ export function PhotoDetailPage({
           onClick={() => onQueue(item.id)}
         >
           <Trash2 size={18} />
-          <span>정리</span>
+          <span>제외</span>
         </button>
         <button
           type="button"
@@ -136,7 +136,7 @@ export function PhotoDetailPage({
           onClick={() => onIgnore(item.id)}
         >
           <Check size={18} />
-          <span>제외</span>
+          <span>숨김</span>
         </button>
       </section>
     </main>
@@ -164,7 +164,7 @@ function getDetailTitle(item: ClassifiedItem, categoryLabel?: string) {
     return "캡처로 묶었어요";
   }
 
-  return `${categoryLabel ?? "사진"}으로 분류했어요`;
+  return `${categoryLabel ?? "사진"} 컷으로 골랐어요`;
 }
 
 function shouldProtectPreview(item: ClassifiedItem) {
@@ -196,7 +196,7 @@ function getGuidanceTitle(item: ClassifiedItem) {
     return "다시 볼 가능성이 있어요";
   }
 
-  return "보관해도 좋은 사진이에요";
+  return "킵해도 좋은 사진이에요";
 }
 
 function getGuidanceBody(item: ClassifiedItem, canRevealPreview: boolean) {
@@ -209,20 +209,20 @@ function getGuidanceBody(item: ClassifiedItem, canRevealPreview: boolean) {
   }
 
   if (item.cleanBucketId === "similar") {
-    return "비슷한 사진 묶음입니다. 필요한 사진만 보관하고 나머지는 정리 후보로 표시할 수 있어요.";
+    return "비슷한 사진 묶음입니다. 올릴 컷만 킵하고 나머지는 제외 후보로 보낼 수 있어요.";
   }
 
   if (item.cleanBucketId === "dark") {
-    return "화질이 낮을 수 있는 사진입니다. 필요하면 보관하고, 아니면 정리 후보로 표시하세요.";
+    return "화질이 낮을 수 있는 사진입니다. 필요하면 킵하고, 아니면 제외 후보로 보내세요.";
   }
 
   if (item.cleanBucketId === "capturePile") {
-    return "정보 확인용 캡처일 수 있어 따로 모았어요. 필요 없는 화면은 정리 후보로 옮기면 됩니다.";
+    return "정보 확인용 캡처일 수 있어 따로 모았어요. 올릴 필요 없는 화면은 제외 후보로 옮기면 됩니다.";
   }
 
   if (item.cleanBucketId === "needsReview") {
-    return "문서, 영수증, 쿠폰처럼 나중에 필요할 수 있어 바로 정리하지 않고 확인 후보로 모았어요.";
+    return "문서, 영수증, 쿠폰처럼 나중에 필요할 수 있어 바로 제외하지 않고 확인 후보로 모았어요.";
   }
 
-  return "일상 사진으로 보관하기 좋은 항목입니다. 필요 없으면 제외하거나 정리 후보로 바꿀 수 있어요.";
+  return "일상이나 여행 기록으로 킵하기 좋은 컷입니다. 필요 없으면 숨기거나 제외 후보로 바꿀 수 있어요.";
 }

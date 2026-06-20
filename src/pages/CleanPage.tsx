@@ -152,7 +152,7 @@ export function CleanPage({
             {icons[selectedBucketMeta.id] ?? <FolderOpen size={22} />}
           </div>
           <div>
-            <p>정리 폴더</p>
+            <p>선별 폴더</p>
             <h1>{selectedBucketMeta.label}</h1>
             <span>{selectedItems.length}장</span>
           </div>
@@ -162,8 +162,7 @@ export function CleanPage({
           <div className="queue-banner">
             <strong>{queuedCount}장</strong>
             <span>
-              정리 후보로 표시했어요. 실제 삭제 전에는 앨범에서 다시 확인해야
-              해요.
+              제외 후보로 표시했어요. 원본 앨범 사진은 삭제되지 않아요.
             </span>
           </div>
         ) : null}
@@ -176,7 +175,7 @@ export function CleanPage({
             onClick={() => onApplyFolderStatus(selectedIds, "saved")}
           >
             <Archive size={16} />
-            <span>보관</span>
+            <span>킵</span>
           </button>
           <button
             type="button"
@@ -185,7 +184,7 @@ export function CleanPage({
             onClick={() => onApplyFolderStatus(selectedIds, "queued")}
           >
             <Trash2 size={16} />
-            <span>정리 후보</span>
+            <span>제외 후보</span>
           </button>
           <button
             type="button"
@@ -194,7 +193,7 @@ export function CleanPage({
             onClick={() => onApplyFolderStatus(selectedIds, "ignored")}
           >
             <Check size={16} />
-            <span>제외</span>
+            <span>숨김</span>
           </button>
         </div>
 
@@ -228,23 +227,23 @@ export function CleanPage({
     <main className="screen">
       <section className="summary-hero clean-hero">
         <div>
-          <p>정리</p>
+          <p>선별</p>
           <h1>
-            지울 후보만
+            올릴 컷만
             <br />
-            모았어요
+            고르세요
           </h1>
-          <span>삭제 전 확인만 해요</span>
+          <span>비슷한 컷과 흐린 컷을 먼저 덜어내요</span>
         </div>
         <Mascot variant="clean" />
       </section>
 
       <div className="section-heading">
-        <h2>후보별</h2>
+        <h2>고를 후보</h2>
         <span className="section-count">{candidates.length}장</span>
       </div>
 
-      <section className="clean-review-panel" aria-label="선택 정리">
+      <section className="clean-review-panel" aria-label="선택 선별">
         <div className="clean-filter-tabs">
           {reviewTabs.map((tab) => (
             <button
@@ -260,9 +259,9 @@ export function CleanPage({
         </div>
 
         <div className="clean-selection-bar">
-          <span>선택한 항목 {validSelectedReviewIds.length}장</span>
+          <span>선택한 컷 {validSelectedReviewIds.length}장</span>
           <button type="button" onClick={selectVisibleReviewItems}>
-            보이는 항목 선택
+            보이는 컷 선택
           </button>
         </div>
 
@@ -290,7 +289,7 @@ export function CleanPage({
             })}
           </div>
         ) : (
-          <p className="tray-empty">이 조건에는 정리 후보가 없어요.</p>
+          <p className="tray-empty">이 조건에는 후보가 없어요.</p>
         )}
 
         <button
@@ -300,13 +299,13 @@ export function CleanPage({
           onClick={queueSelectedReviewItems}
         >
           <Trash2 size={18} />
-          <span>선택 항목 정리하기 ({validSelectedReviewIds.length})</span>
+          <span>선택 컷 제외 후보로 보내기 ({validSelectedReviewIds.length})</span>
         </button>
       </section>
 
       <BucketPhotoTray
         items={previewCandidates}
-        title="삭제 전 확인할 사진"
+        title="먼저 확인할 컷"
         onQueue={onQueue}
         onSave={onSave}
         onIgnore={onIgnore}
@@ -329,8 +328,7 @@ export function CleanPage({
         <div className="queue-banner">
           <strong>{queuedCount}장</strong>
           <span>
-            정리 후보로 표시했어요. 실제 삭제 전에는 앨범에서 다시 확인해야
-            해요.
+            제외 후보로 표시했어요. 원본 앨범 사진은 삭제되지 않아요.
           </span>
         </div>
       ) : null}

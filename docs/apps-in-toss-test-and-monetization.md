@@ -76,7 +76,7 @@ npm run check:release
 npm run check:submission
 ```
 
-`npm run build`가 만든 `pictory.ait`를 앱인토스 콘솔에 업로드한다. `npm run qa:flow`는 dev 서버에서 홈/분류/정리/보관, 폴더, 사진 상세, 민감정보 마스킹, 깨진 이미지 여부를 검증하고 `qa-evidence/runtime-flow.json`에 결과를 남긴다. `npm run qa:flow:built`는 `dist/web` preview에서 저장된 분류 상태 기반 화면 흐름을 검증하고 `qa-evidence/built-flow.json`에 결과를 남긴다. `npm run check:privacy`는 `pictory.ait`, `dist`, `dist-server`에 서버 전용 env 이름이나 실제 키/secret 할당값이 섞이지 않았는지 검사한다. `npm run check:upload-assets`는 `apps-in-toss-upload-images`의 아이콘 `600x600`, 썸네일 `1932x828`, 홈/분류/정리/보관 스크린샷 `636x1048` 치수를 확인한다. `npm run check:release`는 업로드 전 `.env.example`, `pictory.ait`, Granite 필수 설정, 테스트 스크립트 존재 여부, 최신 release snapshot의 `.ait` 해시와 archive 존재 여부, `.ait` 압축 해제 크기 100MB 이하, `.ait` 내부 로컬 `demo-album` 파일 누락, 콘솔 제출 이미지 치수, 런타임 플로우 QA 증거를 읽기 전용으로 확인하고, release snapshot의 필수 검증 목록에 최종 관문 `npm run check:launch`와 `npm run check:submission`이 포함됐는지도 확인한다. `npm run check:production-env -- --file .env.production`은 실제 운영 후보 값에서 테스트 광고 ID, placeholder endpoint, endpoint origin/path 불일치, SKU 불일치, 짧은 secret, mTLS 인증서/키 누락 또는 빈 파일, 원본 이미지 로그 설정 오류, `.env.production` 안의 `NODE_ENV` 설정을 차단한다. `npm run check:launch`는 `.env.production`만 보지 않고 현재 `dist` 번들에 client 운영값이 실제로 반영됐는지도 확인하므로, 운영값을 채운 뒤 `npm run build`, `npm run snapshot:release`, `npm run evidence:device:draft -- --force`를 다시 실행해야 한다. `npm run check:device-evidence -- --file qa-evidence/device-smoke.json`은 실제 QR 실기기 증거가 현재 Git commit과 `pictory.ait` 해시와 맞고, placeholder가 아닌 콘솔/단말 정보와 필수 시나리오 스크린샷이 모두 있는지 확인한다. `npm run check:submission`은 제출 직전 전체 순서를 고정한 최종 명령이며, 타입체크부터 launch readiness까지 순서대로 실행하고 중간 실패 시 멈춘다.
+`npm run build`가 만든 `pictory.ait`를 앱인토스 콘솔에 업로드한다. `npm run qa:flow`는 dev 서버에서 홈/묶음/선별/킵, 폴더, 사진 상세, 민감정보 마스킹, 깨진 이미지 여부를 검증하고 `qa-evidence/runtime-flow.json`에 결과를 남긴다. `npm run qa:flow:built`는 `dist/web` preview에서 저장된 큐레이션 상태 기반 화면 흐름을 검증하고 `qa-evidence/built-flow.json`에 결과를 남긴다. `npm run check:privacy`는 `pictory.ait`, `dist`, `dist-server`에 서버 전용 env 이름이나 실제 키/secret 할당값이 섞이지 않았는지 검사한다. `npm run check:upload-assets`는 `apps-in-toss-upload-images`의 아이콘 `600x600`, 썸네일 `1932x828`, 홈/묶음/선별/킵 스크린샷 `636x1048` 치수를 확인한다. `npm run check:release`는 업로드 전 `.env.example`, `pictory.ait`, Granite 필수 설정, 테스트 스크립트 존재 여부, 최신 release snapshot의 `.ait` 해시와 archive 존재 여부, `.ait` 압축 해제 크기 100MB 이하, `.ait` 내부 로컬 `demo-album` 파일 누락, 콘솔 제출 이미지 치수, 런타임 플로우 QA 증거를 읽기 전용으로 확인하고, release snapshot의 필수 검증 목록에 최종 관문 `npm run check:launch`와 `npm run check:submission`이 포함됐는지도 확인한다. `npm run check:production-env -- --file .env.production`은 실제 운영 후보 값에서 테스트 광고 ID, placeholder endpoint, endpoint origin/path 불일치, SKU 불일치, 짧은 secret, mTLS 인증서/키 누락 또는 빈 파일, 원본 이미지 로그 설정 오류, `.env.production` 안의 `NODE_ENV` 설정을 차단한다. `npm run check:launch`는 `.env.production`만 보지 않고 현재 `dist` 번들에 client 운영값이 실제로 반영됐는지도 확인하므로, 운영값을 채운 뒤 `npm run build`, `npm run snapshot:release`, `npm run evidence:device:draft -- --force`를 다시 실행해야 한다. `npm run check:device-evidence -- --file qa-evidence/device-smoke.json`은 실제 QR 실기기 증거가 현재 Git commit과 `pictory.ait` 해시와 맞고, placeholder가 아닌 콘솔/단말 정보와 필수 시나리오 스크린샷이 모두 있는지 확인한다. `npm run check:submission`은 제출 직전 전체 순서를 고정한 최종 명령이며, 타입체크부터 launch readiness까지 순서대로 실행하고 중간 실패 시 멈춘다.
 
 콘솔 경로:
 
@@ -98,8 +98,8 @@ npm run check:submission
 - [ ] `docs/device-smoke-evidence.example.json` 형식으로 `qa-evidence/device-smoke.json`을 작성하고, `현재_*`, `앱인토스_*`, `실기기_*` placeholder를 모두 실제 값으로 바꿨으며, 스크린샷 파일은 `qa-evidence/screens/`에 저장했다.
 - [ ] 사진 권한 요청이 뜨고, 허용 후 앨범 선택 화면이 열린다.
 - [ ] 선택 취소 시 실패가 아니라 빈 결과/대기 상태로 돌아온다.
-- [ ] 실제 사진 선택 후 분류, 정리, 보관 화면의 분류 결과와 민감정보 흐림 처리를 확인했다.
-- [ ] 앱 재실행 후 최근 분류 결과, 보관 항목, 스캔 기록이 복원된다.
+- [ ] 실제 사진 선택 후 묶음, 선별, 킵 화면의 큐레이션 결과와 민감정보 흐림 처리를 확인했다.
+- [ ] 앱 재실행 후 최근 큐레이션 결과, 킵 항목, 스캔 기록이 복원된다.
 - [ ] `픽토리 데이터 삭제` 후 앱 내부 기록이 비워지고, 운영 서버 원장도 `DELETE /pictory/account`로 삭제된다.
 - [ ] 실패가 있으면 단말 OS, 토스 앱 버전, 콘솔 앱 버전, QR 생성 시각, 재현 화면을 기록했다.
 
@@ -111,7 +111,7 @@ npm run check:submission
 
 1. 앱 진입 시 보상형 광고를 미리 로드한다.
 2. 사용자가 광고 크레딧 받기를 누르면 로드된 광고를 표시한다.
-3. `userEarnedReward` 이벤트가 온 경우에만 AI 정밀분류권을 지급한다.
+3. `userEarnedReward` 이벤트가 온 경우에만 AI 큐레이션권을 지급한다.
 4. 광고가 닫히면 다음 광고를 다시 미리 로드한다.
 
 서버 수익화 흐름에서는 `server/pictoryRewardHttpAdapter.ts`의
@@ -156,12 +156,12 @@ VITE_TOSS_REWARDED_AD_GROUP_ID=콘솔_보상형_광고_그룹_ID
 - [ ] 개발/반복 테스트 빌드는 `ait-ad-test-rewarded-id`를 사용한다.
 - [ ] 운영 후보 빌드는 콘솔에서 발급한 보상형 광고 그룹 ID를 사용한다.
 - [ ] QR 진입 직후 광고가 강제 노출되지 않는다.
-- [ ] 광고 크레딧 받기를 누르면 광고가 열리고, 닫기만 하면 AI 정밀분류권이 지급되지 않는다.
+- [ ] 광고 크레딧 받기를 누르면 광고가 열리고, 닫기만 하면 AI 큐레이션권이 지급되지 않는다.
 - [ ] 광고를 끝까지 보고 `userEarnedReward` 이벤트가 발생한 경우에만 `ai_credit` +30장이 지급된다.
 - [ ] 운영 서버 원장에서는 같은 `rewardId`가 두 번 들어와도 크레딧이 한 번만 지급된다.
-- [ ] `failedToShow`, 미지원, 네트워크 실패에서는 AI 정밀분류권이 0장으로 유지된다.
+- [ ] `failedToShow`, 미지원, 네트워크 실패에서는 AI 큐레이션권이 0장으로 유지된다.
 - [ ] 광고 종료 후 다음 광고 preload가 다시 시도된다.
-- [ ] 검증 증거로 광고 그룹 ID 종류, 단말, 토스 앱 버전, 지급 전/후 AI 정밀분류권 화면을 남긴다.
+- [ ] 검증 증거로 광고 그룹 ID 종류, 단말, 토스 앱 버전, 지급 전/후 AI 큐레이션권 화면을 남긴다.
 
 주의:
 
@@ -179,9 +179,9 @@ VITE_TOSS_REWARDED_AD_GROUP_ID=콘솔_보상형_광고_그룹_ID
 - confidence가 낮은 사진
 - 민감정보 후보
 - 영수증, 문서, 쿠폰, 인물처럼 오분류 비용이 큰 사진
-- 사용자가 실제 정리/보관 행동을 할 가능성이 높은 사진
+- 사용자가 실제 선별/킵 행동을 할 가능성이 높은 사진
 
-현재 앱은 무료 기본 사용량에서는 서버 AI를 호출하지 않는다. 유료 플랜이거나 광고 시청으로 받은 크레딧이 있을 때만 서버 AI 정밀 분류를 켠다.
+현재 앱은 무료 기본 사용량에서는 서버 AI를 호출하지 않는다. 유료 플랜이거나 광고 시청으로 받은 크레딧이 있을 때만 서버 AI 정밀 큐레이션을 켠다.
 
 서버 AI 요청은 한 번에 최대 40장으로 제한한다. 영수증, 문서, 쿠폰, 캡처, 인물, 민감정보 후보는 원본/썸네일 이미지를 서버로 붙이지 않고 redacted 신호와 힌트만 보낸다. 이미지가 꼭 필요한 낮은 민감도 후보(음식, 장소, 기록)도 요청당 최대 8장만 512px JPEG로 줄여 전송하고, 파일명·촬영시각·perceptualHash는 제외한다. 기본 provider는 Gemini Flash-Lite 계열로 비용을 방어하고, OpenAI는 운영자가 명시적으로 선택한 fallback으로 둔다.
 
@@ -193,8 +193,8 @@ flowchart LR
   B --> C["redacted 신호 또는 저민감 축소 이미지"]
   C --> D["픽토리 서버 API"]
   D --> E["Gemini Vision JSON + OpenAI fallback"]
-  E --> F["종류/정리/민감정보 결과"]
-  F --> G["분류/정리/보관 화면 반영"]
+  E --> F["묶음/선별/민감정보 결과"]
+  F --> G["묶음/선별/킵 화면 반영"]
 ```
 
 앱의 역할:
@@ -223,9 +223,9 @@ flowchart LR
 
 - 무료 사용자는 앱 내부 1차 분류를 먼저 보여준다.
 - QR/바코드, 얼굴, 텍스트 영역은 지원되는 환경에서 앱 자체 감지기를 우선 사용한다.
-- 광고를 본 뒤 받은 크레딧이 있을 때 서버 AI 정밀 분류를 열어준다.
-- 무료 사용자가 월 기본 정리분 안에서 서버 AI를 쓰더라도 광고 AI 크레딧은 사진 장수만큼 차감한다.
-- 유료 사용자는 월 제공량 안에서 서버 AI 정밀 분류를 제공한다.
+- 광고를 본 뒤 받은 크레딧이 있을 때 서버 AI 정밀 큐레이션을 열어준다.
+- 무료 사용자가 월 기본 선별분 안에서 서버 AI를 쓰더라도 광고 AI 크레딧은 사진 장수만큼 차감한다.
+- 유료 사용자는 월 제공량 안에서 서버 AI 정밀 큐레이션을 제공한다.
 - 같은 사진은 perceptual hash 기준으로 중복 과금하지 않는다.
 - 광고 크레딧 지급 서버는 rewardId만 믿지 않고 `source=native`, 광고 그룹 ID, `unitType`, `unitAmount`를 확인한다.
 - 서버는 사용자별 월/일/분당 한도를 강제하고, AI 호출 전에 quota를 예약한다.
@@ -366,7 +366,7 @@ redacted 처리한다. redacted 항목은 원본 `fileName`, 정확한 `createdA
 권장 라벨:
 
 - 종류: 캡처, 문서, 영수증, 음식, 장소, 사람, 쿠폰, 기록
-- 정리 후보: 민감정보 후보, 확인 필요, 비슷한 사진, 어두운 사진, 캡처 더미, 보관 후보
+- 선별 후보: 민감정보 후보, 올릴지 확인, 비슷한 컷, 흐린 컷, 캡처 제외, 업로드 후보
 - 민감정보: 주민등록증, 여권, 운전면허증, 카드번호, 계좌번호, 인증번호, 계약서, 병원/금융 문서
 
 이미지 원본은 저장하지 않고, 서버 로그에도 base64 본문을 남기지 않는다.
@@ -377,21 +377,21 @@ redacted 처리한다. redacted 항목은 원본 `fileName`, 정확한 `createdA
 
 무료:
 
-- 월 기본 정리 40장
-- 보관 10장
-- 광고 시청 시 AI 정밀분류권 +30장
+- 월 기본 선별 40장
+- 킵 10장
+- 광고 시청 시 AI 큐레이션권 +30장
 
 Plus:
 
-- 월 정리 500장
-- 보관 200장
+- 월 선별 500장
+- 킵 200장
 - 월 구독 결제
 
 Pro:
 
-- 월 정리 2,000장
-- 보관 1,000장
-- 대량 정리와 우선 처리
+- 월 선별 2,000장
+- 킵 1,000장
+- 대량 큐레이션과 우선 처리
 
 대량 정리는 한 번에 전부 처리하지 말고 100~300장 단위 배치로 나눠야 한다. 앱 메모리, 네트워크 비용, AI 비용, 실패 재시도 때문에 배치 처리가 안전하다.
 

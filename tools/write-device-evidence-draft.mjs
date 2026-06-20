@@ -20,10 +20,10 @@ const scenarioGuide = {
   "qr-scan": "앱인토스 콘솔 테스트하기 QR을 실제 토스 앱으로 스캔한 진입 화면",
   "photos-permission": "사진 읽기 권한 요청 또는 권한 허용 후 상태 화면",
   "album-pick": "토스/OS 앨범 선택 UI에서 실제 사진을 고르는 화면",
-  "classification-tabs": "실제 사진 분류 뒤 홈/분류/정리 탭 결과가 보이는 화면",
+  "classification-tabs": "실제 사진 큐레이션 뒤 홈/묶음/선별 탭 결과가 보이는 화면",
   "privacy-mask": "민감정보 후보가 흐림/확인 상태로 표시되는 화면",
   "reward-ad-earned": "보상형 광고를 끝까지 보고 AI 30장 크레딧이 지급된 화면",
-  "iap-purchase-grant": "Plus/Pro 결제 후 보관함/월 정리 한도가 반영된 화면",
+  "iap-purchase-grant": "Plus/Pro 결제 후 킵앨범/월 큐레이션 한도가 반영된 화면",
   "pending-order-restore": "미결 주문 또는 복원 흐름이 권한 원장에 반영된 화면",
   "account-delete": "픽토리 데이터 삭제 후 앱 내부 기록/서버 원장이 비워진 화면",
 };

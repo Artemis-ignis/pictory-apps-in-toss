@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+﻿import { spawn } from "node:child_process";
 import { copyFile, mkdir, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import path from "node:path";
@@ -105,7 +105,7 @@ async function runRealUploadQa(baseUrl, uploadFiles) {
     await page.goto(baseUrl, { waitUntil: "networkidle" });
     await page.evaluate(() => window.localStorage.clear());
     await page.reload({ waitUntil: "networkidle" });
-    await page.getByText("사진첩이 많을 때").waitFor();
+    await page.getByText("여행 다녀온 뒤").waitFor();
     await page.screenshot({
       path: path.join(screenshotDir, "00-home-before-upload.png"),
     });
@@ -125,7 +125,7 @@ async function runRealUploadQa(baseUrl, uploadFiles) {
       page.getByRole("button", { name: /사진 선택/ }).click(),
     ]);
     await chooser.setFiles(uploadFiles);
-    await page.getByText("사진 묶음을").waitFor({ timeout: 30_000 });
+    await page.getByText("여행 흐름을").waitFor({ timeout: 30_000 });
     await page.screenshot({
       path: path.join(screenshotDir, "01-map-after-real-upload.png"),
     });
@@ -158,7 +158,7 @@ async function runRealUploadQa(baseUrl, uploadFiles) {
       (await page.locator(".detail-preview img").count()) > 0;
     await page
       .locator(".detail-actions")
-      .getByRole("button", { name: /^보관$/ })
+      .getByRole("button", { name: /^킵$/ })
       .click();
     await waitForStoredIdCount(page, "savedIds", savedBefore, "increase");
     const detailSaveWorked =
@@ -168,8 +168,8 @@ async function runRealUploadQa(baseUrl, uploadFiles) {
     });
 
     await page.locator(".detail-header .folder-back").click();
-    await clickBottomNav(page, "정리");
-    await page.getByText("지울 후보만").waitFor();
+    await clickBottomNav(page, "선별");
+    await page.getByText("올릴 컷만").waitFor();
     await page.screenshot({
       path: path.join(screenshotDir, "04-clean-real-upload.png"),
     });
@@ -185,8 +185,8 @@ async function runRealUploadQa(baseUrl, uploadFiles) {
       cleanInputCount > 0 &&
       (await readStoredIdCount(page, "queuedIds")) > queuedBefore;
 
-    await clickBottomNav(page, "보관");
-    await page.getByText("다시 볼 것만").waitFor();
+    await clickBottomNav(page, "킵");
+    await page.getByText("공유할 사진 세트로 저장").waitFor();
     await page.screenshot({
       path: path.join(screenshotDir, "05-saved-real-upload.png"),
     });
@@ -203,7 +203,7 @@ async function runRealUploadQa(baseUrl, uploadFiles) {
     const unsaveWorked =
       (await readStoredIdCount(page, "savedIds")) < savedBeforeUnsave;
 
-    await clickBottomNav(page, "보관");
+    await clickBottomNav(page, "킵");
     page.once("dialog", (dialog) => dialog.accept());
     await page.getByRole("button", { name: /픽토리 데이터 삭제/ }).click();
     await page.waitForFunction(() => {
@@ -245,7 +245,7 @@ async function runRealUploadQa(baseUrl, uploadFiles) {
       ok:
         Object.values(flow).every(Boolean) &&
         dom.brokenImages === 0 &&
-        dom.navItems.join(",") === "홈,분류,정리,보관" &&
+        dom.navItems.join(",") === "홈,묶음,선별,킵" &&
         consoleIssues.length === 0,
       url: baseUrl,
       inputDir,

@@ -86,13 +86,13 @@ export function SavedPage({
             onClick={() => onSelectBucket("all")}
           >
             <ArrowLeft size={19} />
-            <span>보관 목록</span>
+            <span>킵앨범</span>
           </button>
           <div className={`folder-icon tone-${selectedBucketMeta.tone}`}>
             {icons[selectedBucketMeta.id] ?? <FolderOpen size={22} />}
           </div>
           <div>
-            <p>보관 폴더</p>
+            <p>킵 폴더</p>
             <h1>{selectedBucketMeta.label}</h1>
             <span>{selectedItems.length}장</span>
           </div>
@@ -100,7 +100,7 @@ export function SavedPage({
 
         <div
           className="folder-action-bar is-single"
-          aria-label="보관 폴더 빠른 처리"
+          aria-label="킵 폴더 빠른 처리"
         >
           <button
             type="button"
@@ -141,19 +141,19 @@ export function SavedPage({
     <main className="screen">
       <section className="summary-hero saved-hero">
         <div>
-          <p>보관</p>
+          <p>킵</p>
           <h1>
-            다시 볼 것만
+            올릴 컷만
             <br />
-            보관
+            킵
           </h1>
-          <span>정리 내역도 같이 저장</span>
+          <span>공유할 사진 세트로 저장</span>
         </div>
         <Mascot variant="saved" />
       </section>
 
       <div className="section-heading">
-        <h2>보관 폴더</h2>
+        <h2>킵앨범</h2>
         <span className="section-count">
           {savedItems.length}/{plan.storageLimit}장
         </span>
@@ -176,14 +176,14 @@ export function SavedPage({
         <>
           <BucketPhotoTray
             items={recommendedItems}
-            title="보관 추천 사진"
+            title="킵 추천 컷"
             onSave={onSave}
           />
           <section className="saved-empty">
             <Mascot variant="empty" size="empty" />
             <div>
-              <strong>아직 보관함이 비었어요</strong>
-              <span>위 사진을 보관하거나 분류 화면에서 직접 고르세요.</span>
+              <strong>아직 킵한 사진이 없어요</strong>
+              <span>위 사진을 킵하거나 묶음 화면에서 직접 고르세요.</span>
             </div>
           </section>
         </>
@@ -192,7 +192,7 @@ export function SavedPage({
       {savedItems.length > 0 ? (
         <>
           <div className="section-heading">
-            <h2>최근 보관</h2>
+            <h2>최근 킵</h2>
             <span className="section-count">{savedItems.length}장</span>
           </div>
           <section className="photo-list">
@@ -209,7 +209,7 @@ export function SavedPage({
       ) : null}
 
       <div className="section-heading">
-        <h2>최근 정리 내역</h2>
+        <h2>최근 큐레이션</h2>
         <span className="section-count">{historyEntries.length}개</span>
       </div>
 
@@ -219,7 +219,7 @@ export function SavedPage({
             <strong>{formatHistoryDate(entry.scannedAt)}</strong>
             <div>
               <b>{entry.totalCount}장</b>
-              <span>정리후보 {entry.cleanCandidateCount}장</span>
+              <span>제외후보 {entry.cleanCandidateCount}장</span>
             </div>
           </article>
         ))}
@@ -228,7 +228,7 @@ export function SavedPage({
             <strong>기록 없음</strong>
             <div>
               <b>0장</b>
-              <span>아직 정리 기록 없음</span>
+              <span>아직 큐레이션 기록 없음</span>
             </div>
           </article>
         ) : null}
@@ -237,7 +237,7 @@ export function SavedPage({
       <div className="saved-actions">
         <button type="button" className="soft-action" onClick={onShare}>
           <Share2 size={18} />
-          <span>앨범 요약 공유하기</span>
+          <span>큐레이션 요약 공유하기</span>
         </button>
         <button type="button" className="danger-action" onClick={onClear}>
           <Trash2 size={18} />
