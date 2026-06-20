@@ -1,4 +1,4 @@
-# 픽토리
+﻿# 픽토리
 
 Apps in Toss용 앨범 정리 미니앱 복구본입니다.
 
@@ -22,14 +22,19 @@ npm run test
 npm run typecheck
 npm run lint
 npm run qa:server:built
+npm run qa:flow
 npm run env:production:draft
 npm run check:production-env -- --file .env.production
 npm run evidence:device:draft
 npm run check:device-evidence -- --file qa-evidence/device-smoke.json
 npm run build
+npm run qa:flow:built
 npm run check:privacy
+npm run check:upload-assets
 npm run snapshot:release
+npm run check:release
 npm run check:launch
+npm run check:submission
 ```
 
 `npm run build`는 `pictory.ait`를 생성합니다.
@@ -39,13 +44,14 @@ npm run check:launch
 `npm run check:production-env -- --file .env.production`은 운영 후보 환경값이
 테스트 광고 ID, placeholder endpoint, SKU 불일치, 짧은 secret, mTLS 파일 누락,
 비어 있는 mTLS 파일, endpoint origin/path 불일치, 원본 이미지 로그 설정 실수로
-배포되지 않게 막습니다. `.env.production`은
+배포되지 않게 막고, `NODE_ENV`가 `.env.production`에 들어간 경우도 차단합니다.
+`.env.production`은
 저장소에 커밋하지 않습니다. `npm run env:production:draft`는 강한 랜덤
 server/session secret을 넣은 로컬 초안을 만들지만, Toss 광고 ID, SKU, 운영
-API endpoint, OpenAI 키, mTLS 인증서/키 경로는 실제 값으로 교체해야 합니다.
-`npm run server:start`로 빌드된 서버를 직접 띄울 때도 server secret, OpenAI
-detail, 무료 서버 AI quota, raw image logging, Toss SKU, mTLS 파일 같은 운영
-필수값을 다시 검사해 잘못된 환경값으로 서버가 뜨지 않게 막습니다.
+API endpoint, AI provider 키, mTLS 인증서/키 경로는 실제 값으로 교체해야 합니다.
+`npm run server:start`로 빌드된 서버를 직접 띄울 때도 server secret,
+AI provider, 무료 서버 AI quota, raw image logging, Toss SKU, mTLS 파일 같은
+운영 필수값을 다시 검사해 잘못된 환경값으로 서버가 뜨지 않게 막습니다.
 `npm run check:device-evidence -- --file qa-evidence/device-smoke.json`은
 앱인토스 콘솔 QR을 실제 토스 앱에서 스캔한 증거를 검사합니다. 증거 JSON에는
 현재 `pictory.ait` SHA-256, 토스 앱 버전, QR 시각, 사진 권한, 앨범 선택,
@@ -59,13 +65,30 @@ placeholder 값은 그대로 통과하지 않습니다. 형식 예시는
 `npm run snapshot:release`는 현재 Git commit, GitHub private repo 상태,
 `pictory.ait` SHA-256, 필수 검증 명령을 로컬 최신본
 `docs/release-snapshot.json`과 Git 보존용 `docs/release-snapshots/*.json`에
-남깁니다. `npm run check:privacy`는 `pictory.ait`, `dist`, `dist-server`에
+남깁니다. `npm run qa:flow`는 dev 서버에서 실제 sample import 기반 홈/분류/정리/보관 런타임 플로우 결과를
+`qa-evidence/runtime-flow.json`에 남깁니다. `npm run qa:flow:built`는 `dist/web` preview에서 저장된 분류 상태 기반 화면 흐름을 검증하고
+`qa-evidence/built-flow.json`에 남깁니다. `npm run check:release`는 이 증거들이
+핵심 화면 진입, 상세 화면, 민감정보 마스킹, 깨진 이미지 0개, 하단 내비게이션을
+통과했는지 확인합니다. 릴리즈 스냅샷의 필수 검증 목록에는 최종 관문인
+`npm run check:launch`도 포함됩니다. `npm run check:upload-assets`는
+`apps-in-toss-upload-images`의 콘솔 제출 이미지가 아이콘 `600x600`,
+썸네일 `1932x828`, 홈/분류/정리/보관 스크린샷 `636x1048`인지 확인합니다.
+`npm run check:privacy`는 `pictory.ait`, `dist`, `dist-server`에
 서버 전용 env 이름이나 실제 키/secret 할당값이 섞이지 않았는지 검사합니다.
 `npm run check:release`는 최신 스냅샷의 `.ait` 해시와 archive 존재도까지
-확인합니다. 이 파일에는 secret이나 실제 운영 env 값을 넣지 않습니다.
-`npm run check:launch`는 release package, `.env.production`,
-`qa-evidence/device-smoke.json`을 한 번에 읽고 실패 메시지만 요약합니다. 실제
-secret, OpenAI 키, mTLS 값은 출력하지 않습니다.
+확인하고, `pictory.ait` 압축 해제 크기가 100MB 이하인지와 내부에 로컬
+`demo-album` 파일이 섞였는지도 차단합니다.
+이 파일에는 secret이나 실제 운영 env 값을 넣지 않습니다.
+`npm run check:launch`는 release package, `.env.production`, 현재 `dist`
+번들에 반영된 client 운영값, `qa-evidence/device-smoke.json`을 한 번에 읽고
+실패 메시지만 요약합니다. 실제 secret, AI provider 키, mTLS 값은 출력하지
+않습니다. `.env.production`을 실제 값으로 채운 뒤에는 반드시 `npm run build`,
+`npm run snapshot:release`, `npm run evidence:device:draft -- --force`를 다시
+실행해야 placeholder client config가 들어간 `.ait` 업로드를 막을 수 있습니다.
+`npm run check:submission`은 제출 직전 전체 순서를 고정한 최종 명령입니다.
+타입체크, 린트, 테스트, 서버 QA, 빌드, 런타임 QA, privacy/upload asset 검사,
+release snapshot, release readiness, launch readiness를 순서대로 실행하고
+중간 실패가 있으면 바로 멈춥니다.
 
 ## 운영 설정
 
@@ -88,8 +111,9 @@ VITE_PICTORY_DELETE_ENDPOINT=https://your-api.example.com/pictory/account
 ```
 
 출시 빌드에서는 앱인토스 콘솔에서 발급받은 보상형 광고 그룹 ID와 구독 SKU로 바꿉니다. 개발 단계에서는 반드시 테스트 ID(`ait-ad-test-rewarded-id`)를 사용합니다. 실제 광고 ID로 개발 테스트를 반복하면 광고 정책 위반으로 간주될 수 있습니다.
+분류 화면은 실제 거리 지도가 아니라 앱 내부 사진 분류 결과입니다. 외부 지도 SDK나 GPS 지도 키 없이 사진 종류와 날짜 흐름으로 묶음을 안내합니다.
 
-서버 AI 분류 API는 별도 서버 런타임에서만 아래 값을 사용합니다. OpenAI 키와 서버 secret에는 `VITE_` 접두사를 붙이지 않고, 프론트엔드 `.env`나 앱 코드에 실제 값을 넣지 않습니다.
+서버 AI 분류 API는 별도 서버 런타임에서만 아래 값을 사용합니다. Gemini/OpenAI 키와 서버 secret에는 `VITE_` 접두사를 붙이지 않고, 프론트엔드 `.env`나 앱 코드에 실제 값을 넣지 않습니다. 기본 provider는 비용 방어를 위해 Gemini입니다.
 
 ```bash
 PICTORY_SERVER_SECRET=replace_with_long_random_server_secret
@@ -100,11 +124,14 @@ PICTORY_SUBSCRIPTION_VALID_DAYS=32
 PICTORY_REWARD_REQUIRE_NATIVE_EVENT=true
 APPS_IN_TOSS_MTLS_CERT_PATH=replace_with_server_only_mtls_cert_path
 APPS_IN_TOSS_MTLS_KEY_PATH=replace_with_server_only_mtls_key_path
+PICTORY_AI_PROVIDER=gemini
+GEMINI_API_KEY=replace_with_gemini_api_key_server_only
+GEMINI_MODEL=gemini-2.5-flash-lite
 OPENAI_API_KEY=replace_with_openai_api_key_server_only
 OPENAI_MODEL=gpt-4.1-mini
 OPENAI_IMAGE_DETAIL=low
 PICTORY_AI_FREE_MONTHLY_QUOTA=0
-PICTORY_AI_AD_CREDIT_QUOTA=100
+PICTORY_AI_AD_CREDIT_QUOTA=30
 PICTORY_AI_PLUS_MONTHLY_QUOTA=500
 PICTORY_AI_PRO_MONTHLY_QUOTA=2000
 PICTORY_AI_DAILY_LIMIT_PER_USER=300
@@ -115,12 +142,29 @@ PICTORY_AI_LOG_RAW_IMAGES=false
 
 앱인토스 QR 테스트, 광고 운영, 서버 AI 분류 API 계약은 `docs/apps-in-toss-test-and-monetization.md`를 기준으로 확인합니다.
 
+## 앱 내 기능 등록
+
+앱인토스 문서 기준으로 픽토리 같은 비게임 앱은 콘솔의 `앱 내 기능`을
+최소 1개 이상 등록해야 합니다. 콘솔에는
+`docs/apps-in-toss-app-functions.json` 또는
+`docs/apps-in-toss-app-functions.md`의 값을 사용합니다.
+
+| 한국어 기능 이름 | 영어 기능 이름 | 이동 URL |
+| --- | --- | --- |
+| 사진정리하기 | Organize photos | `intoss://pictory/?tab=home` |
+| 분류결과보기 | View categories | `intoss://pictory/?tab=map` |
+| 정리후보보기 | View cleanup | `intoss://pictory/?tab=clean` |
+| 보관함열기 | Open archive | `intoss://pictory/?tab=saved` |
+
+`npm run qa:flow`, `npm run qa:flow:built`, `npm run check:release`는 위
+앱 내 기능 URL이 실제 홈/분류/정리/보관 화면으로 진입하는지도 검사합니다.
+
 ## 구현 범위
 
 - Apps in Toss `photos` 권한과 `fetchAlbumPhotos`/`fetchAlbumItems` 연결
 - 브라우저 개발 환경용 실제 이미지 파일 선택
 - 캔버스 기반 이미지 신호 분석과 종류/정리 후보 분류
-- 운영 서버 AI 분류 endpoint 연결부와 OpenAI Responses API 기본 분류기
+- 운영 서버 AI 분류 endpoint 연결부와 Gemini 우선, OpenAI fallback 서버 분류기
 - 네이티브 보상형 광고 이벤트 증거를 요구하는 서버 권위 광고 크레딧/유료 월 quota 원장 모듈
 - 서명 세션 쿠키/Authorization 토큰 기반 서버 subject 검증
 - 사용자별/서비스 전체 서버 AI 일일 한도와 사용자별 분당 이미지 수 제한
@@ -129,11 +173,11 @@ PICTORY_AI_LOG_RAW_IMAGES=false
 - 광고 보상 크레딧을 원장에 지급하는 `POST /pictory/reward` HTTP 어댑터
 - 서버 원장 계정을 지우는 `DELETE /pictory/account` HTTP 어댑터
 - `health/classify/reward`를 실제 HTTP로 검증하는 Node 서버 런타임
-- 홈, 지도, 정리, 보관 4개 화면
+- 홈, 분류, 정리, 보관 4개 화면
 - 보상형 광고 연결부와 브라우저 fallback
 - 광고 보상 후 서버 원장 동기화 endpoint 연결부
 - 민감/확인 필요 후보 흐림 처리와 로컬 저장 상태 관리
-- 앱 재실행 후에도 최근 분류 지도, 보관 항목, 스캔 기록 복원
+- 앱 재실행 후에도 최근 분류 결과, 보관 항목, 스캔 기록 복원
 
 ## 서버 런타임 검증
 
@@ -159,7 +203,7 @@ npm run qa:server:built
 
 ## 앨범 fallback 정책
 
-- 로컬 개발환경(`localhost`, `127.0.0.1`, Vite dev)에서만 샘플 앨범과 브라우저 파일 선택 fallback을 사용합니다.
+- 로컬 개발환경(Vite dev)에서만 샘플 앨범과 브라우저 파일 선택 fallback을 사용합니다.
 - 운영/토스 앱 환경에서 앨범 권한, 토스 앱 버전, 네이티브 API 문제가 생기면 샘플 데이터로 덮지 않고 사용자에게 실패 상태를 보여줍니다.
 - `fetchAlbumItems`에서 사용자가 선택을 취소하면 빈 배열로 처리하고, 실패로 간주하지 않습니다.
 
@@ -172,12 +216,14 @@ npm run qa:server:built
 - `픽토리 데이터 삭제`를 누르면 저장된 보관 상태, 정리 후보, 최근 분류 결과, 스캔 기록을 모두 삭제합니다.
 - `VITE_PICTORY_DELETE_ENDPOINT`가 설정된 운영 환경에서는 `픽토리 데이터 삭제`가 서버 원장 삭제도 함께 요청합니다.
 - 운영 환경에서는 로컬 저장소의 유료 플랜 값을 실제 권한으로 믿지 않습니다. 인앱결제 지급·복원·주문 상태 검증이 붙기 전까지 Plus/Pro는 로컬 개발 미리보기에서만 한도로 적용됩니다.
+- `VITE_PICTORY_ENTITLEMENT_ENDPOINT`가 없는 운영 빌드는 결제창을 열거나 미결 주문 복원으로 Plus/Pro 권한을 활성화하지 않습니다.
 - 운영 Plus/Pro 활성화는 앱인토스 구독 결제 성공, 상품 지급 콜백, 구독 정보 복원 또는 미결 주문 복원 이후에만 적용됩니다.
 
 ## 운영 전 확인해야 할 것
 
 - 실제 토스 앱 또는 콘솔 QR 테스트에서 사진 권한 요청과 앨범 읽기 확인
-- 운영 광고 그룹 ID 적용 후 `userEarnedReward` 이벤트 발생 시에만 스캔권 지급되는지 확인
-- 광고 미지원/닫기/실패 상태에서 스캔권이 지급되지 않는지 확인
+- 운영 광고 그룹 ID 적용 후 `userEarnedReward` 이벤트 발생 시에만 AI 정밀분류권이 지급되는지 확인
+- 광고 미지원/닫기/실패 상태에서 AI 정밀분류권이 지급되지 않는지 확인
 - Plus/Pro 구독 SKU 적용 후 실기기에서 결제 성공, 미결 주문 복원, 구독 복원 상태 확인
-- `pictory.ait` 최신 빌드 업로드 전 `npm run test && npm run typecheck && npm run lint && npm run build` 재실행
+- `pictory.ait` 최신 빌드 업로드 전 `npm run test && npm run typecheck && npm run lint && npm run build && npm run snapshot:release && npm run check:launch` 재실행
+

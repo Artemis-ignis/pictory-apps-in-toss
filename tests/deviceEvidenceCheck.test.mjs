@@ -26,6 +26,8 @@ describe("device evidence preflight", () => {
 
     const evidence = completeEvidence();
     evidence.device.tossAppVersion = "5.200.0";
+    evidence.monetization.rewardedAd.unitType = "scan";
+    evidence.monetization.rewardedAd.unitAmount = 100;
     evidence.scenarios = evidence.scenarios.slice(0, 1);
     evidence.notes = "debug data:image/jpeg;base64,abc";
 
@@ -34,7 +36,9 @@ describe("device evidence preflight", () => {
     expect(result.ok).toBe(false);
     expect(result.failures.map((failure) => failure.message)).toEqual(
       expect.arrayContaining([
-        "Toss app version is at least 5.247.0",
+        "Toss app version is at least 5.261.0",
+        "rewarded ad unit type is ai_credit",
+        "rewarded ad unit amount is 30",
         "photos-permission scenario exists",
         "evidence JSON does not contain secrets or raw base64 images",
       ]),
@@ -68,7 +72,9 @@ describe("device evidence preflight", () => {
     const evidence = completeEvidence();
     evidence.release.gitCommit = "deadbeef";
     evidence.app.consoleAppVersion = "앱인토스_콘솔_버전";
+    evidence.device.tossAppVersion = "실기기_TOSS앱_버전";
     evidence.device.model = "실기기_모델명";
+    evidence.monetization.rewardedAd.adGroupId = "ait-ad-test-rewarded-id";
 
     const result = validateDeviceEvidence(evidence, { cwd: dir });
 
@@ -77,7 +83,9 @@ describe("device evidence preflight", () => {
       expect.arrayContaining([
         "release gitCommit matches current checkout",
         "console app version is not a placeholder",
+        "Toss app version is not a placeholder",
         "device model is not a placeholder",
+        "rewarded ad group id is production",
       ]),
     );
   });
@@ -100,8 +108,17 @@ function completeEvidence() {
     device: {
       os: "ios",
       osVersion: "18.5",
-      tossAppVersion: "5.247.0",
+      tossAppVersion: "5.261.0",
       model: "iPhone test device",
+    },
+    monetization: {
+      rewardedAd: {
+        adGroupId: "ait.prod.rewarded",
+        unitType: "ai_credit",
+        unitAmount: 30,
+        serverGrantedCredits: 30,
+        usingTestAdGroup: false,
+      },
     },
     scenarios: requiredIds().map((id) => ({
       id,

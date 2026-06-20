@@ -1,7 +1,5 @@
-import { refineWithAiClassifier } from "./aiClassifier";
 import { analyzeImageSource, emptySignals } from "./imageSignals";
 import { inferNativeDetectorHints } from "./nativeDetectors";
-import { inferVisualHints } from "./visualClassifier";
 import type {
   AiRefinementResult,
   AlbumItem,
@@ -20,18 +18,34 @@ const TOKEN_RULES: Record<MapBucketId, string[]> = {
     "스크린샷",
     "카톡",
     "chat",
+    "message",
+    "messenger",
+    "notification",
+    "mobile",
     "송금",
     "이체",
+    "bank",
     "login",
     "로그인",
     "알림",
+    "메시지",
+    "결제화면",
   ],
   document: [
     "document",
     "doc",
     "pdf",
+    "scan",
+    "paper",
+    "form",
+    "certificate",
+    "resume",
     "계약",
     "문서",
+    "서류",
+    "스캔",
+    "증서",
+    "증빙",
     "메모",
     "기록",
     "증명",
@@ -50,6 +64,10 @@ const TOKEN_RULES: Record<MapBucketId, string[]> = {
   ],
   receipt: [
     "receipt",
+    "store",
+    "order",
+    "purchase",
+    "pos",
     "영수증",
     "결제",
     "카드",
@@ -107,9 +125,21 @@ const TOKEN_RULES: Record<MapBucketId, string[]> = {
     "airport",
     "station",
     "road",
+    "park",
+    "forest",
+    "river",
+    "sea",
+    "sky",
+    "tree",
+    "trail",
     "장소",
     "여행",
     "풍경",
+    "공원",
+    "숲",
+    "바다",
+    "하늘",
+    "나무",
     "산책",
     "도시",
     "건물",
@@ -156,7 +186,30 @@ const TOKEN_RULES: Record<MapBucketId, string[]> = {
     "입장권",
     "탑승권",
   ],
-  memory: ["memory", "record", "note", "기록", "메모", "일상"],
+  memory: [
+    "memory",
+    "record",
+    "note",
+    "dark",
+    "blurry",
+    "기록",
+    "메모",
+    "일상",
+    "pet",
+    "dog",
+    "puppy",
+    "kitten",
+    "kitty",
+    "animal",
+    "반려",
+    "강아지",
+    "고양이",
+    "동물",
+    "차량",
+    "자동차",
+    "어두움",
+    "흐림",
+  ],
 };
 
 const SENSITIVE_TOKENS = [
@@ -200,6 +253,23 @@ const SENSITIVE_TOKENS = [
 interface ClassifyOptions {
   refineWithServerAi?: boolean;
   onAiRefinementResult?: (result: AiRefinementResult) => void;
+  onProgress?: (progress: ClassifyProgress) => void;
+  signal?: AbortSignal;
+}
+
+export interface ClassifyProgress {
+  done: number;
+  total: number;
+  stage:
+    | "사진 불러오는 중"
+    | "밝기와 선명도 확인 중"
+    | "비슷한 사진 묶는 중"
+    | "사진 분류 중";
+}
+
+interface DuplicateGroupEntry {
+  groupId: string;
+  isRepresentative: boolean;
 }
 
 export async function classifyAlbumItems(
@@ -207,28 +277,25 @@ export async function classifyAlbumItems(
   existingStatuses = new Map<string, ClassifiedItem["status"]>(),
   options: ClassifyOptions = {},
 ): Promise<ClassifiedItem[]> {
-  const classified = await Promise.all(
-    items.map(async (item) => {
-      const useLiveDetectors = item.source !== "sample";
-      const [signals, nativeHints, visualHints] = await Promise.all([
-        item.signals ?? analyzeImageSource(item.dataUri),
-        useLiveDetectors ? inferNativeDetectorHints(item.dataUri) : [],
-        useLiveDetectors ? inferVisualHints(item.dataUri) : [],
-      ]);
-      const hints = Array.from(
-        new Set([...(item.hints ?? []), ...nativeHints, ...visualHints]),
-      );
+  const total = items.length;
+  const classified: ClassifiedItem[] = [];
 
-      return classifyItem({
-        ...item,
-        hints,
-        signals: signals ?? item.signals,
-      });
-    }),
-  );
+  options.onProgress?.({ done: 0, total, stage: "사진 불러오는 중" });
+  for (let index = 0; index < items.length; index += 1) {
+    throwIfAborted(options.signal);
+    classified.push(await classifyAlbumItem(items[index]));
+    options.onProgress?.({
+      done: index + 1,
+      total,
+      stage: "밝기와 선명도 확인 중",
+    });
+    await yieldToBrowser();
+  }
 
+  options.onProgress?.({ done: total, total, stage: "비슷한 사진 묶는 중" });
   const duplicateGroups = findDuplicateGroups(classified);
 
+  options.onProgress?.({ done: total, total, stage: "사진 분류 중" });
   const locallyClassified = classified.map((item) => {
     const duplicateGroup = duplicateGroups.get(item.id);
     const baseCleanBucket = chooseCleanBucket(
@@ -237,38 +304,60 @@ export async function classifyAlbumItems(
     );
     const cleanBucketId =
       duplicateGroup &&
+      !duplicateGroup.isRepresentative &&
       baseCleanBucket !== "sensitive" &&
-      baseCleanBucket !== "needsReview"
+      baseCleanBucket !== "needsReview" &&
+      baseCleanBucket !== "dark"
         ? "similar"
         : baseCleanBucket;
 
     return {
       ...item,
       cleanBucketId,
-      duplicateGroup,
+      duplicateGroup: duplicateGroup?.groupId,
+      isDuplicateRepresentative: duplicateGroup?.isRepresentative,
       status: existingStatuses.get(item.id) ?? item.status,
     };
   });
 
-  return options.refineWithServerAi
-    ? refineWithAiClassifier(locallyClassified, undefined, {
-        onResult: options.onAiRefinementResult,
-      })
-    : locallyClassified;
+  if (!options.refineWithServerAi) {
+    return locallyClassified;
+  }
+
+  const { refineWithAiClassifier } = await import("./aiClassifier");
+  return refineWithAiClassifier(locallyClassified, undefined, {
+    onResult: options.onAiRefinementResult,
+  });
+}
+
+async function classifyAlbumItem(item: AlbumItem) {
+  const useLiveDetectors = item.source !== "sample";
+  const [signals, nativeHints] = await Promise.all([
+    item.signals ?? analyzeImageSource(item.dataUri),
+    useLiveDetectors ? inferNativeDetectorHints(item.dataUri) : [],
+  ]);
+  const hints = Array.from(new Set([...(item.hints ?? []), ...nativeHints]));
+
+  return classifyItem({
+    ...item,
+    hints,
+    signals: signals ?? item.signals,
+  });
 }
 
 export function classifyItem(item: AlbumItem): ClassifiedItem {
   const signals = withSignalDefaults(item.signals);
   const tokens = tokenize(item);
   const scores = scoreCategories(tokens, signals);
-  const [categoryId, rawScore] = Object.entries(scores).sort(
+  const [rawCategoryId, rawScore] = Object.entries(scores).sort(
     (a, b) => b[1] - a[1],
   )[0] as [MapBucketId, number];
+  const categoryId = isLowQualityPhoto(signals) ? "memory" : rawCategoryId;
   const sensitivityScore = scoreSensitivity(tokens, signals, categoryId);
   const privacy =
     sensitivityScore >= 0.82
       ? "sensitive"
-      : rawScore < 0.52
+      : rawScore < 0.52 && categoryId !== "memory"
         ? "review"
         : "normal";
   const cleanBucketId = initialCleanBucket(
@@ -334,29 +423,16 @@ export function cleanBucketMatches(
     return false;
   }
 
-  const joinedSignals = [item.fileName, ...(item.hints ?? []), ...item.reasons]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-
   switch (bucketId) {
     case "sensitive":
-      return (
-        item.privacy === "sensitive" ||
-        item.categoryId === "document" ||
-        item.categoryId === "receipt" ||
-        (item.categoryId === "capture" &&
-          /계좌|송금|카드|결제|bank|account|pay/.test(joinedSignals)) ||
-        (item.categoryId === "coupon" &&
-          !/screenshot|screen|캡처/.test(joinedSignals))
-      );
+      return item.privacy === "sensitive" || item.cleanBucketId === "sensitive";
     case "needsReview":
-      return true;
+      return item.cleanBucketId === "needsReview" || item.privacy === "review";
     case "similar":
-      if (item.source === "sample") {
-        return !cleanBucketMatches(item, "dark");
-      }
-      return Boolean(item.duplicateGroup) || item.cleanBucketId === "similar";
+      return (
+        (Boolean(item.duplicateGroup) && !item.isDuplicateRepresentative) ||
+        item.cleanBucketId === "similar"
+      );
     case "dark":
       return (
         item.cleanBucketId === "dark" ||
@@ -394,6 +470,22 @@ function tokenize(item: AlbumItem) {
     .toLowerCase()
     .split(/[\s._/\\-]+/)
     .filter(Boolean);
+}
+
+function throwIfAborted(signal?: AbortSignal) {
+  if (signal?.aborted) {
+    throw new DOMException("Pictory scan canceled", "AbortError");
+  }
+}
+
+function yieldToBrowser() {
+  if (typeof window === "undefined") {
+    return Promise.resolve();
+  }
+
+  return new Promise<void>((resolve) => {
+    window.setTimeout(resolve, 0);
+  });
 }
 
 function withSignalDefaults(signals?: ImageSignals | null): ImageSignals {
@@ -450,6 +542,14 @@ function scoreCategories(tokens: string[], signals: ImageSignals) {
     scores.document += 0.06;
   }
 
+  if (
+    signals.textLineScore > 0.18 &&
+    signals.edgeDensity > 0.08 &&
+    (signals.aspectRatio < 0.62 || signals.whiteRatio > 0.32)
+  ) {
+    scores.capture += 0.18;
+  }
+
   if (signals.aspectRatio < 0.62 || signals.aspectRatio > 1.85) {
     scores.capture += 0.16;
     scores.coupon += 0.08;
@@ -479,19 +579,93 @@ function scoreCategories(tokens: string[], signals: ImageSignals) {
     scores.people += 0.1;
   }
 
+  if (
+    signals.aspectRatio < 0.78 &&
+    signals.textLineScore < 0.1 &&
+    signals.colorVariance < 0.13 &&
+    signals.saturation < 0.42 &&
+    signals.brightness > 0.32
+  ) {
+    scores.document += 0.3;
+  }
+
+  if (isReceiptLikePaperPhoto(signals)) {
+    scores.receipt += 0.34;
+  }
+
+  if (
+    signals.saturation > 0.3 &&
+    signals.colorVariance > 0.14 &&
+    signals.whiteRatio < 0.1 &&
+    signals.darkRatio < 0.18 &&
+    signals.skinToneRatio < 0.18
+  ) {
+    scores.food += 0.24;
+  }
+
+  if (
+    signals.saturation > 0.28 &&
+    signals.colorVariance > 0.13 &&
+    signals.whiteRatio < 0.12 &&
+    signals.darkRatio < 0.22 &&
+    signals.skinToneRatio < 0.18 &&
+    signals.natureColorRatio < 0.22 &&
+    signals.textLineScore < 0.08
+  ) {
+    scores.food += 0.34;
+  }
+
+  if (
+    signals.saturation > 0.48 &&
+    signals.darkRatio > 0.32 &&
+    signals.skinToneRatio > 0.18
+  ) {
+    scores.coupon += 0.3;
+  }
+
+  if (
+    signals.darkRatio > 0.32 &&
+    signals.textLineScore > 0.1 &&
+    signals.saturation < 0.28
+  ) {
+    scores.place += 0.32;
+  }
+
   if (signals.textLineScore < 0.08 && signals.saturation > 0.35) {
     scores.place += 0.11;
     scores.people += 0.08;
     scores.memory += 0.06;
   }
 
-  if (signals.skinToneRatio > 0.08) {
-    scores.people += 0.25;
+  if (signals.skinToneRatio > 0.08 && signals.saturation > 0.36) {
+    scores.people += 0.16;
+  }
+
+  if (
+    signals.skinToneRatio > 0.16 &&
+    signals.saturation > 0.36 &&
+    signals.whiteRatio > 0.07
+  ) {
+    scores.people += 0.14;
+  }
+
+  if (
+    signals.natureColorRatio > 0.3 &&
+    signals.textLineScore > 0.18 &&
+    signals.skinToneRatio > 0.02
+  ) {
+    scores.people += 0.32;
   }
 
   if (signals.natureColorRatio > 0.26 && signals.textLineScore < 0.12) {
     scores.place += 0.22;
     scores.memory += 0.05;
+  }
+
+  if (isLowQualityPhoto(signals)) {
+    scores.memory += 0.52;
+    scores.capture -= 0.18;
+    scores.people -= 0.12;
   }
 
   return scores;
@@ -563,15 +737,25 @@ function initialCleanBucket(
     return "sensitive";
   }
 
-  if (signals.brightness < 0.24) {
+  if (isLowQualityPhoto(signals)) {
     return "dark";
   }
 
-  if (score < 0.56) {
+  if (
+    categoryId === "document" ||
+    categoryId === "receipt" ||
+    categoryId === "coupon"
+  ) {
     return "needsReview";
   }
 
-  if (categoryId === "coupon") {
+  if (
+    score < 0.56 &&
+    categoryId !== "food" &&
+    categoryId !== "place" &&
+    categoryId !== "people" &&
+    categoryId !== "memory"
+  ) {
     return "needsReview";
   }
 
@@ -590,7 +774,7 @@ function chooseCleanBucket(
     return current;
   }
 
-  if (signals.brightness < 0.24) {
+  if (isLowQualityPhoto(signals)) {
     return "dark";
   }
 
@@ -598,32 +782,130 @@ function chooseCleanBucket(
 }
 
 function findDuplicateGroups(items: ClassifiedItem[]) {
-  const groups = new Map<string, string>();
+  const groupSets: Array<Set<string>> = [];
 
   for (let left = 0; left < items.length; left += 1) {
-    const leftHash = items[left].signals?.perceptualHash ?? "";
-    if (leftHash.length === 0) {
-      continue;
-    }
-
     for (let right = left + 1; right < items.length; right += 1) {
-      const rightHash = items[right].signals?.perceptualHash ?? "";
-      const leftName = items[left].fileName?.replace(/copy|복사|-\d+/gi, "");
-      const rightName = items[right].fileName?.replace(/copy|복사|-\d+/gi, "");
-      const sameHint = Boolean(leftName && rightName && leftName === rightName);
-      const visuallySimilar =
-        items[left].categoryId === items[right].categoryId &&
-        hammingDistance(leftHash, rightHash) <= 4;
-
-      if (visuallySimilar || sameHint) {
-        const groupId = `similar-${left + 1}`;
-        groups.set(items[left].id, groupId);
-        groups.set(items[right].id, groupId);
+      if (areSimilarPhotos(items[left], items[right])) {
+        mergeDuplicatePair(groupSets, items[left].id, items[right].id);
       }
     }
   }
 
+  const groups = new Map<string, DuplicateGroupEntry>();
+  groupSets.forEach((group, index) => {
+    if (group.size < 2) {
+      return;
+    }
+
+    const groupItems = Array.from(group)
+      .map((id) => items.find((item) => item.id === id))
+      .filter((item): item is ClassifiedItem => item != null);
+    const representative = groupItems.sort(
+      (left, right) => qualityScore(right) - qualityScore(left),
+    )[0];
+    const groupId = `similar-${index + 1}`;
+
+    for (const item of groupItems) {
+      groups.set(item.id, {
+        groupId,
+        isRepresentative: item.id === representative.id,
+      });
+    }
+  });
+
   return groups;
+}
+
+function areSimilarPhotos(left: ClassifiedItem, right: ClassifiedItem) {
+  const leftName = normalizeDuplicateFileName(left.fileName);
+  const rightName = normalizeDuplicateFileName(right.fileName);
+  const sameHint = Boolean(leftName && rightName && leftName === rightName);
+  if (sameHint) {
+    return true;
+  }
+
+  if (left.categoryId !== right.categoryId) {
+    return false;
+  }
+
+  const leftHash = left.signals?.perceptualHash ?? "";
+  const rightHash = right.signals?.perceptualHash ?? "";
+  if (leftHash.length === 0 || rightHash.length === 0) {
+    return false;
+  }
+
+  const leftDiffHash = left.signals?.differenceHash ?? "";
+  const rightDiffHash = right.signals?.differenceHash ?? "";
+  const aHashClose = hammingDistance(leftHash, rightHash) <= 8;
+  const dHashClose =
+    leftDiffHash.length > 0 && rightDiffHash.length > 0
+      ? hammingDistance(leftDiffHash, rightDiffHash) <= 10
+      : hammingDistance(leftHash, rightHash) <= 2;
+
+  return aHashClose && dHashClose;
+}
+
+function mergeDuplicatePair(
+  groups: Array<Set<string>>,
+  leftId: string,
+  rightId: string,
+) {
+  const leftGroup = groups.find((group) => group.has(leftId));
+  const rightGroup = groups.find((group) => group.has(rightId));
+
+  if (leftGroup && rightGroup && leftGroup !== rightGroup) {
+    for (const id of rightGroup) {
+      leftGroup.add(id);
+    }
+    groups.splice(groups.indexOf(rightGroup), 1);
+    return;
+  }
+
+  if (leftGroup) {
+    leftGroup.add(rightId);
+    return;
+  }
+
+  if (rightGroup) {
+    rightGroup.add(leftId);
+    return;
+  }
+
+  groups.push(new Set([leftId, rightId]));
+}
+
+function qualityScore(item: ClassifiedItem) {
+  const signals = item.signals ?? emptySignals();
+  const brightnessPenalty = Math.abs((signals.brightness ?? 0.5) - 0.52);
+  const blur = signals.blurVariance ?? signals.edgeDensity;
+  const contrast = signals.contrast ?? signals.colorVariance;
+
+  return (
+    blur * 0.45 +
+    contrast * 0.25 +
+    (1 - signals.darkRatio) * 0.2 -
+    brightnessPenalty * 0.2
+  );
+}
+
+function normalizeDuplicateFileName(fileName?: string) {
+  if (!fileName) {
+    return "";
+  }
+
+  const stem = fileName
+    .toLowerCase()
+    .replace(/\.[^.]+$/, "")
+    .replace(/\s*\(\d+\)$/, "")
+    .replace(/(?:[-_\s]+(?:copy|복사본?|복사))$/, "")
+    .trim();
+
+  return /^(img|image|photo|screenshot|scan|pick|local|download|pexels)$/.test(
+    stem,
+  )
+    ? ""
+    : stem;
 }
 
 function buildReasons(
@@ -642,15 +924,22 @@ function buildReasons(
     reasons.push("어두운 사진");
   }
 
+  if (isBlurryPhoto(signals)) {
+    reasons.push("흐린 사진");
+  }
+
   if (signals.whiteRatio > 0.48 && signals.textLineScore > 0.18) {
     reasons.push("문서형 배경");
   }
 
-  if (signals.skinToneRatio > 0.08) {
+  if (categoryId === "people" && signals.skinToneRatio > 0.08) {
     reasons.push("사람색 영역");
   }
 
-  if (signals.natureColorRatio > 0.26) {
+  if (
+    (categoryId === "place" || categoryId === "people") &&
+    signals.natureColorRatio > 0.26
+  ) {
     reasons.push("야외색 영역");
   }
 
@@ -658,11 +947,66 @@ function buildReasons(
     reasons.push("민감 키워드");
   }
 
-  if (tokens.length > 0) {
-    reasons.push(tokens.slice(0, 2).join(", "));
+  const visibleTokens = tokens.filter(isMeaningfulReasonToken);
+  if (visibleTokens.length > 0) {
+    reasons.push(visibleTokens.slice(0, 2).join(", "));
   }
 
   return reasons.slice(0, 3);
+}
+
+function isMeaningfulReasonToken(token: string) {
+  return (
+    !/^\d+$/.test(token) &&
+    !/^(img|image|photo|screenshot|scan|pick|local|download|pexels|jpg|jpeg|png|heic|webp)$/.test(
+      token,
+    )
+  );
+}
+
+function isLowQualityPhoto(signals: ImageSignals) {
+  return isDarkPhoto(signals) || isBlurryPhoto(signals);
+}
+
+function isDarkPhoto(signals: ImageSignals) {
+  return (
+    signals.brightness < 0.28 &&
+    signals.saturation < 0.36 &&
+    (signals.darkRatio > 0.16 || signals.whiteRatio < 0.08)
+  );
+}
+
+function isBlurryPhoto(signals: ImageSignals) {
+  const blurVariance = signals.blurVariance ?? 0;
+  const contrast = signals.contrast ?? 0;
+
+  return (
+    blurVariance > 0 &&
+    blurVariance < 0.035 &&
+    signals.edgeDensity < 0.08 &&
+    signals.textLineScore < 0.1 &&
+    contrast < 0.22
+  );
+}
+
+function isReceiptLikePaperPhoto(signals: ImageSignals) {
+  const contrast = signals.contrast ?? 0;
+
+  return (
+    signals.aspectRatio > 0.56 &&
+    signals.aspectRatio < 0.78 &&
+    signals.textLineScore < 0.08 &&
+    signals.whiteRatio > 0.08 &&
+    signals.whiteRatio < 0.24 &&
+    signals.darkRatio < 0.12 &&
+    signals.skinToneRatio > 0.24 &&
+    signals.saturation > 0.18 &&
+    signals.saturation < 0.32 &&
+    signals.colorVariance > 0.09 &&
+    signals.colorVariance < 0.14 &&
+    contrast > 0.32 &&
+    contrast < 0.56
+  );
 }
 
 function labelForCategory(categoryId: MapBucketId) {

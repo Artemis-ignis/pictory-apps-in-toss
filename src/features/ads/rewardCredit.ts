@@ -1,5 +1,7 @@
 import type { RewardedScanAdResult } from "./rewardAd";
 
+export const MAX_STORED_REWARD_CREDITS = 300;
+
 interface RewardCreditEnv {
   VITE_PICTORY_REWARD_ENDPOINT?: string;
 }
@@ -38,7 +40,7 @@ export async function grantRewardCredits(
   const endpoint = env.VITE_PICTORY_REWARD_ENDPOINT?.trim();
   if (!endpoint) {
     return {
-      granted: reward.reward,
+      granted: clampGrantedCredits(reward.reward),
       source: reward.source === "localFallback" ? "localFallback" : "localOnly",
       duplicated: false,
     };
@@ -89,7 +91,7 @@ function createRewardRequestId(reward: RewardedScanAdResult) {
 
 function clampGrantedCredits(value: unknown) {
   return typeof value === "number" && Number.isFinite(value)
-    ? Math.max(0, Math.min(3000, value))
+    ? Math.max(0, Math.min(MAX_STORED_REWARD_CREDITS, value))
     : 0;
 }
 

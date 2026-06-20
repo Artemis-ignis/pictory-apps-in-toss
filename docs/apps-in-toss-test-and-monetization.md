@@ -1,4 +1,4 @@
-# 픽토리 운영 실행 메모
+﻿# 픽토리 운영 실행 메모
 
 ## 결론
 
@@ -27,7 +27,7 @@ VITE_PICTORY_ENTITLEMENT_ENDPOINT=https://your-api.example.com/pictory/entitleme
 VITE_PICTORY_DELETE_ENDPOINT=https://your-api.example.com/pictory/account
 ```
 
-서버 AI 런타임 환경 변수는 서버 배포 환경에만 설정한다. OpenAI 키, 서버 secret, 사용자별 quota 값에는 `VITE_` 접두사를 붙이지 않는다.
+서버 AI 런타임 환경 변수는 서버 배포 환경에만 설정한다. Gemini/OpenAI 키, 서버 secret, 사용자별 quota 값에는 `VITE_` 접두사를 붙이지 않는다.
 
 ```env
 PICTORY_SERVER_SECRET=replace_with_long_random_server_secret
@@ -36,13 +36,17 @@ PICTORY_PLUS_SUBSCRIPTION_SKU=replace_with_toss_plus_subscription_sku
 PICTORY_PRO_SUBSCRIPTION_SKU=replace_with_toss_pro_subscription_sku
 PICTORY_SUBSCRIPTION_VALID_DAYS=32
 PICTORY_REWARD_REQUIRE_NATIVE_EVENT=true
+PICTORY_REWARD_UNIT_TYPE=ai_credit
 APPS_IN_TOSS_MTLS_CERT_PATH=replace_with_server_only_mtls_cert_path
 APPS_IN_TOSS_MTLS_KEY_PATH=replace_with_server_only_mtls_key_path
+PICTORY_AI_PROVIDER=gemini
+GEMINI_API_KEY=replace_with_gemini_api_key_server_only
+GEMINI_MODEL=gemini-2.5-flash-lite
 OPENAI_API_KEY=replace_with_openai_api_key_server_only
 OPENAI_MODEL=gpt-4.1-mini
 OPENAI_IMAGE_DETAIL=low
 PICTORY_AI_FREE_MONTHLY_QUOTA=0
-PICTORY_AI_AD_CREDIT_QUOTA=100
+PICTORY_AI_AD_CREDIT_QUOTA=30
 PICTORY_AI_PLUS_MONTHLY_QUOTA=500
 PICTORY_AI_PRO_MONTHLY_QUOTA=2000
 PICTORY_AI_DAILY_LIMIT_PER_USER=300
@@ -61,14 +65,18 @@ npm run typecheck
 npm run lint
 npm run qa:server
 npm run qa:server:built
+npm run qa:flow
 npm run check:production-env -- --file .env.production
 npm run check:device-evidence -- --file qa-evidence/device-smoke.json
 npm run build
+npm run qa:flow:built
 npm run check:privacy
+npm run check:upload-assets
 npm run check:release
+npm run check:submission
 ```
 
-`npm run build`가 만든 `pictory.ait`를 앱인토스 콘솔에 업로드한다. `npm run check:privacy`는 `pictory.ait`, `dist`, `dist-server`에 서버 전용 env 이름이나 실제 키/secret 할당값이 섞이지 않았는지 검사한다. `npm run check:release`는 업로드 전 `.env.example`, `pictory.ait`, Granite 필수 설정, 테스트 스크립트 존재 여부, 최신 release snapshot의 `.ait` 해시와 archive 존재 여부를 읽기 전용으로 확인한다. `npm run check:production-env -- --file .env.production`은 실제 운영 후보 값에서 테스트 광고 ID, placeholder endpoint, endpoint origin/path 불일치, SKU 불일치, 짧은 secret, mTLS 인증서/키 누락 또는 빈 파일, 원본 이미지 로그 설정 오류를 차단한다. `npm run check:device-evidence -- --file qa-evidence/device-smoke.json`은 실제 QR 실기기 증거가 현재 Git commit과 `pictory.ait` 해시와 맞고, placeholder가 아닌 콘솔/단말 정보와 필수 시나리오 스크린샷이 모두 있는지 확인한다.
+`npm run build`가 만든 `pictory.ait`를 앱인토스 콘솔에 업로드한다. `npm run qa:flow`는 dev 서버에서 홈/분류/정리/보관, 폴더, 사진 상세, 민감정보 마스킹, 깨진 이미지 여부를 검증하고 `qa-evidence/runtime-flow.json`에 결과를 남긴다. `npm run qa:flow:built`는 `dist/web` preview에서 저장된 분류 상태 기반 화면 흐름을 검증하고 `qa-evidence/built-flow.json`에 결과를 남긴다. `npm run check:privacy`는 `pictory.ait`, `dist`, `dist-server`에 서버 전용 env 이름이나 실제 키/secret 할당값이 섞이지 않았는지 검사한다. `npm run check:upload-assets`는 `apps-in-toss-upload-images`의 아이콘 `600x600`, 썸네일 `1932x828`, 홈/분류/정리/보관 스크린샷 `636x1048` 치수를 확인한다. `npm run check:release`는 업로드 전 `.env.example`, `pictory.ait`, Granite 필수 설정, 테스트 스크립트 존재 여부, 최신 release snapshot의 `.ait` 해시와 archive 존재 여부, `.ait` 압축 해제 크기 100MB 이하, `.ait` 내부 로컬 `demo-album` 파일 누락, 콘솔 제출 이미지 치수, 런타임 플로우 QA 증거를 읽기 전용으로 확인하고, release snapshot의 필수 검증 목록에 최종 관문 `npm run check:launch`와 `npm run check:submission`이 포함됐는지도 확인한다. `npm run check:production-env -- --file .env.production`은 실제 운영 후보 값에서 테스트 광고 ID, placeholder endpoint, endpoint origin/path 불일치, SKU 불일치, 짧은 secret, mTLS 인증서/키 누락 또는 빈 파일, 원본 이미지 로그 설정 오류, `.env.production` 안의 `NODE_ENV` 설정을 차단한다. `npm run check:launch`는 `.env.production`만 보지 않고 현재 `dist` 번들에 client 운영값이 실제로 반영됐는지도 확인하므로, 운영값을 채운 뒤 `npm run build`, `npm run snapshot:release`, `npm run evidence:device:draft -- --force`를 다시 실행해야 한다. `npm run check:device-evidence -- --file qa-evidence/device-smoke.json`은 실제 QR 실기기 증거가 현재 Git commit과 `pictory.ait` 해시와 맞고, placeholder가 아닌 콘솔/단말 정보와 필수 시나리오 스크린샷이 모두 있는지 확인한다. `npm run check:submission`은 제출 직전 전체 순서를 고정한 최종 명령이며, 타입체크부터 launch readiness까지 순서대로 실행하고 중간 실패 시 멈춘다.
 
 콘솔 경로:
 
@@ -81,8 +89,8 @@ npm run check:release
 실행자 체크리스트:
 
 - [ ] `.env`에 실제 비밀값이 없고, 클라이언트 값은 `VITE_` 공개 값만 들어 있다.
-- [ ] 서버 OpenAI 키와 `PICTORY_SERVER_SECRET`은 서버 배포 환경에만 설정했다.
-- [ ] `npm run test`, `npm run typecheck`, `npm run lint`, `npm run qa:server`, `npm run qa:server:built`, `npm run check:production-env -- --file .env.production`, `npm run check:device-evidence -- --file qa-evidence/device-smoke.json`, `npm run build`, `npm run check:privacy`, `npm run check:release`가 통과했다.
+- [ ] 서버 AI provider 키와 `PICTORY_SERVER_SECRET`은 서버 배포 환경에만 설정했다.
+- [ ] `npm run check:submission`이 통과했다. 실패 시 출력된 첫 실패 명령부터 처리했다.
 - [ ] 업로드한 파일명이 최신 `pictory.ait`인지 확인했다.
 - [ ] 테스트 단말에서 토스 앱에 로그인했다.
 - [ ] 테스트 계정이 앱인토스 워크스페이스 멤버이고 만 19세 이상이다.
@@ -90,8 +98,8 @@ npm run check:release
 - [ ] `docs/device-smoke-evidence.example.json` 형식으로 `qa-evidence/device-smoke.json`을 작성하고, `현재_*`, `앱인토스_*`, `실기기_*` placeholder를 모두 실제 값으로 바꿨으며, 스크린샷 파일은 `qa-evidence/screens/`에 저장했다.
 - [ ] 사진 권한 요청이 뜨고, 허용 후 앨범 선택 화면이 열린다.
 - [ ] 선택 취소 시 실패가 아니라 빈 결과/대기 상태로 돌아온다.
-- [ ] 실제 사진 선택 후 지도, 정리, 보관 화면의 분류 결과와 민감정보 흐림 처리를 확인했다.
-- [ ] 앱 재실행 후 최근 분류 지도, 보관 항목, 스캔 기록이 복원된다.
+- [ ] 실제 사진 선택 후 분류, 정리, 보관 화면의 분류 결과와 민감정보 흐림 처리를 확인했다.
+- [ ] 앱 재실행 후 최근 분류 결과, 보관 항목, 스캔 기록이 복원된다.
 - [ ] `픽토리 데이터 삭제` 후 앱 내부 기록이 비워지고, 운영 서버 원장도 `DELETE /pictory/account`로 삭제된다.
 - [ ] 실패가 있으면 단말 OS, 토스 앱 버전, 콘솔 앱 버전, QR 생성 시각, 재현 화면을 기록했다.
 
@@ -102,14 +110,16 @@ npm run check:release
 운영 흐름:
 
 1. 앱 진입 시 보상형 광고를 미리 로드한다.
-2. 사용자가 `광고 +100`을 누르면 로드된 광고를 표시한다.
-3. `userEarnedReward` 이벤트가 온 경우에만 스캔권을 지급한다.
+2. 사용자가 광고 크레딧 받기를 누르면 로드된 광고를 표시한다.
+3. `userEarnedReward` 이벤트가 온 경우에만 AI 정밀분류권을 지급한다.
 4. 광고가 닫히면 다음 광고를 다시 미리 로드한다.
 
 서버 수익화 흐름에서는 `server/pictoryRewardHttpAdapter.ts`의
 `POST /pictory/reward` 어댑터로 광고 보상 이벤트를 서버 원장에 지급한다.
 서버는 클라이언트가 보낸 보상 장수를 믿지 않고 `PICTORY_AI_AD_CREDIT_QUOTA`
-값만 사용한다. `rewardId`는 한 번만 인정해 새로고침/재시도/중복 콜백으로
+값만 사용한다. 콘솔 보상 단위는 `PICTORY_REWARD_UNIT_TYPE=ai_credit`과
+일치해야 하고, 이벤트 `unitAmount`도 서버 정책값과 같아야 한다.
+`rewardId`는 한 번만 인정해 새로고침/재시도/중복 콜백으로
 크레딧이 반복 지급되지 않게 한다. 프론트엔드 번들에는 서버 secret을 넣지
 않고, 실제 서비스에서는 토스 세션 또는 게이트웨이 검증 후 subject를 해결한다.
 앱은 `VITE_PICTORY_REWARD_ENDPOINT`가 설정된 운영 환경에서는 서버 응답의
@@ -146,12 +156,12 @@ VITE_TOSS_REWARDED_AD_GROUP_ID=콘솔_보상형_광고_그룹_ID
 - [ ] 개발/반복 테스트 빌드는 `ait-ad-test-rewarded-id`를 사용한다.
 - [ ] 운영 후보 빌드는 콘솔에서 발급한 보상형 광고 그룹 ID를 사용한다.
 - [ ] QR 진입 직후 광고가 강제 노출되지 않는다.
-- [ ] `광고 +100`을 누르면 광고가 열리고, 닫기만 하면 스캔권이 지급되지 않는다.
-- [ ] 광고를 끝까지 보고 `userEarnedReward` 이벤트가 발생한 경우에만 스캔권 +100장이 지급된다.
+- [ ] 광고 크레딧 받기를 누르면 광고가 열리고, 닫기만 하면 AI 정밀분류권이 지급되지 않는다.
+- [ ] 광고를 끝까지 보고 `userEarnedReward` 이벤트가 발생한 경우에만 `ai_credit` +30장이 지급된다.
 - [ ] 운영 서버 원장에서는 같은 `rewardId`가 두 번 들어와도 크레딧이 한 번만 지급된다.
-- [ ] `failedToShow`, 미지원, 네트워크 실패에서는 스캔권이 0장으로 유지된다.
+- [ ] `failedToShow`, 미지원, 네트워크 실패에서는 AI 정밀분류권이 0장으로 유지된다.
 - [ ] 광고 종료 후 다음 광고 preload가 다시 시도된다.
-- [ ] 검증 증거로 광고 그룹 ID 종류, 단말, 토스 앱 버전, 지급 전/후 스캔권 화면을 남긴다.
+- [ ] 검증 증거로 광고 그룹 ID 종류, 단말, 토스 앱 버전, 지급 전/후 AI 정밀분류권 화면을 남긴다.
 
 주의:
 
@@ -162,7 +172,7 @@ VITE_TOSS_REWARDED_AD_GROUP_ID=콘솔_보상형_광고_그룹_ID
 
 ## 이미지 분류 운영 구조
 
-돈을 받을 수 있는 수준의 분류는 서버 AI가 필요하다. 앱 안에 OpenAI 키를 넣으면 키가 노출되므로 금지한다.
+돈을 받을 수 있는 수준의 분류는 서버 AI가 필요하다. 앱 안에 Gemini/OpenAI 키를 넣으면 키가 노출되므로 금지한다.
 
 단, 서버 AI를 모든 사진에 무조건 호출하면 수익성이 무너진다. 픽토리는 앱 내부에서 1차 분류한 뒤 아래 후보만 서버로 보낸다.
 
@@ -173,7 +183,7 @@ VITE_TOSS_REWARDED_AD_GROUP_ID=콘솔_보상형_광고_그룹_ID
 
 현재 앱은 무료 기본 사용량에서는 서버 AI를 호출하지 않는다. 유료 플랜이거나 광고 시청으로 받은 크레딧이 있을 때만 서버 AI 정밀 분류를 켠다.
 
-서버 AI 요청은 한 번에 최대 40장으로 제한한다. 영수증, 문서, 쿠폰, 캡처, 인물, 민감정보 후보는 원본/썸네일 이미지를 서버로 붙이지 않고 redacted 신호와 힌트만 보낸다. 이미지가 꼭 필요한 낮은 민감도 후보(음식, 장소, 기록)도 요청당 최대 8장만 512px JPEG로 줄여 전송하고, 파일명·촬영시각·perceptualHash는 제외한다. 서버의 기본 OpenAI 이미지 detail은 `low`로 두어 비용을 방어한다.
+서버 AI 요청은 한 번에 최대 40장으로 제한한다. 영수증, 문서, 쿠폰, 캡처, 인물, 민감정보 후보는 원본/썸네일 이미지를 서버로 붙이지 않고 redacted 신호와 힌트만 보낸다. 이미지가 꼭 필요한 낮은 민감도 후보(음식, 장소, 기록)도 요청당 최대 8장만 512px JPEG로 줄여 전송하고, 파일명·촬영시각·perceptualHash는 제외한다. 기본 provider는 Gemini Flash-Lite 계열로 비용을 방어하고, OpenAI는 운영자가 명시적으로 선택한 fallback으로 둔다.
 
 권장 구조:
 
@@ -182,9 +192,9 @@ flowchart LR
   A["앱인토스 앨범 선택"] --> B["앱 내부 1차 신호 분석"]
   B --> C["redacted 신호 또는 저민감 축소 이미지"]
   C --> D["픽토리 서버 API"]
-  D --> E["OpenAI Vision + 구조화 출력"]
+  D --> E["Gemini Vision JSON + OpenAI fallback"]
   E --> F["종류/정리/민감정보 결과"]
-  F --> G["지도/정리/보관 화면 반영"]
+  F --> G["분류/정리/보관 화면 반영"]
 ```
 
 앱의 역할:
@@ -198,9 +208,9 @@ flowchart LR
 
 서버의 역할:
 
-- OpenAI API 키 보관
+- Gemini/OpenAI API 키 보관
 - 월간 크레딧/광고 크레딧/유료 플랜 검증과 서버 원장 차감
-- redacted 항목은 신호 기반 분류, 저민감 이미지 항목만 OpenAI Vision 정밀 분류
+- redacted 항목은 신호 기반 분류, 저민감 이미지 항목만 서버 Vision 정밀 분류
 - 비용 제한과 rate limit
 - 결제 검증
 - 민감정보 로그 저장 금지
@@ -214,6 +224,7 @@ flowchart LR
 - 무료 사용자는 앱 내부 1차 분류를 먼저 보여준다.
 - QR/바코드, 얼굴, 텍스트 영역은 지원되는 환경에서 앱 자체 감지기를 우선 사용한다.
 - 광고를 본 뒤 받은 크레딧이 있을 때 서버 AI 정밀 분류를 열어준다.
+- 무료 사용자가 월 기본 정리분 안에서 서버 AI를 쓰더라도 광고 AI 크레딧은 사진 장수만큼 차감한다.
 - 유료 사용자는 월 제공량 안에서 서버 AI 정밀 분류를 제공한다.
 - 같은 사진은 perceptual hash 기준으로 중복 과금하지 않는다.
 - 광고 크레딧 지급 서버는 rewardId만 믿지 않고 `source=native`, 광고 그룹 ID, `unitType`, `unitAmount`를 확인한다.
@@ -221,7 +232,7 @@ flowchart LR
 - `PICTORY_AI_DAILY_LIMIT_PER_USER`는 사용자별 일일 서버 AI 이미지 수 한도다.
 - `PICTORY_AI_DAILY_GLOBAL_LIMIT`는 서비스 전체 일일 서버 AI 이미지 수 한도다.
 - `PICTORY_AI_RATE_LIMIT_PER_MINUTE`는 사용자별 분당 서버 AI 이미지 수 한도다.
-- AI 호출 실패 시 예약 quota를 환불하되, 성공한 호출은 서버 원장에서 차감한다.
+- AI 호출 실패 시 예약 quota를 환불하되, 월 quota/광고 크레딧/전역 일일 한도는 예약 당시 사용분 기준으로 되돌린다.
 - 서버 로그에는 base64 원본, 신분증, 카드번호, 계좌번호를 남기지 않는다.
 
 수익 구조상 피해야 할 것:
@@ -233,7 +244,7 @@ flowchart LR
 
 ## AI 분류 API 계약
 
-앱은 공개 클라이언트 값인 `VITE_PICTORY_CLASSIFY_ENDPOINT`가 있을 때만 서버 AI 분류를 호출한다. OpenAI 키, 서버 secret, quota 검증은 이 endpoint 뒤의 서버에서만 처리한다. 브라우저 앱은 `credentials: include`와 요청 ID만 보낸다. `x-pictory-server-secret` 같은 서버 간 secret은 프론트엔드 번들에 넣지 않고, 배포 게이트웨이/서버 어댑터가 내부에서 붙인다.
+앱은 공개 클라이언트 값인 `VITE_PICTORY_CLASSIFY_ENDPOINT`가 있을 때만 서버 AI 분류를 호출한다. Gemini/OpenAI 키, 서버 secret, quota 검증은 이 endpoint 뒤의 서버에서만 처리한다. 브라우저 앱은 `credentials: include`와 요청 ID만 보낸다. `x-pictory-server-secret` 같은 서버 간 secret은 프론트엔드 번들에 넣지 않고, 배포 게이트웨이/서버 어댑터가 내부에서 붙인다.
 
 `server/pictoryHttpAdapter.ts`는 배포 런타임용 HTTP 어댑터다. 기본값은
 `x-pictory-server-secret`과 `x-pictory-subject-id`를 같은 서버/게이트웨이
@@ -348,9 +359,9 @@ redacted 처리한다. redacted 항목은 원본 `fileName`, 정확한 `createdA
 - `cleanBucketId`: `sensitive`, `needsReview`, `similar`, `dark`, `capturePile`, `keep`
 - `privacy`: `normal`, `review`, `sensitive`
 
-## OpenAI 분류 프롬프트 방향
+## 서버 AI 분류 프롬프트 방향
 
-서버 기본 분류기는 OpenAI Responses API에 Vision 이미지를 넣고 JSON Schema로 결과를 강제한다. 요청은 `store:false`, `temperature:0`, `OPENAI_IMAGE_DETAIL=low` 기본값으로 보내며 원본 이미지를 저장하지 않는다.
+서버 기본 분류기는 Gemini `generateContent`에 축소 이미지를 넣고 JSON 응답을 요청한다. `PICTORY_AI_PROVIDER=openai`로 명시한 경우에는 OpenAI Responses API fallback을 사용하며, 요청은 `store:false`, `temperature:0`, `OPENAI_IMAGE_DETAIL=low` 기본값으로 보내고 원본 이미지를 저장하지 않는다.
 
 권장 라벨:
 
@@ -368,7 +379,7 @@ redacted 처리한다. redacted 항목은 원본 `fileName`, 정확한 `createdA
 
 - 월 기본 정리 40장
 - 보관 10장
-- 광고 시청 시 스캔권 +100장
+- 광고 시청 시 AI 정밀분류권 +30장
 
 Plus:
 
@@ -389,8 +400,10 @@ Pro:
 서버 원장 정책:
 
 - 무료 사용자는 서버 원장에 광고 보상 크레딧이 있을 때만 서버 AI를 사용할 수 있다.
+- 무료 사용자의 클라이언트 표시 크레딧도 서버 AI가 실제 적용된 사진 장수만큼 줄인다. 월 기본 정리분 안에서 분석했더라도 AI 크레딧을 그대로 남기지 않는다.
 - Plus/Pro 사용자는 활성 구독과 월 quota 안에서 서버 AI를 사용할 수 있다.
 - 유료 월 quota를 먼저 쓰고, 부족분만 광고 크레딧에서 차감한다.
+- 서버 AI 실패 환불은 예약 당시 월 quota와 광고 크레딧 사용량을 기준으로 정확히 되돌린다.
 - 사용자별 일일 한도에 걸리면 월 quota가 남아도 서버 AI 호출을 막아 비용 스파이크를 제한한다.
 - 서비스 전체 일일 한도에 걸리면 모든 사용자 서버 AI 호출을 막아 다계정 비용 폭주를 제한한다.
 - 광고 보상 이벤트 ID는 한 번만 지급해 중복 지급을 막는다.
@@ -414,6 +427,11 @@ Pro:
 - 결제 성공 후 상품 지급에 실패하면 사용자에게 실패를 알리고, 앱 재실행 시 미결 주문 복원을 먼저 처리해야 한다.
 
 현재 앱 코드는 앱인토스 구독 결제 SDK를 호출한다.
+설치된 `@apps-in-toss/web-framework` 기준으로
+`IAP.createSubscriptionPurchaseOrder`는 Android 5.248.0, iOS 5.249.0
+이상에서 지원되고, `IAP.getSubscriptionInfo`는 Android 5.253.0, iOS
+5.250.0 이상에서 지원된다. 픽토리 앱 전체 최소 토스 버전은 앨범
+`fetchAlbumItems` 요구사항이 더 높으므로 5.261.0 이상으로 잡는다.
 
 ```env
 VITE_PICTORY_PLUS_SUBSCRIPTION_SKU=콘솔_PLUS_구독_SKU
@@ -433,17 +451,20 @@ APPS_IN_TOSS_MTLS_KEY_PATH=/secure/apps-in-toss/client-key.pem
 - [ ] 운영 서버에 앱인토스 mTLS 인증서/키 경로가 설정되어 주문 상태 조회 API를 호출할 수 있다.
 - [ ] `VITE_PICTORY_ENTITLEMENT_ENDPOINT`가 운영 서버의 `/pictory/entitlement`를 가리킨다.
 - [ ] SKU가 비어 있거나 틀린 빌드에서는 Plus/Pro 구매 버튼이 결제 성공처럼 보이지 않는다.
+- [ ] 권한 endpoint가 비어 있거나 서버 검증이 실패하면 결제창을 열지 않거나 Plus/Pro 권한을 활성화하지 않는다.
 - [ ] 실제 단말 QR에서 Plus 결제를 시작하면 구독 주문 화면이 뜬다.
 - [ ] 결제 성공 후 상품 지급 콜백이 끝난 뒤에만 Plus 한도가 활성화된다.
 - [ ] 결제 중 취소하면 무료 플랜 상태와 기존 크레딧이 유지된다.
 - [ ] 상품 지급 실패 또는 앱 종료 후 재실행 시 미결 주문 복원 흐름이 먼저 실행된다.
 - [ ] 구독 정보 복원 성공 시 저장된 주문 ID 기준으로 유료 권한이 복원된다.
+- [ ] Toss 앱 버전이 5.261.0 이상인 실제 단말에서 결제/복원 증거를 남긴다.
 - [ ] 검증 증거로 SKU, orderId 일부 마스킹 값, 지급 전/후 플랜 화면, 실패/취소 화면을 남긴다.
 
 운영 동작:
 
 1. 앱 시작 시 저장된 `orderId`가 있으면 `getSubscriptionInfo`로 접근 가능 상태를 복원한다.
-2. 저장된 주문이 없거나 복원되지 않으면 `getPendingOrders`로 미지급 주문을 확인하고 `completeProductGrant`를 호출한다.
+2. 저장된 주문이 없거나 복원되지 않으면 `getPendingOrders`로 미지급 주문을 확인하되, `/pictory/entitlement` 서버 검증이 성공한 뒤에만 `completeProductGrant`를 호출한다.
 3. Plus/Pro 버튼은 로컬 개발에서는 미리보기로 동작하고, 운영에서는 `createSubscriptionPurchaseOrder`로 구독 결제를 시작한다.
 4. 상품 지급 콜백은 `/pictory/entitlement`로 `orderId`를 보내고 서버 주문 상태 검증이 성공해야 `true`를 반환한다.
 5. `success` 이벤트와 상품 지급 콜백이 완료된 뒤에만 유료 플랜을 활성화한다.
+

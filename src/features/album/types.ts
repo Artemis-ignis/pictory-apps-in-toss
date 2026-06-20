@@ -16,7 +16,9 @@ export type MapBucketId =
   | "coupon"
   | "memory";
 
-export type MapFolderId = `category:${MapBucketId}` | `period:${string}`;
+export type MapFolderId =
+  | `category:${MapBucketId}`
+  | `period:${string}`;
 
 export type CleanBucketId =
   | "sensitive"
@@ -34,6 +36,7 @@ export interface ImageSignals {
   height: number;
   aspectRatio: number;
   brightness: number;
+  contrast?: number;
   saturation: number;
   edgeDensity: number;
   textLineScore: number;
@@ -42,7 +45,9 @@ export interface ImageSignals {
   darkRatio: number;
   skinToneRatio: number;
   natureColorRatio: number;
+  blurVariance?: number;
   perceptualHash: string;
+  differenceHash?: string;
 }
 
 export interface AlbumItem {
@@ -66,6 +71,7 @@ export interface ClassifiedItem extends AlbumItem {
   periodKey: string;
   periodLabel: string;
   duplicateGroup?: string;
+  isDuplicateRepresentative?: boolean;
   status: ItemStatus;
 }
 
@@ -150,7 +156,7 @@ export const CLEAN_BUCKETS: BucketMeta<CleanBucketId>[] = [
   },
   {
     id: "needsReview",
-    label: "AI 확인 필요",
+    label: "확인 필요",
     shortLabel: "확인",
     tone: "purple",
   },
@@ -160,7 +166,12 @@ export const CLEAN_BUCKETS: BucketMeta<CleanBucketId>[] = [
     shortLabel: "유사",
     tone: "red",
   },
-  { id: "dark", label: "어두운 사진", shortLabel: "어두움", tone: "dark" },
+  {
+    id: "dark",
+    label: "어두운·흐린 사진",
+    shortLabel: "품질",
+    tone: "dark",
+  },
   {
     id: "capturePile",
     label: "캡처 더미",

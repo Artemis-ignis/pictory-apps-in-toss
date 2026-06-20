@@ -326,13 +326,97 @@ describe("handlePictoryClassifyRequest", () => {
     expect(verifyEntitlement).not.toHaveBeenCalled();
   });
 
-  it("uses the default OpenAI classifier without storing responses", async () => {
+  it("uses the default Gemini classifier without sending filenames or hashes", async () => {
+    const geminiKey = `AIza${"a".repeat(32)}`;
     const fetch = vi.fn(async (_url: string, init?: RequestInit) => {
       const serializedBody = String(init?.body ?? "{}");
       expect(serializedBody).not.toContain("receipt.jpg");
       expect(serializedBody).not.toContain("2026-06-15T09:00:00.000Z");
       expect(serializedBody).not.toContain("private-hash");
       const body = JSON.parse(serializedBody) as {
+        generationConfig?: {
+          responseMimeType?: string;
+          temperature?: number;
+        };
+        contents?: Array<{
+          parts?: Array<{
+            text?: string;
+            inlineData?: { mimeType?: string; data?: string };
+          }>;
+        }>;
+      };
+      expect(body.generationConfig?.responseMimeType).toBe("application/json");
+      expect(body.generationConfig?.temperature).toBe(0);
+      const parts = body.contents?.[0]?.parts ?? [];
+      expect(
+        parts.some(
+          (entry) =>
+            entry.inlineData?.mimeType === "image/jpeg" &&
+            entry.inlineData.data === "abc123",
+        ),
+      ).toBe(true);
+
+      return new Response(
+        JSON.stringify({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      items: [
+                        {
+                          id: "photo-id",
+                          categoryId: "receipt",
+                          cleanBucketId: "needsReview",
+                          confidence: 0.91,
+                          privacy: "review",
+                          reasons: ["영수증", "결제 내역", "확인 필요"],
+                          hints: ["receipt"],
+                        },
+                      ],
+                    }),
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    });
+    vi.stubGlobal("fetch", fetch);
+
+    const result = await handlePictoryClassifyRequest(
+      imageInput(),
+      deps({
+        classifyItems: undefined,
+        env: { GEMINI_API_KEY: geminiKey },
+      }),
+    );
+
+    expect(result.status).toBe(200);
+    expect(fetch).toHaveBeenCalledWith(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiKey}`,
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          "Content-Type": "application/json",
+        }),
+      }),
+    );
+    expect(result.body.items?.[0]).toMatchObject({
+      id: "photo-id",
+      categoryId: "receipt",
+      cleanBucketId: "needsReview",
+      privacy: "review",
+    });
+    expect(JSON.stringify(result.body)).not.toContain("imageDataUri");
+  });
+
+  it("uses OpenAI only when the server selects the OpenAI provider", async () => {
+    const fetch = vi.fn(async (_url: string, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body ?? "{}")) as {
         store?: boolean;
         text?: { format?: { type?: string; strict?: boolean } };
         input?: Array<{
@@ -347,7 +431,6 @@ describe("handlePictoryClassifyRequest", () => {
       expect(body.text?.format?.type).toBe("json_schema");
       expect(body.text?.format?.strict).toBe(true);
       const content = body.input?.[0]?.content ?? [];
-      expect(content.some((entry) => entry.type === "input_image")).toBe(true);
       expect(
         content.some(
           (entry) =>
@@ -382,7 +465,7 @@ describe("handlePictoryClassifyRequest", () => {
       imageInput(),
       deps({
         classifyItems: undefined,
-        env: { OPENAI_API_KEY: "sk-test" },
+        env: { PICTORY_AI_PROVIDER: "openai", OPENAI_API_KEY: "sk-test" },
       }),
     );
 
@@ -406,7 +489,7 @@ describe("handlePictoryClassifyRequest", () => {
     expect(JSON.stringify(result.body)).not.toContain("imageDataUri");
   });
 
-  it("classifies redacted-only batches without sending images to OpenAI", async () => {
+  it("classifies redacted-only batches without a provider API key", async () => {
     const fetch = vi.fn();
     vi.stubGlobal("fetch", fetch);
 
@@ -414,7 +497,7 @@ describe("handlePictoryClassifyRequest", () => {
       redactedInput(),
       deps({
         classifyItems: undefined,
-        env: { OPENAI_API_KEY: "sk-test" },
+        env: {},
       }),
     );
 
@@ -428,7 +511,7 @@ describe("handlePictoryClassifyRequest", () => {
     });
   });
 
-  it("returns 503 when the default OpenAI classifier is not configured", async () => {
+  it("returns 503 when the default Gemini classifier is not configured", async () => {
     const result = await handlePictoryClassifyRequest(
       imageInput(),
       deps({ classifyItems: undefined, env: {} }),
@@ -444,24 +527,35 @@ describe("defaultClassifyItems", () => {
     vi.unstubAllGlobals();
   });
 
-  it("caps OpenAI image attachments server-side and redacts overflow", async () => {
+  it("caps Gemini image attachments server-side and redacts overflow", async () => {
+    const geminiKey = `AIza${"a".repeat(32)}`;
     let serializedBody = "";
     vi.stubGlobal(
       "fetch",
       vi.fn(async (_url: string, init?: RequestInit) => {
         serializedBody = String(init?.body ?? "{}");
         return Response.json({
-          output_text: JSON.stringify({
-            items: Array.from({ length: 8 }, (_, index) => ({
-              id: `photo-${index}`,
-              categoryId: "food",
-              cleanBucketId: "keep",
-              confidence: 0.84,
-              privacy: "normal",
-              reasons: ["음식", "이미지", "보관"],
-              hints: ["food"],
-            })),
-          }),
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      items: Array.from({ length: 8 }, (_, index) => ({
+                        id: `photo-${index}`,
+                        categoryId: "food",
+                        cleanBucketId: "keep",
+                        confidence: 0.84,
+                        privacy: "normal",
+                        reasons: ["음식", "이미지", "보관"],
+                        hints: ["food"],
+                      })),
+                    }),
+                  },
+                ],
+              },
+            },
+          ],
         });
       }),
     );
@@ -476,16 +570,16 @@ describe("defaultClassifyItems", () => {
       headers: {},
       entitlement,
       quota: { remaining: 40 },
-      env: { OPENAI_API_KEY: "sk-test" },
+      env: { GEMINI_API_KEY: geminiKey },
     });
     const body = JSON.parse(serializedBody) as {
-      input?: Array<{ content?: Array<{ type?: string }> }>;
+      contents?: Array<{
+        parts?: Array<{ inlineData?: { mimeType?: string; data?: string } }>;
+      }>;
     };
-    const content = body.input?.[0]?.content ?? [];
+    const parts = body.contents?.[0]?.parts ?? [];
 
-    expect(content.filter((entry) => entry.type === "input_image")).toHaveLength(
-      8,
-    );
+    expect(parts.filter((entry) => entry.inlineData)).toHaveLength(8);
     expect(result).toHaveLength(10);
     expect(result.slice(0, 8).every((entry) => entry.categoryId === "food")).toBe(
       true,
@@ -543,7 +637,7 @@ describe("defaultClassifyItems", () => {
         headers: {},
         entitlement,
         quota: { remaining: 40 },
-        env: { OPENAI_API_KEY: "sk-test" },
+        env: { PICTORY_AI_PROVIDER: "openai", OPENAI_API_KEY: "sk-test" },
       },
     );
 

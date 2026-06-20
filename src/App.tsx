@@ -10,9 +10,12 @@ import { PhotoDetailPage } from "./pages/PhotoDetailPage";
 import {
   pickAlbumItems,
   requestAlbumScan,
+  isAlbumPermissionDenied,
+  type AlbumImportMode,
 } from "./features/album/albumAdapter";
 import {
   classifyAlbumItems,
+  type ClassifyProgress,
   getCategorySummary,
   getCleanSummary,
   isCleanTabItem,
@@ -42,9 +45,12 @@ import {
   preloadRewardedScanAd,
   showRewardedScanAd,
 } from "./features/ads/rewardAd";
-import { grantRewardCredits } from "./features/ads/rewardCredit";
 import {
-  canUseServerAiRefinement,
+  MAX_STORED_REWARD_CREDITS,
+  grantRewardCredits,
+} from "./features/ads/rewardCredit";
+import {
+  canRequestServerAiRefinement,
   canUseLocalPaidPlanPreview,
   consumeScanAllowance,
   getBillingRuntime,
@@ -99,11 +105,17 @@ function App() {
     useState<PersistedPictoryState>(defaultPictoryState);
   const [isHydrated, setIsHydrated] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState<ClassifyProgress | null>(
+    null,
+  );
+  const scanAbortRef = useRef<AbortController | null>(null);
   const [verifiedPlanId, setVerifiedPlanId] = useState<PlanId>("free");
   const restoreAttemptedRef = useRef(false);
   const [scanMessage, setScanMessage] = useState(
-    "사진을 선택하거나 앨범 지도를 만들 수 있어요.",
+    "사진을 선택하면 분류, 정리 후보, 보관까지 이어져요.",
   );
+  const [importMode, setImportMode] = useState<AlbumImportMode>("recent");
+  const [importDate, setImportDate] = useState(currentDateInputValue());
   const [selectedMapFolder, setSelectedMapFolder] = useState<
     MapFolderId | "all"
   >(initialViewState.mapFolder);
@@ -211,6 +223,9 @@ function App() {
   );
 
   const savedItems = visibleItems.filter((item) => item.status === "saved");
+  const recommendedSavedItems = visibleItems
+    .filter((item) => item.status !== "ignored" && item.privacy !== "sensitive")
+    .slice(0, 12);
   const selectedPhoto =
     selectedPhotoId == null
       ? undefined
@@ -297,48 +312,76 @@ function App() {
   }, [isHydrated, selectedPhoto, selectedPhotoId]);
 
   async function analyzeIncoming(nextItems: AlbumItem[], message: string) {
+    const abortController = new AbortController();
+    scanAbortRef.current = abortController;
     setIsScanning(true);
-    setScanMessage("픽토리가 사진 신호를 읽고 있어요.");
-    let aiRefinementResult: AiRefinementResult | undefined;
-    const classified = await classifyAlbumItems(nextItems, statusMap, {
-      refineWithServerAi: canUseServerAiRefinement(
+    setScanProgress({
+      done: 0,
+      total: nextItems.length,
+      stage: "사진 불러오는 중",
+    });
+    setScanMessage("픽토리가 사진 특징을 계산하고 있어요.");
+
+    try {
+      let aiRefinementResult: AiRefinementResult | undefined;
+      const useServerAiRefinement = canRequestServerAiRefinement(
         entitledState,
         nextItems.length,
-      ),
-      onAiRefinementResult: (result) => {
-        aiRefinementResult = result;
-      },
-    });
-    const recentItems = await prepareRecentItemsForStorage(classified);
-    const scannedAt = new Date().toISOString();
-    setItems(classified);
-    setState((previous) => {
-      const consumedState = consumeScanAllowance(
-        getEntitledBillingState(previous, billingRuntime, verifiedPlanId),
-        classified.length,
+        import.meta.env.VITE_PICTORY_CLASSIFY_ENDPOINT,
       );
+      const classified = await classifyAlbumItems(nextItems, statusMap, {
+        signal: abortController.signal,
+        onProgress: setScanProgress,
+        refineWithServerAi: useServerAiRefinement,
+        onAiRefinementResult: (result) => {
+          aiRefinementResult = result;
+        },
+      });
+      const recentItems = await prepareRecentItemsForStorage(classified);
+      const scannedAt = new Date().toISOString();
+      setItems(classified);
+      setState((previous) => {
+        const consumedState = consumeScanAllowance(
+          getEntitledBillingState(previous, billingRuntime, verifiedPlanId),
+          classified.length,
+          { serverAiRefinement: aiRefinementResult?.status === "applied" },
+        );
 
-      return {
-        ...previous,
-        ...consumedState,
-        recentItems,
-        scanHistory: [
-          {
-            id: scannedAt,
-            scannedAt,
-            totalCount: classified.length,
-            cleanCandidateCount: countCleanCandidates(classified),
-            mapBucketCount: Object.keys(getCategorySummary(classified)).length,
-          },
-          ...previous.scanHistory,
-        ].slice(0, 8),
-        lastAiRefinement: aiRefinementResult,
-        lastScanAt: scannedAt,
-        lastScanCount: classified.length,
-      };
-    });
-    setScanMessage(formatScanMessage(message, aiRefinementResult));
-    setIsScanning(false);
+        return {
+          ...previous,
+          ...consumedState,
+          recentItems,
+          scanHistory: [
+            {
+              id: scannedAt,
+              scannedAt,
+              totalCount: classified.length,
+              cleanCandidateCount: countCleanCandidates(classified),
+              mapBucketCount: Object.keys(getCategorySummary(classified))
+                .length,
+            },
+            ...previous.scanHistory,
+          ].slice(0, 8),
+          lastAiRefinement: aiRefinementResult,
+          lastScanAt: scannedAt,
+          lastScanCount: classified.length,
+        };
+      });
+      setScanMessage(formatScanMessage(message, aiRefinementResult));
+    } catch (error) {
+      if (isAbortError(error)) {
+        setScanMessage("분석을 취소했어요. 완료된 결과는 저장하지 않았어요.");
+        return;
+      }
+
+      throw error;
+    } finally {
+      if (scanAbortRef.current === abortController) {
+        scanAbortRef.current = null;
+      }
+      setIsScanning(false);
+      setScanProgress(null);
+    }
   }
 
   async function handleScan() {
@@ -353,16 +396,28 @@ function App() {
         return;
       }
 
-      const result = await requestAlbumScan(allowance.nextBatchLimit);
+      setScanProgress({
+        done: 0,
+        total: allowance.nextBatchLimit,
+        stage: "사진 불러오는 중",
+      });
+      const result = await requestAlbumScan({
+        maxCount: allowance.nextBatchLimit,
+        mode: importMode,
+        date: importDate,
+      });
       await analyzeIncoming(result.items, result.message);
       setSelectedMapFolder("all");
       setActiveTab("map");
-    } catch {
-      setScanMessage(
-        "앨범을 열지 못했어요. 사진 권한이나 토스 앱 버전을 확인해주세요.",
-      );
+    } catch (error) {
+      setScanMessage(formatAlbumAccessError(error, "scan"));
       setIsScanning(false);
+      setScanProgress(null);
     }
+  }
+
+  function handleCancelScan() {
+    scanAbortRef.current?.abort();
   }
 
   async function handlePick() {
@@ -375,7 +430,11 @@ function App() {
         return;
       }
 
-      const result = await pickAlbumItems(allowance.nextBatchLimit);
+      const result = await pickAlbumItems({
+        maxCount: allowance.nextBatchLimit,
+        mode: importMode,
+        date: importDate,
+      });
       if (result.items.length === 0) {
         setScanMessage(result.message);
         return;
@@ -383,10 +442,8 @@ function App() {
       await analyzeIncoming(result.items, result.message);
       setSelectedMapFolder("all");
       setActiveTab("map");
-    } catch {
-      setScanMessage(
-        "사진 선택을 열지 못했어요. 사진 권한이나 토스 앱 버전을 확인해주세요.",
-      );
+    } catch (error) {
+      setScanMessage(formatAlbumAccessError(error, "pick"));
     }
   }
 
@@ -397,7 +454,7 @@ function App() {
     if (result.reward <= 0) {
       const nextMessage =
         result.source === "dismissed"
-          ? "광고를 끝까지 보면 스캔권이 지급돼요."
+          ? "광고를 끝까지 보면 AI 정밀분류권이 지급돼요."
           : "지금은 광고를 불러오지 못했어요. 잠시 후 다시 시도해주세요.";
       setScanMessage(nextMessage);
       return;
@@ -408,22 +465,30 @@ function App() {
       setScanMessage(
         grant.duplicated
           ? "이미 지급된 광고 보상이에요."
-          : "광고 보상을 서버에 확인하지 못했어요. 잠시 후 다시 시도해주세요.",
+          : "오늘 받을 수 있는 AI 정밀분류권을 모두 받았어요.",
       );
+      return;
+    }
+
+    const nextCredits =
+      grant.serverAiCredits != null
+        ? Math.min(MAX_STORED_REWARD_CREDITS, grant.serverAiCredits)
+        : Math.min(MAX_STORED_REWARD_CREDITS, state.credits + grant.granted);
+    const appliedGrant = Math.max(0, nextCredits - state.credits);
+
+    if (appliedGrant <= 0) {
+      setScanMessage("AI 정밀분류권이 이미 300장까지 차 있어요.");
       return;
     }
 
     setState((previous) => ({
       ...previous,
-      credits:
-        grant.serverAiCredits != null
-          ? Math.min(3000, grant.serverAiCredits)
-          : Math.min(3000, previous.credits + grant.granted),
+      credits: nextCredits,
     }));
     setScanMessage(
       grant.source === "localFallback"
-        ? `${grant.granted}장 보너스 스캔권을 받았어요.`
-        : `${grant.granted}장 스캔권을 받았어요.`,
+        ? `${appliedGrant}장 보너스 AI 정밀분류권을 받았어요.`
+        : `${appliedGrant}장 AI 정밀분류권을 받았어요.`,
     );
   }
 
@@ -472,6 +537,14 @@ function App() {
   }
 
   async function handleClear() {
+    if (
+      !window.confirm(
+        "픽토리 내부 기록만 삭제할까요? 원본 앨범 사진은 삭제되지 않아요.",
+      )
+    ) {
+      return;
+    }
+
     const serverDelete = await deletePictoryServerData();
     await clearPictoryState();
     replaceNextHistoryRef.current = true;
@@ -635,6 +708,10 @@ function App() {
             selectedPlanId={entitledState.planId}
             isScanning={isScanning}
             scanMessage={scanMessage}
+            importMode={importMode}
+            importDate={importDate}
+            onImportModeChange={setImportMode}
+            onImportDateChange={setImportDate}
             onScan={handleScan}
             onPick={handlePick}
             onReward={handleReward}
@@ -673,17 +750,40 @@ function App() {
         {selectedPhoto == null && activeTab === "saved" ? (
           <SavedPage
             savedItems={savedItems}
+            recommendedItems={recommendedSavedItems}
             historyEntries={state.scanHistory}
             plan={currentPlan}
             selectedBucket={selectedSavedBucket}
             onSelectBucket={handleSelectSavedBucket}
             onOpenPhoto={handleOpenPhoto}
+            onSave={(id) => updateItemStatus(id, "saved")}
             onUnsave={(ids) => updateItemsStatus(ids, "inbox")}
             onClear={handleClear}
             onShare={handleShare}
           />
         ) : null}
       </div>
+      {isScanning && scanProgress != null ? (
+        <div className="analysis-overlay" role="status" aria-live="polite">
+          <section className="analysis-panel">
+            <strong>사진 특징을 계산하고 있어요</strong>
+            <span>{scanProgress.stage}</span>
+            <div className="analysis-progress">
+              <i
+                style={{
+                  width: `${progressPercent(scanProgress.done, scanProgress.total)}%`,
+                }}
+              />
+            </div>
+            <p>
+              {scanProgress.done}/{scanProgress.total}장
+            </p>
+            <button type="button" onClick={handleCancelScan}>
+              취소
+            </button>
+          </section>
+        </div>
+      ) : null}
       <BottomNav activeTab={activeTab} onChange={handleTabChange} />
     </div>
   );
@@ -703,7 +803,11 @@ function readBrowserViewState() {
     return historyState;
   }
 
-  return parseViewHash(window.location.hash);
+  return (
+    parseViewHash(window.location.hash) ??
+    parseViewSearch(window.location.search) ??
+    parseViewPath(window.location.pathname)
+  );
 }
 
 function isPictoryViewState(value: unknown): value is PictoryViewState {
@@ -723,11 +827,29 @@ function isPictoryViewState(value: unknown): value is PictoryViewState {
 }
 
 function parseViewHash(hash: string) {
-  if (!hash.startsWith("#tab=")) {
+  if (!hash.startsWith("#")) {
     return null;
   }
 
   const params = new URLSearchParams(hash.slice(1));
+  return parseViewParams(params);
+}
+
+function parseViewSearch(search: string) {
+  if (!search.startsWith("?")) {
+    return null;
+  }
+
+  const params = new URLSearchParams(search.slice(1));
+  return parseViewParams(params);
+}
+
+function parseViewParams(params: URLSearchParams) {
+  const viewKeys = ["tab", "map", "clean", "saved", "photo"];
+  if (!viewKeys.some((key) => params.has(key))) {
+    return null;
+  }
+
   const tab = params.get("tab");
   const mapFolder = params.get("map");
   const cleanBucket = params.get("clean");
@@ -750,7 +872,25 @@ function parseViewHash(hash: string) {
   } satisfies PictoryViewState;
 }
 
+function parseViewPath(pathname: string) {
+  const segment = pathname.split("/").filter(Boolean).at(-1);
+  if (!isTabId(segment)) {
+    return null;
+  }
+
+  return {
+    ...DEFAULT_VIEW_STATE,
+    tab: segment,
+  } satisfies PictoryViewState;
+}
+
 function buildViewUrl(viewState: PictoryViewState) {
+  const searchParams = new URLSearchParams(window.location.search);
+  for (const key of ["tab", "map", "clean", "saved", "photo"]) {
+    searchParams.delete(key);
+  }
+
+  const search = searchParams.toString();
   const params = new URLSearchParams({
     tab: viewState.tab,
     map: viewState.mapFolder,
@@ -762,7 +902,7 @@ function buildViewUrl(viewState: PictoryViewState) {
     params.set("photo", viewState.photoId);
   }
 
-  return `${window.location.pathname}${window.location.search}#${params.toString()}`;
+  return `${window.location.pathname}${search ? `?${search}` : ""}#${params.toString()}`;
 }
 
 function serializeViewState(viewState: PictoryViewState) {
@@ -802,8 +942,7 @@ function isMapFolder(value: unknown): value is MapFolderId | "all" {
 function isCleanBucket(value: unknown): value is CleanBucketId | "all" {
   return (
     value === "all" ||
-    (typeof value === "string" &&
-      CLEAN_BUCKET_IDS.has(value as CleanBucketId))
+    (typeof value === "string" && CLEAN_BUCKET_IDS.has(value as CleanBucketId))
   );
 }
 
@@ -822,6 +961,42 @@ function countCleanCandidates(items: ClassifiedItem[]) {
         item.privacy !== "normal" ||
         item.status === "queued"),
   ).length;
+}
+
+function isAbortError(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error != null &&
+    "name" in error &&
+    error.name === "AbortError"
+  );
+}
+
+function progressPercent(done: number, total: number) {
+  if (total <= 0) {
+    return 0;
+  }
+
+  return Math.max(3, Math.min(100, Math.round((done / total) * 100)));
+}
+
+function currentDateInputValue() {
+  const date = new Date();
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function formatAlbumAccessError(error: unknown, action: "scan" | "pick") {
+  if (isAlbumPermissionDenied(error)) {
+    return "사진 권한이 필요해요. 토스 앱 권한에서 사진 접근을 허용해주세요.";
+  }
+
+  return action === "scan"
+    ? "앨범을 열지 못했어요. 토스 앱 버전이나 사진첩 상태를 확인해주세요."
+    : "사진 선택을 열지 못했어요. 토스 앱 버전이나 사진첩 상태를 확인해주세요.";
 }
 
 function formatScanMessage(

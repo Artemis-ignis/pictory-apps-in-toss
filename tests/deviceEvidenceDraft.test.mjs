@@ -33,6 +33,14 @@ describe("device evidence draft writer", () => {
           appName: "pictory",
           qrScanned: false,
         },
+        monetization: {
+          rewardedAd: {
+            unitType: "ai_credit",
+            unitAmount: 30,
+            serverGrantedCredits: 30,
+            usingTestAdGroup: false,
+          },
+        },
       });
       expect(draft.scenarios).toHaveLength(9);
       expect(draft.scenarios.every((scenario) => scenario.status === "pending")).toBe(
@@ -43,6 +51,9 @@ describe("device evidence draft writer", () => {
       expect(result.ok).toBe(false);
       expect(result.failures.map((failure) => failure.message)).toContain(
         "qr-scan scenario passed",
+      );
+      expect(result.failures.map((failure) => failure.message)).toContain(
+        "rewarded ad group id is production",
       );
     } finally {
       rmSync(dir, { force: true, recursive: true });
@@ -66,6 +77,13 @@ describe("device evidence draft writer", () => {
       expect(writtenPath).toBe(outPath);
       expect(existsSync(outPath)).toBe(true);
       expect(existsSync(join(dir, "qa-evidence", "screens"))).toBe(true);
+      const guide = readFileSync(
+        join(dir, "qa-evidence", "screens", "README.md"),
+        "utf8",
+      );
+      expect(guide).toContain("실제 Toss 앱 QR 테스트");
+      expect(guide).toContain("qa-evidence/screens/qr-scan.png");
+      expect(guide).toContain("app.qrScanned");
       expect(JSON.parse(readFileSync(outPath, "utf8")).release.gitCommit).toBe(
         "abcdef123456",
       );

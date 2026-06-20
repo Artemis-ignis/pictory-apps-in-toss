@@ -14,8 +14,17 @@
   "device": {
     "os": "ios",
     "osVersion": "18.5",
-    "tossAppVersion": "5.247.0",
+    "tossAppVersion": "5.261.0",
     "model": "실기기_모델명"
+  },
+  "monetization": {
+    "rewardedAd": {
+      "adGroupId": "운영_보상형_광고_그룹_ID",
+      "unitType": "ai_credit",
+      "unitAmount": 30,
+      "serverGrantedCredits": 30,
+      "usingTestAdGroup": false
+    }
   },
   "scenarios": [
     {

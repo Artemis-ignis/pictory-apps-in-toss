@@ -3,12 +3,12 @@ import { grantRewardCredits } from "../src/features/ads/rewardCredit";
 import type { RewardedScanAdResult } from "../src/features/ads/rewardAd";
 
 const reward: RewardedScanAdResult = {
-  reward: 100,
+  reward: 30,
   rewardId: "reward-event-1",
   source: "native",
   adGroupId: "reward-ad-group",
   usingTestAdGroup: false,
-  unitType: "scan",
+  unitType: "ai_credit",
 };
 
 describe("rewardCredit", () => {
@@ -18,7 +18,7 @@ describe("rewardCredit", () => {
 
   it("uses local credits only when no server reward endpoint is configured", async () => {
     await expect(grantRewardCredits(reward, {})).resolves.toMatchObject({
-      granted: 100,
+      granted: 30,
       source: "localOnly",
       duplicated: false,
     });
@@ -30,7 +30,7 @@ describe("rewardCredit", () => {
       async (_input: RequestInfo | URL, init?: RequestInit) => {
         requestBody = String(init?.body ?? "");
         return Response.json({
-          granted: 100,
+          granted: 30,
           duplicated: false,
           serverAiCredits: 250,
         });
@@ -43,7 +43,7 @@ describe("rewardCredit", () => {
         VITE_PICTORY_REWARD_ENDPOINT: "https://api.example.com/pictory/reward",
       }),
     ).resolves.toMatchObject({
-      granted: 100,
+      granted: 30,
       source: "server",
       duplicated: false,
       serverAiCredits: 250,
@@ -65,8 +65,8 @@ describe("rewardCredit", () => {
       rewardId: "reward-event-1",
       adGroupId: "reward-ad-group",
       source: "native",
-      unitType: "scan",
-      unitAmount: 100,
+      unitType: "ai_credit",
+      unitAmount: 30,
       usingTestAdGroup: false,
     });
   });
@@ -94,7 +94,7 @@ describe("rewardCredit", () => {
         Response.json({
           granted: 0,
           duplicated: true,
-          serverAiCredits: 100,
+          serverAiCredits: 30,
         }),
       ),
     );
@@ -107,7 +107,7 @@ describe("rewardCredit", () => {
       granted: 0,
       source: "server",
       duplicated: true,
-      serverAiCredits: 100,
+      serverAiCredits: 30,
     });
   });
 });

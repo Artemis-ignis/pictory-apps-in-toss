@@ -67,7 +67,7 @@ describe("album storage helpers", () => {
     expect(stored.dataUri).not.toContain("sensitive-raw-image");
   });
 
-  it("redacts protected document-like categories before local persistence", async () => {
+  it("does not redact non-sensitive document-like categories before local persistence", async () => {
     const items = await prepareRecentItemsForStorage([
       {
         ...baseItem,
@@ -86,42 +86,72 @@ describe("album storage helpers", () => {
       },
     ]);
 
-    expect(items[0].dataUri).toContain("data:image/svg+xml");
+    expect(items[0].dataUri).toBe("");
     expect(items[0].dataUri).not.toContain("receipt-raw-image");
-    expect(items[1].dataUri).toContain("data:image/svg+xml");
+    expect(items[1].dataUri).toBe("");
     expect(items[1].dataUri).not.toContain("review-raw-image");
   });
 
-  it("sanitizes legacy loaded previews that may contain raw images", () => {
-    const [receipt, oversizedNormal, thumbnail] = sanitizeLoadedRecentItems([
+  it("sanitizes loaded previews without hiding non-sensitive thumbnails", () => {
+    const [sensitive, receipt, oversizedNormal, thumbnail] =
+      sanitizeLoadedRecentItems([
+        {
+          ...baseItem,
+          id: "sensitive-legacy",
+          cleanBucketId: "sensitive",
+          privacy: "sensitive",
+          dataUri: "data:image/png;base64,legacy-sensitive-raw",
+        },
+        {
+          ...baseItem,
+          id: "receipt-legacy",
+          categoryId: "receipt",
+          dataUri: "data:image/png;base64,legacy-receipt-thumbnail",
+        },
+        {
+          ...baseItem,
+          id: "normal-legacy",
+          categoryId: "food",
+          cleanBucketId: "keep",
+          privacy: "normal",
+          dataUri: `data:image/jpeg;base64,${"a".repeat(200_000)}`,
+        },
+        {
+          ...baseItem,
+          id: "thumbnail",
+          categoryId: "food",
+          cleanBucketId: "keep",
+          privacy: "normal",
+          dataUri: "data:image/jpeg;base64,small-thumbnail",
+        },
+      ]);
+
+    expect(sensitive.dataUri).toContain("data:image/svg+xml");
+    expect(sensitive.dataUri).not.toContain("legacy-sensitive-raw");
+    expect(receipt.dataUri).toBe(
+      "data:image/png;base64,legacy-receipt-thumbnail",
+    );
+    expect(oversizedNormal.dataUri).toBe("");
+    expect(thumbnail.dataUri).toBe("data:image/jpeg;base64,small-thumbnail");
+  });
+
+  it("drops internal QA screenshots from persisted local demo state", () => {
+    const items = sanitizeLoadedRecentItems([
       {
         ...baseItem,
-        id: "receipt-legacy",
-        categoryId: "receipt",
-        dataUri: "data:image/png;base64,legacy-receipt-raw",
+        id: "qa-shot",
+        source: "local-file",
+        fileName: "02-home-shortcut-folder.png",
       },
       {
         ...baseItem,
-        id: "normal-legacy",
-        categoryId: "food",
-        cleanBucketId: "keep",
-        privacy: "normal",
-        dataUri: `data:image/jpeg;base64,${"a".repeat(50_000)}`,
-      },
-      {
-        ...baseItem,
-        id: "thumbnail",
-        categoryId: "food",
-        cleanBucketId: "keep",
-        privacy: "normal",
-        dataUri: "data:image/jpeg;base64,small-thumbnail",
+        id: "real-shot",
+        source: "local-file",
+        fileName: "screenshot-bank.png",
       },
     ]);
 
-    expect(receipt.dataUri).toContain("data:image/svg+xml");
-    expect(receipt.dataUri).not.toContain("legacy-receipt-raw");
-    expect(oversizedNormal.dataUri).toBe("");
-    expect(thumbnail.dataUri).toBe("data:image/jpeg;base64,small-thumbnail");
+    expect(items.map((item) => item.id)).toEqual(["real-shot"]);
   });
 
   it("drops raw normal image data when thumbnailing is unavailable", async () => {

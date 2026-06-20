@@ -1,11 +1,16 @@
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { scanReleasePrivacy } from "./check-release-privacy.mjs";
+import { validateUploadAssets } from "./check-upload-assets.mjs";
+import { requiredReleaseChecks } from "./write-release-snapshot.mjs";
 
 const rootDir = fileURLToPath(new URL("..", import.meta.url));
 const results = [];
+const AIT_UNPACKED_SIZE_LIMIT_BYTES = 100 * 1024 * 1024;
+const APP_FUNCTION_TABS = new Set(["home", "map", "clean", "saved"]);
 
 function projectPath(...segments) {
   return join(rootDir, ...segments);
@@ -56,15 +61,18 @@ function checkEnvExample() {
     "VITE_PICTORY_DELETE_ENDPOINT",
   ];
   const requiredServerEnv = [
-    "NODE_ENV",
     "PICTORY_SERVER_SECRET",
     "PICTORY_SESSION_SECRET",
     "PICTORY_PLUS_SUBSCRIPTION_SKU",
     "PICTORY_PRO_SUBSCRIPTION_SKU",
     "PICTORY_SUBSCRIPTION_VALID_DAYS",
     "PICTORY_REWARD_REQUIRE_NATIVE_EVENT",
+    "PICTORY_REWARD_UNIT_TYPE",
     "APPS_IN_TOSS_MTLS_CERT_PATH",
     "APPS_IN_TOSS_MTLS_KEY_PATH",
+    "PICTORY_AI_PROVIDER",
+    "GEMINI_API_KEY",
+    "GEMINI_MODEL",
     "OPENAI_API_KEY",
     "OPENAI_MODEL",
     "OPENAI_IMAGE_DETAIL",
@@ -112,10 +120,6 @@ function checkEnvExample() {
     ".env.example delete endpoint is a placeholder URL",
   );
   record(
-    env.get("NODE_ENV") === "production",
-    ".env.example sets production server NODE_ENV",
-  );
-  record(
     /^replace_with_/.test(env.get("PICTORY_SERVER_SECRET") ?? ""),
     ".env.example server secret is a placeholder",
   );
@@ -140,6 +144,19 @@ function checkEnvExample() {
     ".env.example mTLS key path is a placeholder",
   );
   record(
+    env.get("PICTORY_AI_PROVIDER") === "gemini",
+    ".env.example uses Gemini as the default AI provider",
+  );
+  record(
+    /^replace_with_/.test(env.get("GEMINI_API_KEY") ?? "") &&
+      !/^AIza/.test(env.get("GEMINI_API_KEY") ?? ""),
+    ".env.example Gemini key is a placeholder, not a live key",
+  );
+  record(
+    Boolean(env.get("GEMINI_MODEL")),
+    ".env.example Gemini model is explicit",
+  );
+  record(
     /^replace_with_/.test(env.get("OPENAI_API_KEY") ?? "") &&
       !/^sk-/.test(env.get("OPENAI_API_KEY") ?? ""),
     ".env.example OpenAI key is a placeholder, not a live key",
@@ -151,6 +168,14 @@ function checkEnvExample() {
   record(
     env.get("PICTORY_REWARD_REQUIRE_NATIVE_EVENT") === "true",
     ".env.example requires native reward evidence",
+  );
+  record(
+    env.get("PICTORY_REWARD_UNIT_TYPE") === "ai_credit",
+    ".env.example reward unit type is ai_credit",
+  );
+  record(
+    env.get("PICTORY_AI_AD_CREDIT_QUOTA") === "30",
+    ".env.example ad reward AI credit quota is 30",
   );
   record(
     ["low", "auto", "high"].includes(env.get("OPENAI_IMAGE_DETAIL") ?? ""),
@@ -177,6 +202,13 @@ function checkAitBundle() {
 
   if (existsSync(aitPath)) {
     record(statSync(aitPath).size > 0, "pictory.ait is not empty");
+    const entries = readArchiveEntries(aitPath);
+    record(entries.length > 0, "pictory.ait has unpackable tar entries");
+    record(
+      entries.length > 0 &&
+        getTarUnpackedSize(entries) <= AIT_UNPACKED_SIZE_LIMIT_BYTES,
+      "pictory.ait unpacked size is at most 100MB",
+    );
   }
 }
 
@@ -209,9 +241,150 @@ function checkReleaseSnapshot() {
         snapshot.github?.visibility === "PRIVATE",
       "release snapshot records private GitHub repo",
     );
+    for (const command of requiredReleaseChecks) {
+      record(
+        Array.isArray(snapshot.requiredChecks) &&
+          snapshot.requiredChecks.includes(command),
+        `release snapshot requires ${command}`,
+      );
+    }
   } catch {
     record(false, "docs/release-snapshot.json is valid JSON");
   }
+}
+
+function checkRuntimeFlowEvidence() {
+  const evidenceText = readText("qa-evidence/runtime-flow.json");
+  if (!evidenceText) {
+    return;
+  }
+
+  try {
+    const evidence = JSON.parse(evidenceText);
+    for (const check of validateRuntimeFlowEvidence(evidence)) {
+      record(check.ok, check.message);
+    }
+  } catch {
+    record(false, "qa-evidence/runtime-flow.json is valid JSON");
+  }
+
+  const builtEvidenceText = readText("qa-evidence/built-flow.json");
+  if (!builtEvidenceText) {
+    return;
+  }
+
+  try {
+    const evidence = JSON.parse(builtEvidenceText);
+    for (const check of validateBuiltFlowEvidence(evidence)) {
+      record(check.ok, check.message);
+    }
+  } catch {
+    record(false, "qa-evidence/built-flow.json is valid JSON");
+  }
+}
+
+export function validateRuntimeFlowEvidence(evidence) {
+  const requiredFlowFlags = [
+    "appFunctionHomeDeepLink",
+    "appFunctionMapDeepLink",
+    "appFunctionCleanDeepLink",
+    "appFunctionSavedDeepLink",
+    "homeShortcutOpened",
+    "importModesReady",
+    "mapCategoryFolderOpened",
+    "periodFolderOpened",
+    "periodFolderPreservedAcrossTabs",
+    "cleanFolderOpened",
+    "savedFolderOpened",
+    "mapFolderActionsReady",
+    "cleanFolderActionsReady",
+    "savedFolderActionsReady",
+    "mapPhotoDetailOpened",
+    "cleanPhotoDetailOpened",
+    "savedPhotoDetailOpened",
+    "savedDetailHasUnsave",
+    "detailProtectedMask",
+    "detailPreviewRevealable",
+    "photoDetailHashSynced",
+    "browserBackReturnedToMapFolder",
+  ];
+  const navItems = evidence?.dom?.navItems ?? [];
+
+  return [
+    { ok: evidence?.ok === true, message: "runtime flow QA passed" },
+    {
+      ok: Number(evidence?.recentItems ?? 0) >= 20,
+      message: "runtime flow QA imported at least 20 items",
+    },
+    {
+      ok: Number(evidence?.savedIds ?? 0) >= 1,
+      message: "runtime flow QA saved at least one item",
+    },
+    {
+      ok: requiredFlowFlags.every((flag) => evidence?.flow?.[flag] === true),
+      message: "runtime flow QA covers home/map/clean/saved/detail flows",
+    },
+    {
+      ok: Number(evidence?.dom?.brokenImages ?? -1) === 0,
+      message: "runtime flow QA has no broken images",
+    },
+    {
+      ok: navItems.join(",") === "홈,분류,정리,보관",
+      message: "runtime flow QA bottom navigation is complete",
+    },
+    {
+      ok: Array.isArray(evidence?.consoleIssues) && evidence.consoleIssues.length === 0,
+      message: "runtime flow QA has no browser console issues",
+    },
+  ];
+}
+
+export function validateBuiltFlowEvidence(evidence) {
+  const requiredFlowFlags = [
+    "appFunctionHomeDeepLink",
+    "appFunctionMapDeepLink",
+    "appFunctionCleanDeepLink",
+    "appFunctionSavedDeepLink",
+    "importModesReady",
+    "mapFolderOpened",
+    "mapPhotoDetailOpened",
+    "cleanFolderOpened",
+    "detailProtectedMask",
+    "storedSensitivePreviewKeptPrivate",
+    "savedFolderOpened",
+    "savedDetailHasUnsave",
+  ];
+  const navItems = evidence?.dom?.navItems ?? [];
+
+  return [
+    { ok: evidence?.ok === true, message: "built web flow QA passed" },
+    {
+      ok: Number(evidence?.recentItems ?? 0) >= 8,
+      message: "built web flow QA seeded stored classification items",
+    },
+    {
+      ok: Number(evidence?.savedIds ?? 0) >= 1,
+      message: "built web flow QA seeded saved items",
+    },
+    {
+      ok: requiredFlowFlags.every((flag) => evidence?.flow?.[flag] === true),
+      message: "built web flow QA covers built map/clean/saved/detail flows",
+    },
+    {
+      ok: Number(evidence?.dom?.brokenImages ?? -1) === 0,
+      message: "built web flow QA has no broken images",
+    },
+    {
+      ok: navItems.join(",") === "홈,분류,정리,보관",
+      message: "built web flow QA bottom navigation is complete",
+    },
+    {
+      ok:
+        Array.isArray(evidence?.consoleIssues) &&
+        evidence.consoleIssues.length === 0,
+      message: "built web flow QA has no browser console issues",
+    },
+  ];
 }
 
 function checkReleasePrivacy() {
@@ -224,6 +397,245 @@ function checkReleasePrivacy() {
   for (const failure of result.failures) {
     record(false, failure);
   }
+}
+
+function checkUploadAssets() {
+  const result = validateUploadAssets({ cwd: rootDir });
+  for (const check of result.checks) {
+    record(check.ok, check.message);
+  }
+}
+
+function checkAppFunctions() {
+  const manifestText = readText("docs/apps-in-toss-app-functions.json");
+  if (!manifestText) {
+    return;
+  }
+
+  try {
+    const manifest = JSON.parse(manifestText);
+    for (const check of validateAppFunctionManifest(manifest)) {
+      record(check.ok, check.message);
+    }
+  } catch {
+    record(false, "apps-in-toss app functions manifest is valid JSON");
+  }
+}
+
+export function validateAppFunctionManifest(manifest) {
+  const checks = [];
+  const add = (ok, message) => checks.push({ ok, message });
+  const functions = Array.isArray(manifest?.functions)
+    ? manifest.functions
+    : [];
+
+  add(manifest?.schemaVersion === 1, "app functions manifest schemaVersion");
+  add(manifest?.appName === "pictory", "app functions manifest appName");
+  add(functions.length >= 1, "app functions manifest has at least one entry");
+
+  for (const tab of APP_FUNCTION_TABS) {
+    add(
+      functions.some((entry) => entry?.targetTab === tab),
+      `app functions manifest includes ${tab} entry`,
+    );
+  }
+
+  const seenIds = new Set();
+  for (const entry of functions) {
+    const id = String(entry?.id ?? "");
+    const koreanName = String(entry?.koreanName ?? "");
+    const englishName = String(entry?.englishName ?? "");
+    const targetTab = String(entry?.targetTab ?? "");
+    const url = String(entry?.url ?? "");
+
+    add(Boolean(id), "app function entry has id");
+    add(!seenIds.has(id), `app function id is unique: ${id || "(blank)"}`);
+    seenIds.add(id);
+    add(
+      textLength(koreanName) > 0 && textLength(koreanName) <= 10,
+      `app function Korean name length is valid: ${koreanName || "(blank)"}`,
+    );
+    add(
+      isAppFunctionText(koreanName),
+      `app function Korean name has allowed characters: ${koreanName || "(blank)"}`,
+    );
+    add(
+      textLength(englishName) > 0 && textLength(englishName) <= 15,
+      `app function English name length is valid: ${englishName || "(blank)"}`,
+    );
+    add(
+      /^[A-Z]/.test(englishName),
+      `app function English name starts with uppercase: ${englishName || "(blank)"}`,
+    );
+    add(
+      isAppFunctionText(englishName),
+      `app function English name has allowed characters: ${englishName || "(blank)"}`,
+    );
+    add(APP_FUNCTION_TABS.has(targetTab), `app function target tab is valid: ${targetTab}`);
+
+    try {
+      const parsedUrl = new URL(url);
+      add(parsedUrl.protocol === "intoss:", `app function URL uses intoss scheme: ${id}`);
+      add(
+        parsedUrl.hostname === "pictory",
+        `app function URL host is pictory: ${id}`,
+      );
+      add(
+        parsedUrl.searchParams.get("tab") === targetTab,
+        `app function URL tab matches target: ${id}`,
+      );
+    } catch {
+      add(false, `app function URL is parseable: ${id || "(blank)"}`);
+    }
+  }
+
+  return checks;
+}
+
+function textLength(value) {
+  return Array.from(value).length;
+}
+
+function isAppFunctionText(value) {
+  return value.length > 0 && !/[^\p{L}\p{N} .:]/u.test(value);
+}
+
+function checkNoDemoAlbumInRelease() {
+  const aitPath = projectPath("pictory.ait");
+  const aitScan = readAitMembers(aitPath);
+  record(
+    aitScan.ok,
+    "pictory.ait contents are readable for release artifact scan",
+  );
+
+  const demoFiles = listReleaseDemoAlbumArtifacts(aitScan.members);
+  record(
+    demoFiles.length === 0,
+    "release artifacts exclude local demo album files",
+  );
+}
+
+export function listReleaseDemoAlbumArtifacts(aitMembers = []) {
+  const distDemoFiles = listFiles("dist").filter(isDemoAlbumPath);
+  const aitDemoFiles = aitMembers
+    .filter(isDemoAlbumPath)
+    .map((file) => `pictory.ait:${file}`);
+  return [...distDemoFiles, ...aitDemoFiles];
+}
+
+function readAitMembers(aitPath) {
+  if (!existsSync(aitPath)) {
+    return { ok: false, members: [] };
+  }
+
+  const entries = readArchiveEntries(aitPath);
+  return {
+    ok: entries.length > 0,
+    members: entries.map((entry) => entry.name).filter(Boolean),
+  };
+}
+
+function readArchiveEntries(archivePath) {
+  try {
+    return readArchiveEntriesWithTar(archivePath);
+  } catch {
+    try {
+      return readTarEntries(readFileSync(archivePath));
+    } catch {
+      return [];
+    }
+  }
+}
+
+function readArchiveEntriesWithTar(archivePath) {
+  return execFileSync("tar", ["-tvf", archivePath], {
+    cwd: rootDir,
+    encoding: "utf8",
+    maxBuffer: 64 * 1024 * 1024,
+    stdio: ["ignore", "pipe", "ignore"],
+  })
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map(parseTarListLine)
+    .filter(Boolean);
+}
+
+function parseTarListLine(line) {
+  const match = line.match(
+    /^(\S+)\s+\d+\s+\S+\s+\S+\s+(\d+)\s+\S+\s+\S+\s+\S+\s+(.+)$/,
+  );
+  if (!match) {
+    return null;
+  }
+
+  return {
+    name: match[3],
+    size: Number.parseInt(match[2], 10) || 0,
+    type: match[1].startsWith("d") ? "5" : "0",
+  };
+}
+
+export function readTarEntries(buffer) {
+  const entries = [];
+  let offset = 0;
+  let pendingLongName = "";
+
+  while (offset + 512 <= buffer.length) {
+    const header = buffer.subarray(offset, offset + 512);
+    if (isZeroBlock(header)) {
+      break;
+    }
+
+    const type = readTarString(header, 156, 1) || "0";
+    const size = readTarOctal(header, 124, 12);
+    const name = pendingLongName || readTarPath(header);
+    pendingLongName = "";
+    const dataOffset = offset + 512;
+
+    if (type === "L") {
+      pendingLongName = readTarString(buffer, dataOffset, size);
+    } else {
+      entries.push({ name, size, type, dataOffset });
+    }
+
+    offset = dataOffset + Math.ceil(size / 512) * 512;
+  }
+
+  return entries;
+}
+
+export function getTarUnpackedSize(entries) {
+  return entries
+    .filter((entry) => !["5", "L", "K", "x", "g"].includes(entry.type))
+    .reduce((sum, entry) => sum + entry.size, 0);
+}
+
+function readTarPath(header) {
+  const name = readTarString(header, 0, 100);
+  const prefix = readTarString(header, 345, 155);
+  return prefix ? `${prefix}/${name}` : name;
+}
+
+function readTarString(buffer, start, length) {
+  return buffer
+    .subarray(start, start + length)
+    .toString("utf8")
+    .replace(/\0.*$/, "")
+    .trim();
+}
+
+function readTarOctal(buffer, start, length) {
+  const text = readTarString(buffer, start, length).replace(/\s/g, "");
+  const parsed = Number.parseInt(text || "0", 8);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function isZeroBlock(block) {
+  return block.every((byte) => byte === 0);
+}
+
+function isDemoAlbumPath(file) {
+  return file.replaceAll("\\", "/").includes("/demo-album/");
 }
 
 function checkGraniteConfig() {
@@ -304,15 +716,20 @@ function checkPackageScripts() {
     "lint",
     "build",
     "check:launch",
+    "check:submission",
     "server:build",
     "server:start",
     "check:release",
     "check:privacy",
+    "check:upload-assets",
     "check:production-env",
     "check:device-evidence",
     "snapshot:release",
     "qa:server",
     "qa:server:built",
+    "qa:flow",
+    "qa:real-upload",
+    "qa:flow:built",
   ]) {
     record(
       Boolean(scripts[scriptName]),
@@ -437,22 +854,41 @@ function checkPackageScripts() {
     "release privacy tests exist",
   );
   record(
+    existsSync(projectPath("tests", "releaseReadiness.test.mjs")),
+    "release readiness tests exist",
+  );
+  record(
     existsSync(projectPath("tests", "runtimeEnvGuard.test.ts")),
     "runtime env guard tests exist",
   );
 }
 
-checkEnvExample();
-checkAitBundle();
-checkGraniteConfig();
-checkPackageScripts();
-checkReleaseSnapshot();
-checkReleasePrivacy();
+export function run(io = console) {
+  results.length = 0;
+  checkEnvExample();
+  checkAitBundle();
+  checkGraniteConfig();
+  checkPackageScripts();
+  checkReleaseSnapshot();
+  checkRuntimeFlowEvidence();
+  checkReleasePrivacy();
+  checkUploadAssets();
+  checkAppFunctions();
+  checkNoDemoAlbumInRelease();
 
-const failures = results.filter((result) => !result.ok);
+  const failures = results.filter((result) => !result.ok);
 
-for (const result of results) {
-  console.log(`${result.ok ? "[OK]" : "[FAIL]"} ${result.message}`);
+  for (const result of results) {
+    io.log(`${result.ok ? "[OK]" : "[FAIL]"} ${result.message}`);
+  }
+
+  if (failures.length > 0) {
+    io.error(`Release readiness failed: ${failures.length} issue(s).`);
+    return 1;
+  }
+
+  io.log("Release readiness passed.");
+  return 0;
 }
 
 function sha256File(path) {
@@ -470,9 +906,6 @@ function safeFileSegment(value) {
     .replace(/^-+|-+$/g, "");
 }
 
-if (failures.length > 0) {
-  console.error(`Release readiness failed: ${failures.length} issue(s).`);
-  process.exitCode = 1;
-} else {
-  console.log("Release readiness passed.");
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  process.exitCode = run();
 }

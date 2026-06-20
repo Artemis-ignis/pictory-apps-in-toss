@@ -1,11 +1,15 @@
+import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const rootDir = fileURLToPath(new URL("..", import.meta.url));
 const DEFAULT_ARTIFACT_PATHS = ["pictory.ait", "dist", "dist-server"];
+const aitTarMaxBuffer = 64 * 1024 * 1024;
 
 const serverOnlyKeys = [
+  "GEMINI_API_KEY",
+  "PICTORY_GEMINI_API_KEY",
   "OPENAI_API_KEY",
   "PICTORY_OPENAI_API_KEY",
   "PICTORY_SERVER_SECRET",
@@ -18,6 +22,10 @@ const artifactWidePatterns = [
   {
     label: "live OpenAI API key",
     pattern: /\bsk-(?!(?:placeholder|test)\b)[A-Za-z0-9_-]{20,}\b/,
+  },
+  {
+    label: "live Gemini API key",
+    pattern: /\bAIza[A-Za-z0-9_-]{20,}\b/,
   },
   {
     label: "server-only env assignment",
@@ -62,7 +70,7 @@ export function scanReleasePrivacy({
     for (const file of files) {
       const scan = scanFile(cwd, file);
       for (const finding of scan.findings) {
-        failures.push(`${finding.label}: ${file}`);
+        failures.push(`${finding.label}: ${finding.file ?? file}`);
       }
     }
 
@@ -129,10 +137,22 @@ function listArtifactFiles(cwd, artifactPath) {
 }
 
 function scanFile(cwd, file) {
-  const text = readFileSync(join(cwd, file)).toString("utf8");
   const patterns = isClientArtifact(file)
     ? [...artifactWidePatterns, ...clientOnlyPatterns]
     : artifactWidePatterns;
+
+  if (normalizePath(file) === "pictory.ait") {
+    const memberFindings = scanAitMembers(cwd, file, patterns);
+    if (memberFindings.length > 0) {
+      return { findings: memberFindings };
+    }
+  }
+
+  const findings = scanText(readFileSync(join(cwd, file)).toString("utf8"), patterns);
+  return { findings };
+}
+
+function scanText(text, patterns) {
   const findings = [];
 
   for (const { label, pattern } of patterns) {
@@ -141,7 +161,36 @@ function scanFile(cwd, file) {
     }
   }
 
-  return { findings };
+  return findings;
+}
+
+function scanAitMembers(cwd, file, patterns) {
+  const aitPath = join(cwd, file);
+  try {
+    const members = execFileSync("tar", ["-tf", aitPath], {
+      cwd,
+      encoding: "utf8",
+      maxBuffer: aitTarMaxBuffer,
+      stdio: ["ignore", "pipe", "ignore"],
+    })
+      .split(/\r?\n/)
+      .filter((member) => /\.(?:html|js|json)$/i.test(member));
+
+    return members.flatMap((member) => {
+      const text = execFileSync("tar", ["-xOf", aitPath, member], {
+        cwd,
+        encoding: "utf8",
+        maxBuffer: aitTarMaxBuffer,
+        stdio: ["ignore", "pipe", "ignore"],
+      });
+      return scanText(text, patterns).map((finding) => ({
+        ...finding,
+        file: `${file}:${member}`,
+      }));
+    });
+  } catch {
+    return [];
+  }
 }
 
 function isClientArtifact(file) {

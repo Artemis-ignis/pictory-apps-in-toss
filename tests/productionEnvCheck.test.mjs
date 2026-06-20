@@ -22,20 +22,23 @@ VITE_PICTORY_CLASSIFY_ENDPOINT=https://api.pictory.app/pictory/classify
 VITE_PICTORY_REWARD_ENDPOINT=https://api.pictory.app/pictory/reward
 VITE_PICTORY_ENTITLEMENT_ENDPOINT=https://api.pictory.app/pictory/entitlement
 VITE_PICTORY_DELETE_ENDPOINT=https://api.pictory.app/pictory/account
-NODE_ENV=production
 PICTORY_SERVER_SECRET=${"s".repeat(40)}
 PICTORY_SESSION_SECRET=${"t".repeat(40)}
 PICTORY_PLUS_SUBSCRIPTION_SKU=ait.plus.monthly
 PICTORY_PRO_SUBSCRIPTION_SKU=ait.pro.monthly
 PICTORY_SUBSCRIPTION_VALID_DAYS=32
 PICTORY_REWARD_REQUIRE_NATIVE_EVENT=true
+PICTORY_REWARD_UNIT_TYPE=ai_credit
 APPS_IN_TOSS_MTLS_CERT_PATH=client-cert.pem
 APPS_IN_TOSS_MTLS_KEY_PATH=client-key.pem
+PICTORY_AI_PROVIDER=gemini
+GEMINI_API_KEY=${"AIza" + "a".repeat(32)}
+GEMINI_MODEL=gemini-2.5-flash-lite
 OPENAI_API_KEY=${"sk-" + "a".repeat(32)}
 OPENAI_MODEL=gpt-4.1-mini
 OPENAI_IMAGE_DETAIL=low
 PICTORY_AI_FREE_MONTHLY_QUOTA=0
-PICTORY_AI_AD_CREDIT_QUOTA=100
+PICTORY_AI_AD_CREDIT_QUOTA=30
 PICTORY_AI_PLUS_MONTHLY_QUOTA=500
 PICTORY_AI_PRO_MONTHLY_QUOTA=2000
 PICTORY_AI_DAILY_LIMIT_PER_USER=300
@@ -66,13 +69,17 @@ PICTORY_PLUS_SUBSCRIPTION_SKU=server-plus
 PICTORY_PRO_SUBSCRIPTION_SKU=server-plus
 PICTORY_SUBSCRIPTION_VALID_DAYS=0
 PICTORY_REWARD_REQUIRE_NATIVE_EVENT=false
+PICTORY_REWARD_UNIT_TYPE=scan
 APPS_IN_TOSS_MTLS_CERT_PATH=missing-cert.pem
 APPS_IN_TOSS_MTLS_KEY_PATH=missing-key.pem
+PICTORY_AI_PROVIDER=gemini
+GEMINI_API_KEY=replace_with_gemini_api_key_server_only
+GEMINI_MODEL=
 OPENAI_API_KEY=replace_with_openai_api_key_server_only
 OPENAI_MODEL=gpt-4.1-mini
 OPENAI_IMAGE_DETAIL=high
 PICTORY_AI_FREE_MONTHLY_QUOTA=1
-PICTORY_AI_AD_CREDIT_QUOTA=0
+PICTORY_AI_AD_CREDIT_QUOTA=100
 PICTORY_AI_PLUS_MONTHLY_QUOTA=0
 PICTORY_AI_PRO_MONTHLY_QUOTA=0
 PICTORY_AI_DAILY_LIMIT_PER_USER=0
@@ -94,11 +101,15 @@ PICTORY_SKIP_RUNTIME_ENV_CHECK=true
         "Plus and Pro SKUs differ",
         "client API endpoints share one HTTPS origin",
         "delete endpoint path is /pictory/account",
-        "NODE_ENV is production",
-        "OPENAI_API_KEY is not a placeholder",
+        "NODE_ENV is not set in .env.production",
+        "GEMINI_API_KEY is not a placeholder",
+        "GEMINI_API_KEY looks real",
+        "GEMINI_MODEL is set",
         "raw image logging is disabled",
         "free server AI quota is zero",
         "reward grants require native ad evidence",
+        "reward unit type is ai_credit",
+        "ad reward AI credit quota is 30",
         "runtime env check is not skipped",
         "APPS_IN_TOSS_MTLS_CERT_PATH file is not empty",
       ]),

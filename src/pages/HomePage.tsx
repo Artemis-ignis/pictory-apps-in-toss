@@ -2,11 +2,11 @@ import {
   CalendarDays,
   Camera,
   ChevronRight,
+  Clock3,
   FileText,
   Heart,
   Image,
   Images,
-  MapPin,
   ReceiptText,
   Sparkles,
   Soup,
@@ -14,8 +14,10 @@ import {
   UserRound,
 } from "lucide-react";
 import { BucketCard } from "../components/BucketCard";
+import { BucketPhotoTray } from "../components/BucketPhotoTray";
 import { Mascot } from "../components/Mascot";
 import { MetricCard } from "../components/MetricCard";
+import type { AlbumImportMode } from "../features/album/albumAdapter";
 import { isCleanTabItem } from "../features/album/classifier";
 import {
   MAP_BUCKETS,
@@ -39,6 +41,10 @@ interface HomePageProps {
   selectedPlanId: PlanId;
   isScanning: boolean;
   scanMessage: string;
+  importMode: AlbumImportMode;
+  importDate: string;
+  onImportModeChange: (mode: AlbumImportMode) => void;
+  onImportDateChange: (date: string) => void;
   onScan: () => void;
   onPick: () => void;
   onReward: () => void;
@@ -52,7 +58,7 @@ const homeIcons: Record<MapBucketId, JSX.Element> = {
   document: <FileText size={20} />,
   receipt: <ReceiptText size={20} />,
   food: <Soup size={20} />,
-  place: <MapPin size={20} />,
+  place: <Images size={20} />,
   people: <UserRound size={20} />,
   coupon: <ReceiptText size={20} />,
   memory: <Heart size={20} />,
@@ -67,6 +73,10 @@ export function HomePage({
   selectedPlanId,
   isScanning,
   scanMessage,
+  importMode,
+  importDate,
+  onImportModeChange,
+  onImportDateChange,
   onScan,
   onPick,
   onReward,
@@ -85,6 +95,10 @@ export function HomePage({
     bucketCounts.length > 0
       ? bucketCounts.slice(0, 2)
       : MAP_BUCKETS.slice(0, 2).map((bucket) => ({ bucket, count: 0 }));
+  const primaryLabel = getPrimaryActionLabel(importMode, isScanning);
+  const albumPreviewItems = items
+    .filter((item) => item.privacy !== "sensitive")
+    .slice(0, 12);
 
   return (
     <main className="screen home-screen">
@@ -100,16 +114,62 @@ export function HomePage({
         <Mascot variant="home" size="hero" />
       </section>
 
+      <section className="import-panel" aria-label="가져오기 방식">
+        <div className="import-mode-grid">
+          <button
+            type="button"
+            className={importMode === "recent" ? "is-active" : ""}
+            onClick={() => onImportModeChange("recent")}
+          >
+            <Clock3 size={17} />
+            <span>최신순</span>
+          </button>
+          <button
+            type="button"
+            className={importMode === "oldest" ? "is-active" : ""}
+            onClick={() => onImportModeChange("oldest")}
+          >
+            <CalendarDays size={17} />
+            <span>오래된순</span>
+          </button>
+          <button
+            type="button"
+            className={importMode === "date" ? "is-active" : ""}
+            onClick={() => onImportModeChange("date")}
+          >
+            <CalendarDays size={17} />
+            <span>날짜</span>
+          </button>
+          <button
+            type="button"
+            className={importMode === "instagram" ? "is-active" : ""}
+            onClick={() => onImportModeChange("instagram")}
+          >
+            <Images size={17} />
+            <span>인스타</span>
+          </button>
+        </div>
+        {importMode === "date" ? (
+          <input
+            aria-label="가져올 날짜"
+            className="import-date-input"
+            type="date"
+            value={importDate}
+            onChange={(event) => onImportDateChange(event.currentTarget.value)}
+          />
+        ) : null}
+      </section>
+
       <section className="action-stack" aria-label="사진 정리 시작">
         <button className="primary-action" type="button" onClick={onScan}>
           <Image size={22} />
-          <span>{isScanning ? "지도 만드는 중" : "지도 만들기"}</span>
+          <span>{primaryLabel}</span>
           <ChevronRight size={26} />
         </button>
         <div className="secondary-actions">
           <button className="soft-action" type="button" onClick={onReward}>
             <Sparkles size={19} />
-            <span>광고 보기</span>
+            <span>AI 30장 받기</span>
             {credits > 0 ? <b>{credits}</b> : null}
           </button>
           <button className="soft-action" type="button" onClick={onPick}>
@@ -121,6 +181,8 @@ export function HomePage({
 
       <p className="privacy-note">원본 저장 안 함 · 기기 안에서 분석</p>
       <p className="dev-note">{scanMessage}</p>
+
+      <BucketPhotoTray items={albumPreviewItems} title="최근 앨범" />
 
       <section className="capacity-panel" aria-label="정리 한도">
         <div className="capacity-row">
@@ -152,7 +214,7 @@ export function HomePage({
           />
         </div>
         <p>
-          남은 정리 {scanAllowance.totalLeft}장 · 광고 크레딧 {credits}장
+          남은 정리 {scanAllowance.totalLeft}장 · AI 정밀분류권 {credits}장
         </p>
       </section>
 
@@ -172,23 +234,23 @@ export function HomePage({
 
       <section className="metric-grid" aria-label="요약">
         <MetricCard
-          label="종류별"
+          label="분류 결과"
           value={`${kindCount || 0}개`}
-          caption={`총 ${items.length}장`}
+          caption={`${items.length}장 분류됨`}
           tone="blue"
           icon={<UserRound size={18} />}
         />
         <MetricCard
-          label="기간"
+          label="사진 월"
           value={`${periodCount || 0}개`}
-          caption="오늘 ~ 이전"
+          caption="사진 날짜 기준"
           tone="green"
           icon={<CalendarDays size={18} />}
         />
         <MetricCard
-          label="확인"
+          label="정리 후보"
           value={`${cleanCount}장`}
-          caption="중복 · 민감"
+          caption="삭제 전 검토"
           tone="orange"
           icon={<Images size={18} />}
         />
@@ -215,4 +277,24 @@ export function HomePage({
       </section>
     </main>
   );
+}
+
+function getPrimaryActionLabel(mode: AlbumImportMode, isScanning: boolean) {
+  if (isScanning) {
+    return "사진 분류 중";
+  }
+
+  if (mode === "oldest") {
+    return "오래된 후보 정리";
+  }
+
+  if (mode === "date") {
+    return "날짜 후보 찾기";
+  }
+
+  if (mode === "instagram") {
+    return "인스타 후보 고르기";
+  }
+
+  return "앨범 정리 시작";
 }

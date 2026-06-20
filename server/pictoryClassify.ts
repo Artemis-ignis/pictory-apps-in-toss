@@ -72,8 +72,15 @@ export interface PictoryClassifyEntitlement {
   serverAiAccess?: "paid" | "credit";
 }
 
+export interface PictoryClassifyQuotaReservation {
+  monthlyUsed?: number;
+  creditUsed?: number;
+  globalDailyUsed?: number;
+}
+
 export interface PictoryClassifyQuota {
   remaining: number;
+  reservation?: PictoryClassifyQuotaReservation;
 }
 
 export interface PictoryClassifyDeps {
@@ -137,9 +144,12 @@ export interface PictoryClassifyHandlerResult {
 
 const SCHEMA_VERSION = 1;
 const MAX_ITEMS = 40;
-const MAX_OPENAI_IMAGE_ITEMS = 8;
+const MAX_AI_IMAGE_ITEMS = 8;
 const DEFAULT_MAX_BODY_BYTES = 4 * 1024 * 1024;
+const DEFAULT_AI_PROVIDER = "gemini";
+const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash-lite";
 const DEFAULT_OPENAI_MODEL = "gpt-4.1-mini";
+const GEMINI_API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 const PAID_PLAN_IDS = new Set(["plus", "pro"]);
 const CATEGORY_IDS = new Set<PictoryCategoryId>([
@@ -279,20 +289,10 @@ export async function defaultClassifyItems(
   items: readonly PictoryClassifyRequestItem[],
   context: PictoryClassifyItemsContext,
 ): Promise<readonly PictoryClassifyResponseItem[]> {
-  const apiKey =
-    context.env.OPENAI_API_KEY ?? context.env.PICTORY_OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new PictoryClassifyHttpError(
-      503,
-      "classifier_unconfigured",
-      "OpenAI API key is not configured.",
-    );
-  }
-
   const attachedImageItems = items.filter(hasAttachedImage);
-  const imageItems = attachedImageItems.slice(0, MAX_OPENAI_IMAGE_ITEMS);
+  const imageItems = attachedImageItems.slice(0, MAX_AI_IMAGE_ITEMS);
   const overBudgetImageItems = attachedImageItems
-    .slice(MAX_OPENAI_IMAGE_ITEMS)
+    .slice(MAX_AI_IMAGE_ITEMS)
     .map((item) => ({
       ...item,
       imageDataUri: undefined,
@@ -308,10 +308,60 @@ export async function defaultClassifyItems(
     return redactedClassifications;
   }
 
+  const provider = readAiProvider(context.env);
+  if (provider === "gemini") {
+    const apiKey =
+      context.env.GEMINI_API_KEY ?? context.env.PICTORY_GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new PictoryClassifyHttpError(
+        503,
+        "classifier_unconfigured",
+        "Gemini API key is not configured.",
+      );
+    }
+
+    return [
+      ...(await classifyImageItemsWithGemini(imageItems, context, apiKey)),
+      ...redactedClassifications,
+    ];
+  }
+
+  const apiKey =
+    context.env.OPENAI_API_KEY ?? context.env.PICTORY_OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new PictoryClassifyHttpError(
+      503,
+      "classifier_unconfigured",
+      "OpenAI API key is not configured.",
+    );
+  }
+
   return [
     ...(await classifyImageItemsWithOpenAi(imageItems, context, apiKey)),
     ...redactedClassifications,
   ];
+}
+
+type AiProvider = "gemini" | "openai";
+
+function readAiProvider(env: Record<string, string | undefined>): AiProvider {
+  const provider = (
+    env.PICTORY_AI_PROVIDER ??
+    env.PICTORY_AI_CLASSIFIER ??
+    DEFAULT_AI_PROVIDER
+  )
+    .trim()
+    .toLocaleLowerCase();
+
+  if (provider === "gemini" || provider === "openai") {
+    return provider;
+  }
+
+  throw new PictoryClassifyHttpError(
+    503,
+    "classifier_unconfigured",
+    "AI classifier provider must be gemini or openai.",
+  );
 }
 
 function hasAttachedImage(
@@ -346,6 +396,94 @@ async function classifyImageItemsWithOpenAi(
 
   return parseOpenAiClassificationResponse(await response.json());
 }
+
+async function classifyImageItemsWithGemini(
+  items: readonly (PictoryClassifyRequestItem & { imageDataUri: string })[],
+  context: PictoryClassifyItemsContext,
+  apiKey: string,
+) {
+  const response = await fetch(
+    createGeminiGenerateContentUrl(readGeminiModel(context.env), apiKey),
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(createGeminiClassificationBody(items)),
+    },
+  );
+
+  if (!response.ok) {
+    throw new PictoryClassifyHttpError(
+      502,
+      "classifier_upstream_error",
+      "Gemini classification request failed.",
+    );
+  }
+
+  return parseGeminiClassificationResponse(await response.json());
+}
+
+function createGeminiGenerateContentUrl(model: string, apiKey: string) {
+  return `${GEMINI_API_BASE_URL}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+}
+
+function readGeminiModel(env: Record<string, string | undefined>) {
+  return (
+    env.GEMINI_MODEL ??
+    env.PICTORY_GEMINI_MODEL ??
+    DEFAULT_GEMINI_MODEL
+  ).trim();
+}
+
+function createGeminiClassificationBody(
+  items: readonly (PictoryClassifyRequestItem & { imageDataUri: string })[],
+) {
+  return {
+    contents: [
+      {
+        role: "user",
+        parts: createGeminiInputParts(items),
+      },
+    ],
+    generationConfig: {
+      temperature: 0,
+      maxOutputTokens: 1200,
+      responseMimeType: "application/json",
+    },
+  };
+}
+
+function createGeminiInputParts(
+  items: readonly (PictoryClassifyRequestItem & { imageDataUri: string })[],
+) {
+  const parts: GeminiInputPart[] = [
+    {
+      text: createClassificationPrompt(items),
+    },
+  ];
+
+  for (const item of items) {
+    const image = parseImageDataUri(item.imageDataUri);
+    parts.push(
+      {
+        text: `Image item id: ${item.id}`,
+      },
+      {
+        inlineData: {
+          mimeType: image.mimeType,
+          data: image.data,
+        },
+      },
+    );
+  }
+
+  return parts;
+}
+
+type GeminiInputPart =
+  | { text: string }
+  | { inlineData: { mimeType: string; data: string } };
 
 function createOpenAiClassificationBody(
   items: readonly (PictoryClassifyRequestItem & { imageDataUri: string })[],
@@ -382,20 +520,10 @@ function createOpenAiInputContent(
   items: readonly (PictoryClassifyRequestItem & { imageDataUri: string })[],
   env: Record<string, string | undefined>,
 ) {
-  const manifest = items.map((item) => ({
-    id: item.id,
-    hints: item.hints,
-    signals: withoutPerceptualHash(item.signals),
-  }));
   const content: OpenAiInputContent[] = [
     {
       type: "input_text",
-      text:
-        "Classify each Pictory photo into exactly one categoryId and one cleanBucketId. " +
-        "Return Korean reasons. Mark IDs, payment cards, bank documents, medical/financial documents, passwords, one-time codes, and contracts as privacy review or sensitive. " +
-        "Allowed categoryId values: capture, document, receipt, food, place, people, coupon, memory. " +
-        "Allowed cleanBucketId values: sensitive, needsReview, similar, dark, capturePile, keep. " +
-        `Items: ${JSON.stringify(manifest)}`,
+      text: createClassificationPrompt(items),
     },
   ];
 
@@ -414,6 +542,26 @@ function createOpenAiInputContent(
   }
 
   return content;
+}
+
+function createClassificationPrompt(
+  items: readonly (PictoryClassifyRequestItem & { imageDataUri: string })[],
+) {
+  const manifest = items.map((item) => ({
+    id: item.id,
+    hints: item.hints,
+    signals: withoutPerceptualHash(item.signals),
+  }));
+
+  return (
+    "Classify each Pictory photo into exactly one categoryId and one cleanBucketId. " +
+    "Return only JSON shaped as {\"items\":[...]}; do not use markdown. " +
+    "Return Korean reasons. Mark IDs, payment cards, bank documents, medical/financial documents, passwords, one-time codes, and contracts as privacy review or sensitive. " +
+    "Allowed categoryId values: capture, document, receipt, food, place, people, coupon, memory. " +
+    "Allowed cleanBucketId values: sensitive, needsReview, similar, dark, capturePile, keep. " +
+    "Allowed privacy values: normal, review, sensitive. " +
+    `Items: ${JSON.stringify(manifest)}`
+  );
 }
 
 type OpenAiInputContent =
@@ -491,6 +639,28 @@ function parseOpenAiClassificationResponse(
     );
   }
 
+  return parseAiClassificationJson(text, "OpenAI");
+}
+
+function parseGeminiClassificationResponse(
+  value: unknown,
+): PictoryClassifyResponseItem[] {
+  const text = readGeminiOutputText(value);
+  if (!text) {
+    throw new PictoryClassifyHttpError(
+      502,
+      "classifier_invalid_response",
+      "Gemini classification response did not include JSON text.",
+    );
+  }
+
+  return parseAiClassificationJson(text, "Gemini");
+}
+
+function parseAiClassificationJson(
+  text: string,
+  providerName: string,
+): PictoryClassifyResponseItem[] {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
@@ -498,16 +668,16 @@ function parseOpenAiClassificationResponse(
     throw new PictoryClassifyHttpError(
       502,
       "classifier_invalid_response",
-      "OpenAI classification response was not valid JSON.",
+      `${providerName} classification response was not valid JSON.`,
     );
   }
 
-  const payload = assertRecord(parsed, "OpenAI response");
+  const payload = assertRecord(parsed, `${providerName} response`);
   if (!Array.isArray(payload.items)) {
     throw new PictoryClassifyHttpError(
       502,
       "classifier_invalid_response",
-      "OpenAI classification response items must be an array.",
+      `${providerName} classification response items must be an array.`,
     );
   }
 
@@ -531,6 +701,33 @@ function parseOpenAiClassificationResponse(
     reasons: readStringArray(item.reasons),
     hints: readStringArray(item.hints),
   }));
+}
+
+function readGeminiOutputText(value: unknown): string | undefined {
+  if (!isRecord(value) || !Array.isArray(value.candidates)) {
+    return undefined;
+  }
+
+  for (const candidate of value.candidates) {
+    if (!isRecord(candidate) || !isRecord(candidate.content)) {
+      continue;
+    }
+
+    const parts = candidate.content.parts;
+    if (!Array.isArray(parts)) {
+      continue;
+    }
+
+    const text = parts
+      .map((part) => (isRecord(part) && typeof part.text === "string" ? part.text : ""))
+      .join("")
+      .trim();
+    if (text) {
+      return text;
+    }
+  }
+
+  return undefined;
 }
 
 function readOpenAiOutputText(value: unknown): string | undefined {
@@ -636,6 +833,19 @@ function readImageDetail(
 ): "low" | "high" | "auto" {
   const detail = env.OPENAI_IMAGE_DETAIL ?? env.PICTORY_OPENAI_IMAGE_DETAIL;
   return detail === "high" || detail === "auto" ? detail : "low";
+}
+
+function parseImageDataUri(dataUri: string) {
+  const match = dataUri.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+  if (!match) {
+    throw new PictoryClassifyHttpError(
+      400,
+      "invalid_image",
+      "Image data URI must be base64 encoded.",
+    );
+  }
+
+  return { mimeType: match[1], data: match[2] };
 }
 
 function withoutPerceptualHash(signals?: PictoryClassifySignals) {

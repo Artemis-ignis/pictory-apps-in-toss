@@ -4,7 +4,9 @@ import {
 } from "@apps-in-toss/web-framework";
 
 export const TEST_REWARDED_AD_GROUP_ID = "ait-ad-test-rewarded-id";
-export const DEFAULT_SCAN_REWARD = 100;
+export const REWARDED_AI_CREDIT_UNIT_TYPE = "ai_credit";
+export const DEFAULT_AI_CREDIT_REWARD = 30;
+export const DEFAULT_SCAN_REWARD = DEFAULT_AI_CREDIT_REWARD;
 
 interface RewardAdEnv {
   DEV?: boolean;
@@ -52,9 +54,8 @@ export function isUsingTestRewardedAdGroup(env: RewardAdEnv = import.meta.env) {
 
 export function isLocalRewardFallbackAllowed(
   env: RewardAdEnv = import.meta.env,
-  hostname = window.location.hostname,
 ) {
-  return env.DEV || hostname === "localhost" || hostname === "127.0.0.1";
+  return env.DEV === true;
 }
 
 export async function preloadRewardedScanAd(
@@ -91,23 +92,24 @@ export async function showRewardedScanAd(): Promise<RewardedScanAdResult> {
       adGroupId,
       usingTestAdGroup,
       rewardId: nativeReward.rewardId ?? createRewardId("native", adGroupId),
-      unitType: nativeReward.unitType ?? "scan",
+      unitType: nativeReward.unitType ?? REWARDED_AI_CREDIT_UNIT_TYPE,
     };
   }
 
   if (
     (nativeReward.status === "unsupported" ||
       nativeReward.status === "error") &&
+    import.meta.env.DEV === true &&
     isLocalRewardFallbackAllowed()
   ) {
     await delay(450);
     return {
-      reward: DEFAULT_SCAN_REWARD,
+      reward: DEFAULT_AI_CREDIT_REWARD,
       source: "localFallback",
       adGroupId,
       usingTestAdGroup,
       rewardId: createRewardId("localFallback", adGroupId),
-      unitType: "scan",
+      unitType: REWARDED_AI_CREDIT_UNIT_TYPE,
     };
   }
 
@@ -117,7 +119,7 @@ export async function showRewardedScanAd(): Promise<RewardedScanAdResult> {
     adGroupId,
     usingTestAdGroup,
     rewardId: createRewardId(nativeReward.status, adGroupId),
-    unitType: "scan",
+    unitType: REWARDED_AI_CREDIT_UNIT_TYPE,
   };
 }
 
@@ -211,7 +213,7 @@ function waitForAdShow(adGroupId: string) {
       options: { adGroupId },
       onEvent: (event) => {
         if (event.type === "userEarnedReward") {
-          reward = Number(event.data.unitAmount) || DEFAULT_SCAN_REWARD;
+          reward = Number(event.data.unitAmount) || DEFAULT_AI_CREDIT_REWARD;
           unitType = readRewardUnitType(event.data);
           rewardId = readRewardEventId(event.data);
         }

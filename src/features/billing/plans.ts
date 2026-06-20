@@ -21,6 +21,10 @@ export interface BillingRuntime {
   hostname?: string;
 }
 
+export interface ConsumeScanAllowanceOptions {
+  serverAiRefinement?: boolean;
+}
+
 export const USAGE_PLANS: UsagePlan[] = [
   {
     id: "free",
@@ -131,6 +135,7 @@ export function getScanAllowance(state: PersistedPictoryState): ScanAllowance {
 export function consumeScanAllowance(
   state: PersistedPictoryState,
   count: number,
+  options: ConsumeScanAllowanceOptions = {},
 ): PersistedPictoryState {
   const plan = getPlan(state.planId);
   const monthlyLeft = Math.max(
@@ -138,7 +143,12 @@ export function consumeScanAllowance(
     plan.monthlyScanCredits - state.monthlyScanUsed,
   );
   const monthlyUse = Math.min(monthlyLeft, count);
-  const creditUse = Math.max(0, count - monthlyUse);
+  const scanCreditUse = Math.max(0, count - monthlyUse);
+  const serverAiCreditUse =
+    options.serverAiRefinement && state.planId === "free"
+      ? Math.max(0, count - scanCreditUse)
+      : 0;
+  const creditUse = scanCreditUse + serverAiCreditUse;
 
   return {
     ...state,
@@ -156,4 +166,22 @@ export function canUseServerAiRefinement(
   batchCount: number,
 ) {
   return state.planId !== "free" || state.credits >= batchCount;
+}
+
+export function canRequestServerAiRefinement(
+  state: PersistedPictoryState,
+  batchCount: number,
+  endpoint?: string,
+) {
+  return (
+    canUseServerAiRefinement(state, batchCount) &&
+    isConfiguredServerAiEndpoint(endpoint)
+  );
+}
+
+function isConfiguredServerAiEndpoint(endpoint?: string) {
+  const value = endpoint?.trim() ?? "";
+  return (
+    value.startsWith("https://") && !value.includes("your-api.example.com")
+  );
 }

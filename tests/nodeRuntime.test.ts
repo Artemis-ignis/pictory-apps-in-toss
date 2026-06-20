@@ -52,7 +52,7 @@ describe("pictoryNodeRuntime", () => {
       env: {
         PICTORY_SERVER_SECRET: "server-secret",
         PICTORY_AI_PLUS_MONTHLY_QUOTA: "500",
-        PICTORY_AI_AD_CREDIT_QUOTA: "100",
+        PICTORY_AI_AD_CREDIT_QUOTA: "30",
         VITE_TOSS_REWARDED_AD_GROUP_ID: "ait.prod.rewarded",
       },
     });
@@ -68,8 +68,8 @@ describe("pictoryNodeRuntime", () => {
     expect(await health.json()).toEqual({ ok: true });
     expect(reward.status).toBe(200);
     expect(await reward.json()).toMatchObject({
-      granted: 100,
-      serverAiCredits: 100,
+      granted: 30,
+      serverAiCredits: 30,
     });
     expect(classify.status).toBe(200);
     expect(await classify.json()).toMatchObject({
@@ -110,7 +110,7 @@ describe("pictoryNodeRuntime", () => {
       resolveSubjectId,
       env: {
         PICTORY_AI_PLUS_MONTHLY_QUOTA: "500",
-        PICTORY_AI_AD_CREDIT_QUOTA: "100",
+        PICTORY_AI_AD_CREDIT_QUOTA: "30",
         VITE_TOSS_REWARDED_AD_GROUP_ID: "ait.prod.rewarded",
       },
     });
@@ -168,7 +168,7 @@ describe("pictoryNodeRuntime", () => {
         PICTORY_SESSION_SECRET: "session-secret",
         PICTORY_SESSION_AUDIENCE: "pictory",
         PICTORY_AI_PLUS_MONTHLY_QUOTA: "500",
-        PICTORY_AI_AD_CREDIT_QUOTA: "100",
+        PICTORY_AI_AD_CREDIT_QUOTA: "30",
         VITE_TOSS_REWARDED_AD_GROUP_ID: "ait.prod.rewarded",
       },
     });
@@ -264,7 +264,9 @@ describe("pictoryNodeRuntime", () => {
   });
 
   it("verifies an Apps-in-Toss order through the entitlement route", async () => {
-    const store = createMemoryStore(createNewUsageAccount("order-user", "free"));
+    const store = createMemoryStore(
+      createNewUsageAccount("order-user", "free"),
+    );
     const token = createSignedPictorySessionToken(
       { sub: "order-user", exp: 4_000_000_000, aud: "pictory" },
       "session-secret",
@@ -384,8 +386,8 @@ function rewardEvidence() {
     rewardId: "ad-event-1",
     adGroupId: "ait.prod.rewarded",
     source: "native",
-    unitType: "scan",
-    unitAmount: 100,
+    unitType: "ai_credit",
+    unitAmount: 30,
     usingTestAdGroup: false,
   };
 }

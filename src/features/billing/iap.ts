@@ -78,6 +78,8 @@ export type RestorePlanResult =
   | { status: "unsupported"; message: string };
 
 const DEFAULT_PURCHASE_TIMEOUT_MS = 30_000;
+const MISSING_ENTITLEMENT_ENDPOINT_MESSAGE =
+  "구독 권한 서버가 아직 설정되지 않았어요.";
 
 export function getConfiguredPlanSku(
   planId: PlanId,
@@ -129,6 +131,13 @@ export async function purchaseSubscriptionPlan(
     return {
       status: "missingSku",
       message: "앱인토스 콘솔 구독 상품 SKU가 아직 설정되지 않았어요.",
+    };
+  }
+
+  if (!hasEntitlementEndpoint(env)) {
+    return {
+      status: "unsupported",
+      message: MISSING_ENTITLEMENT_ENDPOINT_MESSAGE,
     };
   }
 
@@ -240,7 +249,7 @@ async function verifyPurchaseGrantWithServer({
 }) {
   const endpoint = env.VITE_PICTORY_ENTITLEMENT_ENDPOINT?.trim();
   if (!endpoint) {
-    return { ok: true };
+    return { ok: false };
   }
 
   try {
@@ -288,6 +297,19 @@ export async function restoreIapEntitlement(
       )?.subscription;
 
       if (subscription?.isAccessible === true) {
+        const serverGrant = await verifyPurchaseGrantWithServer({
+          env,
+          fetchImpl: options.fetch ?? globalThis.fetch,
+          orderId: stored.orderId,
+          planId: stored.planId,
+        });
+        if (!serverGrant.ok) {
+          return {
+            status: "unsupported",
+            message: MISSING_ENTITLEMENT_ENDPOINT_MESSAGE,
+          };
+        }
+
         return {
           status: "restored",
           entitlement: {
@@ -319,6 +341,19 @@ export async function restoreIapEntitlement(
       return { status: "none" };
     }
 
+    const serverGrant = await verifyPurchaseGrantWithServer({
+      env,
+      fetchImpl: options.fetch ?? globalThis.fetch,
+      orderId: pendingOrder.order.orderId,
+      planId: pendingOrder.planId,
+    });
+    if (!serverGrant.ok) {
+      return {
+        status: "unsupported",
+        message: MISSING_ENTITLEMENT_ENDPOINT_MESSAGE,
+      };
+    }
+
     await client.completeProductGrant({
       params: { orderId: pendingOrder.order.orderId },
     });
@@ -329,7 +364,8 @@ export async function restoreIapEntitlement(
         planId: pendingOrder.planId,
         sku: pendingOrder.order.sku,
         orderId: pendingOrder.order.orderId,
-        verifiedAt: new Date().toISOString(),
+        verifiedAt: serverGrant.verifiedAt ?? new Date().toISOString(),
+        expiresAt: serverGrant.expiresAt,
         status: "PAYMENT_COMPLETED",
       },
     };
@@ -348,6 +384,10 @@ function findProductOfferId(products: IapProductListItem[], sku: string) {
   }
 
   return product.offers?.[0]?.offerId ?? null;
+}
+
+function hasEntitlementEndpoint(env: IapEnv) {
+  return Boolean(env.VITE_PICTORY_ENTITLEMENT_ENDPOINT?.trim());
 }
 
 function classifyPurchaseError(error: unknown): PurchasePlanResult {

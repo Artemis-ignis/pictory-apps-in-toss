@@ -5,7 +5,8 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const rootDir = fileURLToPath(new URL("..", import.meta.url));
-const MIN_TOSS_APP_VERSION = "5.247.0";
+const MIN_TOSS_APP_VERSION = "5.261.0";
+const TEST_REWARDED_AD_GROUP_ID = "ait-ad-test-rewarded-id";
 const requiredScenarioIds = [
   "qr-scan",
   "photos-permission",
@@ -19,6 +20,8 @@ const requiredScenarioIds = [
 ];
 const sensitivePatterns = [
   /sk-[a-zA-Z0-9]{16,}/,
+  /AIza[A-Za-z0-9_-]{20,}/,
+  /GEMINI_API_KEY\s*=/i,
   /OPENAI_API_KEY\s*=/i,
   /PICTORY_(?:SERVER|SESSION)_SECRET\s*=/i,
   /APPS_IN_TOSS_MTLS_(?:CERT|KEY)_PATH\s*=/i,
@@ -79,6 +82,14 @@ export function validateDeviceEvidence(
     "device OS is android or ios",
   );
   add(
+    isNonEmptyString(evidence?.device?.tossAppVersion),
+    "Toss app version is recorded",
+  );
+  add(
+    !isPlaceholderValue(evidence?.device?.tossAppVersion),
+    "Toss app version is not a placeholder",
+  );
+  add(
     compareVersions(evidence?.device?.tossAppVersion, MIN_TOSS_APP_VERSION) >= 0,
     `Toss app version is at least ${MIN_TOSS_APP_VERSION}`,
   );
@@ -89,6 +100,32 @@ export function validateDeviceEvidence(
   add(
     !isPlaceholderValue(evidence?.device?.model),
     "device model is not a placeholder",
+  );
+  const rewardedAd = evidence?.monetization?.rewardedAd ?? {};
+  add(
+    isNonEmptyString(rewardedAd.adGroupId),
+    "rewarded ad group id is recorded",
+  );
+  add(
+    !isPlaceholderValue(rewardedAd.adGroupId) &&
+      rewardedAd.adGroupId !== TEST_REWARDED_AD_GROUP_ID,
+    "rewarded ad group id is production",
+  );
+  add(
+    rewardedAd.unitType === "ai_credit",
+    "rewarded ad unit type is ai_credit",
+  );
+  add(
+    rewardedAd.unitAmount === 30,
+    "rewarded ad unit amount is 30",
+  );
+  add(
+    rewardedAd.serverGrantedCredits === 30,
+    "rewarded ad server granted credits is 30",
+  );
+  add(
+    rewardedAd.usingTestAdGroup === false,
+    "rewarded ad is not using the test ad group",
   );
 
   const scenarios = Array.isArray(evidence?.scenarios)
@@ -226,7 +263,7 @@ function isPlaceholderValue(value) {
     return true;
   }
 
-  return /^(현재_|앱인토스_|실기기_|replace_with_|your_|current_)/i.test(
+  return /^(현재_|앱인토스_|실기기_|운영_|replace_with_|your_|current_)/i.test(
     value.trim(),
   );
 }

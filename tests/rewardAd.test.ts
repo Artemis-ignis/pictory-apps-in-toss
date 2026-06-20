@@ -33,6 +33,7 @@ vi.mock("@apps-in-toss/web-framework", () => {
 
 import {
   DEFAULT_SCAN_REWARD,
+  REWARDED_AI_CREDIT_UNIT_TYPE,
   getRewardedAdGroupId,
   isLocalRewardFallbackAllowed,
   isUsingTestRewardedAdGroup,
@@ -78,22 +79,16 @@ describe("rewardAd config", () => {
 
   it("allows reward fallback only in local development contexts", () => {
     expect(
-      isLocalRewardFallbackAllowed(
-        { DEV: false, VITE_TOSS_REWARDED_AD_GROUP_ID: undefined },
-        "localhost",
-      ),
+      isLocalRewardFallbackAllowed({
+        DEV: true,
+        VITE_TOSS_REWARDED_AD_GROUP_ID: undefined,
+      }),
     ).toBe(true);
     expect(
-      isLocalRewardFallbackAllowed(
-        { DEV: true, VITE_TOSS_REWARDED_AD_GROUP_ID: undefined },
-        "example.com",
-      ),
-    ).toBe(true);
-    expect(
-      isLocalRewardFallbackAllowed(
-        { DEV: false, VITE_TOSS_REWARDED_AD_GROUP_ID: undefined },
-        "service.example.com",
-      ),
+      isLocalRewardFallbackAllowed({
+        DEV: false,
+        VITE_TOSS_REWARDED_AD_GROUP_ID: undefined,
+      }),
     ).toBe(false);
   });
 
@@ -107,7 +102,7 @@ describe("rewardAd config", () => {
 
     showHandler({
       type: "userEarnedReward",
-      data: { unitType: "scan", unitAmount: 120 },
+      data: { unitType: REWARDED_AI_CREDIT_UNIT_TYPE, unitAmount: 120 },
     });
     await Promise.resolve();
     expect(settled).toBe(false);
@@ -118,7 +113,7 @@ describe("rewardAd config", () => {
       reward: 120,
       rewardId: expect.any(String),
       source: "native",
-      unitType: "scan",
+      unitType: REWARDED_AI_CREDIT_UNIT_TYPE,
     });
   });
 
@@ -145,6 +140,7 @@ describe("rewardAd config", () => {
       reward: DEFAULT_SCAN_REWARD,
       rewardId: expect.any(String),
       source: "native",
+      unitType: REWARDED_AI_CREDIT_UNIT_TYPE,
     });
   });
 

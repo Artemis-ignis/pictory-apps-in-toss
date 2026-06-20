@@ -27,6 +27,9 @@ docs/release-snapshot.json
 *.tsbuildinfo
 .pictory-ledger*.json
 server-data
+.codex-remote-attachments
+console-upload-assets
+test-artifacts
 
 # Editor directories and files
 .vscode/*

@@ -1,4 +1,4 @@
-import { Archive, BrushCleaning, Home, Map } from "lucide-react";
+import { Archive, BrushCleaning, Home, Images } from "lucide-react";
 
 export type TabId = "home" | "map" | "clean" | "saved";
 
@@ -9,7 +9,7 @@ interface BottomNavProps {
 
 const tabs = [
   { id: "home", label: "홈", icon: Home },
-  { id: "map", label: "지도", icon: Map },
+  { id: "map", label: "분류", icon: Images },
   { id: "clean", label: "정리", icon: BrushCleaning },
   { id: "saved", label: "보관", icon: Archive },
 ] satisfies Array<{

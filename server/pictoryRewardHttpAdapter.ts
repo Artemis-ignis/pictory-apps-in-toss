@@ -14,6 +14,7 @@ import {
 
 type MaybePromise<T> = T | Promise<T>;
 const TEST_REWARDED_AD_GROUP_ID = "ait-ad-test-rewarded-id";
+const DEFAULT_REWARD_UNIT_TYPE = "ai_credit";
 
 interface PictoryRewardHttpHandlerOptions {
   store: PictoryUsageLedgerStore;
@@ -112,6 +113,7 @@ export function createPictoryRewardHttpHandler({
       account: normalizeUsageMonth(account, now()),
       rewardId: body.rewardId,
       rewardCredits: readRewardCredits(env),
+      date: now(),
     });
     await store.writeAccount(reward.account);
 
@@ -121,7 +123,9 @@ export function createPictoryRewardHttpHandler({
         subjectId,
         rewardId: body.rewardId,
         granted: reward.granted,
-        duplicated: reward.granted === 0,
+        duplicated: reward.reason === "duplicate",
+        limitReached: reward.granted === 0 && reward.reason !== "duplicate",
+        reason: reward.reason,
         serverAiCredits: reward.account.serverAiCredits,
       },
       responseHeaders,
@@ -153,12 +157,18 @@ function validateRewardEvidence(
   if (typeof body.unitType !== "string" || body.unitType.trim().length === 0) {
     return "Reward unitType is required.";
   }
+  if (body.unitType.trim() !== readRewardUnitType(env)) {
+    return "Reward unitType does not match server policy.";
+  }
   if (
     typeof body.unitAmount !== "number" ||
     !Number.isFinite(body.unitAmount) ||
     body.unitAmount <= 0
   ) {
     return "Reward unitAmount must be positive.";
+  }
+  if (body.unitAmount !== readRewardCredits(env)) {
+    return "Reward unitAmount does not match server policy.";
   }
 
   return undefined;
@@ -184,6 +194,10 @@ function readRewardCredits(env: Record<string, string | undefined>) {
   return Number.isFinite(parsed) && parsed > 0
     ? parsed
     : DEFAULT_SERVER_AI_CREDITS.rewardCredits;
+}
+
+function readRewardUnitType(env: Record<string, string | undefined>) {
+  return env.PICTORY_REWARD_UNIT_TYPE?.trim() || DEFAULT_REWARD_UNIT_TYPE;
 }
 
 async function readRequestBody(body: unknown) {

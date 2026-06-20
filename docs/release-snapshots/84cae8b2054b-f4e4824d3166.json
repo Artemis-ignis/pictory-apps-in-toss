@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-06-16T17:46:06.394Z",
+  "release": {
+    "gitCommit": "84cae8b2054b",
+    "branch": "main",
+    "remote": "https://github.com/Artemis-ignis/pictory-apps-in-toss.git",
+    "aitFile": "pictory.ait",
+    "aitSha256": "f4e4824d3166b940b4f6a906dd2c08f39d54e0d263f31f70d107e22bf414fece"
+  },
+  "github": {
+    "defaultBranchRef": {
+      "name": "main"
+    },
+    "isPrivate": true,
+    "nameWithOwner": "Artemis-ignis/pictory-apps-in-toss",
+    "pushedAt": "2026-06-15T18:10:46Z",
+    "url": "https://github.com/Artemis-ignis/pictory-apps-in-toss",
+    "visibility": "PRIVATE"
+  },
+  "requiredChecks": [
+    "npm run test",
+    "npm run typecheck",
+    "npm run lint",
+    "npm run qa:server",
+    "npm run qa:server:built",
+    "npm run qa:flow",
+    "npm run check:production-env -- --file .env.production",
+    "npm run check:device-evidence -- --file qa-evidence/device-smoke.json",
+    "npm run build",
+    "npm run qa:flow:built",
+    "npm run check:privacy",
+    "npm run check:upload-assets",
+    "npm run check:release",
+    "npm run check:launch"
+  ]
+}

@@ -13,7 +13,7 @@ describe("pictoryRewardHttpAdapter", () => {
       store,
       env: {
         PICTORY_SERVER_SECRET: "server-secret",
-        PICTORY_AI_AD_CREDIT_QUOTA: "100",
+        PICTORY_AI_AD_CREDIT_QUOTA: "30",
         VITE_TOSS_REWARDED_AD_GROUP_ID: "ait.prod.rewarded",
       },
     });
@@ -32,11 +32,11 @@ describe("pictoryRewardHttpAdapter", () => {
     expect(JSON.parse(response.body)).toMatchObject({
       subjectId: "user-1",
       rewardId: "ad-event-1",
-      granted: 100,
+      granted: 30,
       duplicated: false,
-      serverAiCredits: 100,
+      serverAiCredits: 30,
     });
-    expect((await store.readAccount("user-1"))?.serverAiCredits).toBe(100);
+    expect((await store.readAccount("user-1"))?.serverAiCredits).toBe(30);
   });
 
   it("does not grant the same reward event twice", async () => {
@@ -45,7 +45,7 @@ describe("pictoryRewardHttpAdapter", () => {
       store,
       env: {
         PICTORY_SERVER_SECRET: "server-secret",
-        PICTORY_AI_AD_CREDIT_QUOTA: "100",
+        PICTORY_AI_AD_CREDIT_QUOTA: "30",
         VITE_TOSS_REWARDED_AD_GROUP_ID: "ait.prod.rewarded",
       },
     });
@@ -61,11 +61,11 @@ describe("pictoryRewardHttpAdapter", () => {
     const first = await handler(request);
     const second = await handler(request);
 
-    expect(JSON.parse(first.body).granted).toBe(100);
+    expect(JSON.parse(first.body).granted).toBe(30);
     expect(JSON.parse(second.body)).toMatchObject({
       granted: 0,
       duplicated: true,
-      serverAiCredits: 100,
+      serverAiCredits: 30,
     });
   });
 
@@ -85,7 +85,11 @@ describe("pictoryRewardHttpAdapter", () => {
         "x-pictory-server-secret": "server-secret",
         "x-pictory-subject-id": "user-1",
       },
-      body: JSON.stringify({ ...rewardEvidence(), rewardCredits: 9999 }),
+      body: JSON.stringify({
+        ...rewardEvidence(),
+        unitAmount: 25,
+        rewardCredits: 9999,
+      }),
     });
 
     expect(JSON.parse(response.body)).toMatchObject({
@@ -137,7 +141,7 @@ describe("pictoryRewardHttpAdapter", () => {
       "https://pictory.example.com",
     );
     expect(response.status).toBe(200);
-    expect((await store.readAccount("auth-user"))?.serverAiCredits).toBe(100);
+    expect((await store.readAccount("auth-user"))?.serverAiCredits).toBe(30);
   });
 
   it("rejects missing reward ids and non-POST methods", async () => {
@@ -192,8 +196,44 @@ describe("pictoryRewardHttpAdapter", () => {
     expect(spoofed.status).toBe(400);
     expect(localFallback.status).toBe(400);
     expect(wrongAdGroup.status).toBe(400);
-    expect(JSON.parse(spoofed.body).error.code).toBe(
-      "invalid_reward_evidence",
+    expect(JSON.parse(spoofed.body).error.code).toBe("invalid_reward_evidence");
+    expect(await store.readAccount("user-1")).toBeUndefined();
+  });
+
+  it("rejects reward unit type or amount that does not match server policy", async () => {
+    const store = createMemoryStore();
+    const handler = createPictoryRewardHttpHandler({
+      store,
+      env: {
+        PICTORY_SERVER_SECRET: "server-secret",
+        PICTORY_AI_AD_CREDIT_QUOTA: "30",
+        PICTORY_REWARD_UNIT_TYPE: "ai_credit",
+        VITE_TOSS_REWARDED_AD_GROUP_ID: "ait.prod.rewarded",
+      },
+    });
+    const headers = {
+      "x-pictory-server-secret": "server-secret",
+      "x-pictory-subject-id": "user-1",
+    };
+
+    const wrongType = await handler({
+      method: "POST",
+      headers,
+      body: JSON.stringify({ ...rewardEvidence(), unitType: "scan" }),
+    });
+    const wrongAmount = await handler({
+      method: "POST",
+      headers,
+      body: JSON.stringify({ ...rewardEvidence(), unitAmount: 29 }),
+    });
+
+    expect(wrongType.status).toBe(400);
+    expect(wrongAmount.status).toBe(400);
+    expect(JSON.parse(wrongType.body).error.message).toBe(
+      "Reward unitType does not match server policy.",
+    );
+    expect(JSON.parse(wrongAmount.body).error.message).toBe(
+      "Reward unitAmount does not match server policy.",
     );
     expect(await store.readAccount("user-1")).toBeUndefined();
   });
@@ -204,8 +244,8 @@ function rewardEvidence() {
     rewardId: "ad-event-1",
     adGroupId: "ait.prod.rewarded",
     source: "native",
-    unitType: "scan",
-    unitAmount: 100,
+    unitType: "ai_credit",
+    unitAmount: 30,
     usingTestAdGroup: false,
   };
 }

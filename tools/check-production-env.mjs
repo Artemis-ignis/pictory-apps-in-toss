@@ -13,18 +13,18 @@ const requiredKeys = [
   "VITE_PICTORY_REWARD_ENDPOINT",
   "VITE_PICTORY_ENTITLEMENT_ENDPOINT",
   "VITE_PICTORY_DELETE_ENDPOINT",
-  "NODE_ENV",
   "PICTORY_SERVER_SECRET",
   "PICTORY_SESSION_SECRET",
   "PICTORY_PLUS_SUBSCRIPTION_SKU",
   "PICTORY_PRO_SUBSCRIPTION_SKU",
   "PICTORY_SUBSCRIPTION_VALID_DAYS",
   "PICTORY_REWARD_REQUIRE_NATIVE_EVENT",
+  "PICTORY_REWARD_UNIT_TYPE",
   "APPS_IN_TOSS_MTLS_CERT_PATH",
   "APPS_IN_TOSS_MTLS_KEY_PATH",
-  "OPENAI_API_KEY",
-  "OPENAI_MODEL",
-  "OPENAI_IMAGE_DETAIL",
+  "PICTORY_AI_PROVIDER",
+  "GEMINI_API_KEY",
+  "GEMINI_MODEL",
   "PICTORY_AI_FREE_MONTHLY_QUOTA",
   "PICTORY_AI_AD_CREDIT_QUOTA",
   "PICTORY_AI_PLUS_MONTHLY_QUOTA",
@@ -76,8 +76,8 @@ export function validateProductionEnv(env, { cwd = rootDir } = {}) {
   }
 
   add(
-    value("NODE_ENV") === "production",
-    "NODE_ENV is production",
+    !env.has("NODE_ENV"),
+    "NODE_ENV is not set in .env.production",
   );
   add(
     value("VITE_TOSS_REWARDED_AD_GROUP_ID") !== TEST_REWARDED_AD_ID,
@@ -142,8 +142,20 @@ export function validateProductionEnv(env, { cwd = rootDir } = {}) {
     value("PICTORY_SERVER_SECRET") !== value("PICTORY_SESSION_SECRET"),
     "server and session secrets differ",
   );
-  add(value("OPENAI_API_KEY").startsWith("sk-"), "OPENAI_API_KEY looks real");
-  add(value("OPENAI_IMAGE_DETAIL") === "low", "OpenAI image detail stays low");
+
+  const aiProvider = value("PICTORY_AI_PROVIDER").toLowerCase();
+  add(
+    aiProvider === "gemini" || aiProvider === "openai",
+    "PICTORY_AI_PROVIDER is gemini or openai",
+  );
+  if (aiProvider === "gemini") {
+    add(looksLikeGeminiKey(value("GEMINI_API_KEY")), "GEMINI_API_KEY looks real");
+    add(Boolean(value("GEMINI_MODEL")), "GEMINI_MODEL is set");
+  }
+  if (aiProvider === "openai") {
+    add(value("OPENAI_API_KEY").startsWith("sk-"), "OPENAI_API_KEY looks real");
+    add(value("OPENAI_IMAGE_DETAIL") === "low", "OpenAI image detail stays low");
+  }
   add(
     value("PICTORY_AI_LOG_RAW_IMAGES") === "false",
     "raw image logging is disabled",
@@ -155,6 +167,14 @@ export function validateProductionEnv(env, { cwd = rootDir } = {}) {
   add(
     value("PICTORY_REWARD_REQUIRE_NATIVE_EVENT") === "true",
     "reward grants require native ad evidence",
+  );
+  add(
+    value("PICTORY_REWARD_UNIT_TYPE") === "ai_credit",
+    "reward unit type is ai_credit",
+  );
+  add(
+    value("PICTORY_AI_AD_CREDIT_QUOTA") === "30",
+    "ad reward AI credit quota is 30",
   );
   add(
     value("PICTORY_SKIP_RUNTIME_ENV_CHECK") !== "true",
@@ -245,6 +265,10 @@ function isPlaceholder(value) {
     value.includes("your-api.example.com") ||
     value.includes("example.com")
   );
+}
+
+function looksLikeGeminiKey(value) {
+  return value.startsWith("AIza") && !isPlaceholder(value) && value.length >= 30;
 }
 
 function isHttpsUrl(value) {

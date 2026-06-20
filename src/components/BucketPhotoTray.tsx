@@ -1,5 +1,5 @@
 import { Archive, Check, Trash2 } from "lucide-react";
-import type { ClassifiedItem } from "../features/album/types";
+import { MAP_BUCKETS, type ClassifiedItem } from "../features/album/types";
 
 interface BucketPhotoTrayProps {
   items: ClassifiedItem[];
@@ -34,7 +34,7 @@ export function BucketPhotoTray({
                 ) : null}
                 {item.privacy === "sensitive" ? <em>민감</em> : null}
               </div>
-              <span>{item.fileName ?? item.categoryId}</span>
+              <span>{getTrayLabel(item)}</span>
               {onSave || onIgnore || onQueue ? (
                 <div className="tray-actions">
                   {onSave ? (
@@ -73,5 +73,12 @@ export function BucketPhotoTray({
         <p className="tray-empty">이 묶음에는 아직 사진이 없어요.</p>
       )}
     </div>
+  );
+}
+
+function getTrayLabel(item: ClassifiedItem) {
+  return (
+    MAP_BUCKETS.find((bucket) => bucket.id === item.categoryId)?.shortLabel ??
+    "사진"
   );
 }

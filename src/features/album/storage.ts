@@ -2,11 +2,12 @@ import { Storage } from "@apps-in-toss/web-framework";
 import type { ClassifiedItem, PersistedPictoryState } from "./types";
 import { currentUsageMonth, normalizeBillingState } from "../billing/plans";
 
-const STORAGE_KEY = "pictory-state-v1";
+const STORAGE_KEY = "pictory:v1";
+const LEGACY_STORAGE_KEY = "pictory-state-v1";
 const MAX_RECENT_ITEMS = 1000;
 const MAX_SCAN_HISTORY = 8;
-const THUMBNAIL_SIZE = 96;
-const MAX_PERSISTED_PREVIEW_BYTES = 40_000;
+const THUMBNAIL_SIZE = 256;
+const MAX_PERSISTED_PREVIEW_BYTES = 100_000;
 
 export const defaultPictoryState: PersistedPictoryState = {
   savedIds: [],
@@ -21,7 +22,9 @@ export const defaultPictoryState: PersistedPictoryState = {
 };
 
 export async function loadPictoryState(): Promise<PersistedPictoryState> {
-  const raw = await getStoredItem(STORAGE_KEY);
+  const raw =
+    (await getStoredItem(STORAGE_KEY)) ??
+    (await getStoredItem(LEGACY_STORAGE_KEY));
   if (raw == null) {
     return defaultPictoryState;
   }
@@ -73,7 +76,9 @@ export async function savePictoryState(state: PersistedPictoryState) {
         ...payload,
         recentItems: payload.recentItems.slice(0, 20).map((item) => ({
           ...item,
-          dataUri: item.privacy === "sensitive" ? redactedDataUri() : "",
+          dataUri: shouldRedactStoredImage(item)
+            ? redactedDataUri()
+            : item.dataUri,
         })),
       }),
     );
@@ -82,6 +87,7 @@ export async function savePictoryState(state: PersistedPictoryState) {
 
 export async function clearPictoryState() {
   await removeStoredItem(STORAGE_KEY);
+  await removeStoredItem(LEGACY_STORAGE_KEY);
 }
 
 export async function prepareRecentItemsForStorage(
@@ -178,28 +184,24 @@ async function prepareRecentItemForStorage(
 }
 
 function shouldRedactStoredImage(item: ClassifiedItem) {
-  return (
-    item.privacy !== "normal" ||
-    item.cleanBucketId === "sensitive" ||
-    item.cleanBucketId === "needsReview" ||
-    item.categoryId === "receipt" ||
-    item.categoryId === "document" ||
-    item.categoryId === "coupon"
-  );
+  return item.privacy === "sensitive" || item.cleanBucketId === "sensitive";
 }
 
 export function sanitizeLoadedRecentItems(items: ClassifiedItem[]) {
-  return items.slice(0, MAX_RECENT_ITEMS).map((item) => {
-    if (shouldRedactStoredImage(item)) {
-      return { ...item, dataUri: redactedDataUri() };
-    }
+  return items
+    .filter((item) => !isInternalQaArtifact(item))
+    .slice(0, MAX_RECENT_ITEMS)
+    .map((item) => {
+      if (shouldRedactStoredImage(item)) {
+        return { ...item, dataUri: redactedDataUri() };
+      }
 
-    if (byteLength(item.dataUri) > MAX_PERSISTED_PREVIEW_BYTES) {
-      return { ...item, dataUri: "" };
-    }
+      if (byteLength(item.dataUri) > MAX_PERSISTED_PREVIEW_BYTES) {
+        return { ...item, dataUri: "" };
+      }
 
-    return item;
-  });
+      return item;
+    });
 }
 
 function thumbnailDataUri(dataUri: string) {
@@ -220,19 +222,21 @@ function thumbnailDataUri(dataUri: string) {
           return;
         }
 
-        const scale = Math.max(
+        const scale = Math.min(
           THUMBNAIL_SIZE / image.naturalWidth,
           THUMBNAIL_SIZE / image.naturalHeight,
         );
-        const width = image.naturalWidth * scale;
-        const height = image.naturalHeight * scale;
+        const width = Math.round(image.naturalWidth * scale);
+        const height = Math.round(image.naturalHeight * scale);
         const x = (THUMBNAIL_SIZE - width) / 2;
         const y = (THUMBNAIL_SIZE - height) / 2;
 
         context.fillStyle = "#eff5ff";
         context.fillRect(0, 0, THUMBNAIL_SIZE, THUMBNAIL_SIZE);
+        context.imageSmoothingEnabled = true;
+        context.imageSmoothingQuality = "high";
         context.drawImage(image, x, y, width, height);
-        resolve(canvas.toDataURL("image/jpeg", 0.62));
+        resolve(canvas.toDataURL("image/jpeg", 0.78));
       } catch {
         resolve("");
       }
@@ -255,6 +259,15 @@ function redactedDataUri() {
   <circle cx="63" cy="34" r="7" fill="#2f80ff"/>
 </svg>
 `)}`;
+}
+
+function isInternalQaArtifact(item: ClassifiedItem) {
+  const fileName = item.fileName?.toLowerCase() ?? "";
+  return (
+    item.source === "local-file" &&
+    (/^\d{2}-(?:home|map|clean|saved).*\.png$/.test(fileName) ||
+      /(?:photo-detail|runtime-qa)/.test(fileName))
+  );
 }
 
 async function getStoredItem(key: string) {

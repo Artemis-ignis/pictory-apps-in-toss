@@ -3,6 +3,7 @@ import type {
   PictoryClassifyEntitlement,
   PictoryClassifyQuota,
   PictoryClassifyQuotaContext,
+  PictoryClassifyQuotaReservation,
   PictoryClassifyRequestContext,
 } from "./pictoryClassify";
 
@@ -22,6 +23,9 @@ export interface PictoryUsageAccount {
   serverAiDailyUsed?: number;
   serverAiRateWindowStartedAt?: string;
   serverAiRateWindowUsed?: number;
+  monthlyRewardCreditsGranted?: number;
+  rewardDailyWindowStartedAt?: string;
+  rewardDailyCreditsGranted?: number;
   grantedRewardIds: string[];
 }
 
@@ -47,6 +51,9 @@ export interface PictoryRewardGrantInput {
   rewardId: string;
   rewardCredits?: number;
   maxCredits?: number;
+  dailyCreditLimit?: number;
+  monthlyCreditLimit?: number;
+  date?: Date;
 }
 
 export interface PictoryPlanSyncInput {
@@ -57,12 +64,18 @@ export interface PictoryPlanSyncInput {
   now?: () => Date;
 }
 
+export interface PictoryUsageRefundOptions {
+  reservation?: PictoryClassifyQuotaReservation;
+}
+
 export const DEFAULT_SERVER_AI_CREDITS = {
   freeMonthlyQuota: 0,
-  rewardCredits: 100,
+  rewardCredits: 30,
   plusMonthlyQuota: 500,
   proMonthlyQuota: 2000,
-  maxStoredCredits: 3000,
+  maxStoredCredits: 300,
+  rewardDailyCreditLimit: 90,
+  rewardMonthlyCreditLimit: 300,
   dailyLimitPerUser: 300,
   dailyGlobalLimit: 5000,
   rateLimitPerMinute: 40,
@@ -165,13 +178,17 @@ export function createPictoryUsageLedgerDeps({
         const date = now();
         const globalAccount = await readGlobalUsageAccount(store, date);
         await store.writeAccount(
-          refundGlobalServerAiQuota(globalAccount, context.itemCount),
+          refundGlobalServerAiQuota(
+            globalAccount,
+            context.quota.reservation?.globalDailyUsed ?? context.itemCount,
+          ),
         );
         await store.writeAccount(
           preserveAccountPlan(
             refundServerAiQuota(
               withEntitlementPlan(normalizeUsageMonth(account, date), context),
               context.itemCount,
+              { reservation: context.quota.reservation },
             ),
             account,
           ),
@@ -192,6 +209,7 @@ export function createNewUsageAccount(
     usageMonth: currentUsageMonth(date),
     monthlyServerAiUsed: 0,
     serverAiCredits: 0,
+    monthlyRewardCreditsGranted: 0,
     grantedRewardIds: [],
   };
 }
@@ -239,20 +257,52 @@ export function grantRewardCredits({
   rewardId,
   rewardCredits = DEFAULT_SERVER_AI_CREDITS.rewardCredits,
   maxCredits = DEFAULT_SERVER_AI_CREDITS.maxStoredCredits,
+  dailyCreditLimit = DEFAULT_SERVER_AI_CREDITS.rewardDailyCreditLimit,
+  monthlyCreditLimit = DEFAULT_SERVER_AI_CREDITS.rewardMonthlyCreditLimit,
+  date = new Date(),
 }: PictoryRewardGrantInput) {
   if (account.grantedRewardIds.includes(rewardId)) {
-    return { account, granted: 0 };
+    return { account, granted: 0, reason: "duplicate" as const };
   }
 
-  const before = account.serverAiCredits;
-  const after = Math.min(maxCredits, before + Math.max(0, rewardCredits));
+  const day = currentDayWindow(date);
+  const dailyGranted =
+    account.rewardDailyWindowStartedAt === day
+      ? account.rewardDailyCreditsGranted ?? 0
+      : 0;
+  const monthlyGranted = account.monthlyRewardCreditsGranted ?? 0;
+  const requested = Math.max(0, rewardCredits);
+  const byStoredCredits = Math.max(0, maxCredits - account.serverAiCredits);
+  const byDailyLimit = Math.max(0, dailyCreditLimit - dailyGranted);
+  const byMonthlyLimit = Math.max(0, monthlyCreditLimit - monthlyGranted);
+  const granted = Math.min(
+    requested,
+    byStoredCredits,
+    byDailyLimit,
+    byMonthlyLimit,
+  );
+  const reason =
+    granted > 0
+      ? "granted"
+      : byStoredCredits <= 0
+        ? "stored_limit"
+        : byDailyLimit <= 0
+          ? "daily_limit"
+          : byMonthlyLimit <= 0
+            ? "monthly_limit"
+            : "granted";
+
   return {
     account: {
       ...account,
-      serverAiCredits: after,
+      serverAiCredits: account.serverAiCredits + granted,
+      monthlyRewardCreditsGranted: monthlyGranted + granted,
+      rewardDailyWindowStartedAt: day,
+      rewardDailyCreditsGranted: dailyGranted + granted,
       grantedRewardIds: [rewardId, ...account.grantedRewardIds].slice(0, 100),
     },
-    granted: after - before,
+    granted,
+    reason,
   };
 }
 
@@ -269,6 +319,7 @@ export function normalizeUsageMonth(
     ...account,
     usageMonth,
     monthlyServerAiUsed: 0,
+    monthlyRewardCreditsGranted: 0,
   };
 }
 
@@ -355,7 +406,13 @@ export function debitServerAiQuota(
 
   return {
     account: rateReservedAccount,
-    quota: toQuota(rateReservedAccount, env, date),
+    quota: {
+      ...toQuota(rateReservedAccount, env, date),
+      reservation: {
+        monthlyUsed: monthlyUse,
+        creditUsed: creditUse,
+      },
+    },
   };
 }
 
@@ -377,17 +434,28 @@ export function debitGlobalServerAiQuota(
 
   return {
     account: nextAccount,
-    quota: toGlobalQuota(nextAccount, env, date),
+    quota: {
+      ...toGlobalQuota(nextAccount, env, date),
+      reservation: {
+        globalDailyUsed: Math.max(0, count),
+      },
+    },
   };
 }
 
 export function refundServerAiQuota(
   account: PictoryUsageAccount,
   count: number,
+  options: PictoryUsageRefundOptions = {},
 ) {
   const requested = Math.max(0, count);
-  const monthlyRefund = Math.min(account.monthlyServerAiUsed, requested);
-  const creditRefund = requested - monthlyRefund;
+  const reservedMonthly = options.reservation?.monthlyUsed;
+  const reservedCredits = options.reservation?.creditUsed;
+  const monthlyRefund = Math.min(
+    account.monthlyServerAiUsed,
+    reservedMonthly ?? requested,
+  );
+  const creditRefund = Math.max(0, reservedCredits ?? requested - monthlyRefund);
 
   return {
     ...account,
@@ -560,6 +628,23 @@ function minQuota(
 ): PictoryClassifyQuota {
   return {
     remaining: Math.min(left.remaining, right.remaining),
+    reservation: mergeQuotaReservations(left.reservation, right.reservation),
+  };
+}
+
+function mergeQuotaReservations(
+  left?: PictoryClassifyQuotaReservation,
+  right?: PictoryClassifyQuotaReservation,
+): PictoryClassifyQuotaReservation | undefined {
+  if (!left && !right) {
+    return undefined;
+  }
+
+  return {
+    monthlyUsed: (left?.monthlyUsed ?? 0) + (right?.monthlyUsed ?? 0),
+    creditUsed: (left?.creditUsed ?? 0) + (right?.creditUsed ?? 0),
+    globalDailyUsed:
+      (left?.globalDailyUsed ?? 0) + (right?.globalDailyUsed ?? 0),
   };
 }
 

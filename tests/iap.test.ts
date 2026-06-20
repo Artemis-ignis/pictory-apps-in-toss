@@ -12,6 +12,11 @@ const env = {
   VITE_PICTORY_PLUS_SUBSCRIPTION_SKU: "pictory.plus.monthly",
   VITE_PICTORY_PRO_SUBSCRIPTION_SKU: "pictory.pro.monthly",
 };
+const verifiedEnv = {
+  ...env,
+  VITE_PICTORY_ENTITLEMENT_ENDPOINT:
+    "https://api.example.com/pictory/entitlement",
+};
 
 function createMockClient(overrides: Partial<IapClient> = {}): IapClient {
   return {
@@ -76,7 +81,13 @@ describe("pictory iap adapter", () => {
   it("grants a plan only after subscription purchase success", async () => {
     await expect(
       purchaseSubscriptionPlan("plus", {
-        env,
+        env: verifiedEnv,
+        fetch: vi.fn(async () =>
+          Response.json({
+            planId: "plus",
+            orderId: "order-plus-1",
+          }),
+        ),
         client: createMockClient(),
         timeoutMs: 100,
       }),
@@ -90,6 +101,19 @@ describe("pictory iap adapter", () => {
     });
   });
 
+  it("does not start paid purchase without an entitlement endpoint", async () => {
+    await expect(
+      purchaseSubscriptionPlan("plus", {
+        env,
+        client: createMockClient(),
+        timeoutMs: 100,
+      }),
+    ).resolves.toMatchObject({
+      status: "unsupported",
+      message: "구독 권한 서버가 아직 설정되지 않았어요.",
+    });
+  });
+
   it("verifies a purchased order with the server before granting the plan", async () => {
     const fetchImpl = vi.fn(async () =>
       Response.json({
@@ -100,11 +124,7 @@ describe("pictory iap adapter", () => {
     );
 
     const result = await purchaseSubscriptionPlan("plus", {
-      env: {
-        ...env,
-        VITE_PICTORY_ENTITLEMENT_ENDPOINT:
-          "https://api.example.com/pictory/entitlement",
-      },
+      env: verifiedEnv,
       fetch: fetchImpl,
       client: createMockClient(),
       timeoutMs: 100,
@@ -133,11 +153,7 @@ describe("pictory iap adapter", () => {
 
   it("fails the grant when server order verification fails", async () => {
     const result = await purchaseSubscriptionPlan("plus", {
-      env: {
-        ...env,
-        VITE_PICTORY_ENTITLEMENT_ENDPOINT:
-          "https://api.example.com/pictory/entitlement",
-      },
+      env: verifiedEnv,
       fetch: vi.fn(async () => Response.json({}, { status: 409 })),
       client: createMockClient(),
       timeoutMs: 100,
@@ -162,7 +178,14 @@ describe("pictory iap adapter", () => {
         },
       },
       {
-        env,
+        env: verifiedEnv,
+        fetch: vi.fn(async () =>
+          Response.json({
+            planId: "plus",
+            orderId: "order-plus-1",
+            subscriptionExpiresAt: "2026-07-15T00:00:00.000Z",
+          }),
+        ),
         client: createMockClient({
           getSubscriptionInfo: async () => ({
             subscription: {
@@ -187,7 +210,13 @@ describe("pictory iap adapter", () => {
 
   it("restores a pending completed payment by sku", async () => {
     const result = await restoreIapEntitlement(defaultPictoryState, {
-      env,
+      env: verifiedEnv,
+      fetch: vi.fn(async () =>
+        Response.json({
+          planId: "pro",
+          orderId: "pending-pro-1",
+        }),
+      ),
       client: createMockClient({
         getPendingOrders: async () => ({
           orders: [

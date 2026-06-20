@@ -5,6 +5,7 @@ const EMPTY_SIGNALS: ImageSignals = {
   height: 1,
   aspectRatio: 1,
   brightness: 0.5,
+  contrast: 0,
   saturation: 0.3,
   edgeDensity: 0,
   textLineScore: 0,
@@ -13,7 +14,9 @@ const EMPTY_SIGNALS: ImageSignals = {
   darkRatio: 0,
   skinToneRatio: 0,
   natureColorRatio: 0,
+  blurVariance: 0,
   perceptualHash: "",
+  differenceHash: "",
 };
 
 export async function analyzeImageSource(
@@ -71,7 +74,17 @@ export async function analyzeImageSource(
     return null;
   }
 
-  return calculateSignals(pixels, sampleWidth, sampleHeight, width, height);
+  const signals = calculateSignals(
+    pixels,
+    sampleWidth,
+    sampleHeight,
+    width,
+    height,
+  );
+  canvas.width = 0;
+  canvas.height = 0;
+  image.src = "";
+  return signals;
 }
 
 export function calculateSignals(
@@ -138,12 +151,16 @@ export function calculateSignals(
   const denseRows = rowEdges.filter(
     (count) => count >= sampleWidth * 0.18,
   ).length;
+  const meanLuma = brightnessTotal / pixelCount;
+  const lumaVariance =
+    lumas.reduce((sum, value) => sum + (value - meanLuma) ** 2, 0) / pixelCount;
 
   return {
     width: originalWidth,
     height: originalHeight,
     aspectRatio: originalWidth / originalHeight,
-    brightness: clamp01(brightnessTotal / pixelCount),
+    brightness: clamp01(meanLuma),
+    contrast: clamp01(Math.sqrt(lumaVariance) * 2),
     saturation: clamp01(saturationTotal / pixelCount),
     edgeDensity: comparisons === 0 ? 0 : clamp01(edgeHits / comparisons),
     textLineScore: clamp01(denseRows / sampleHeight),
@@ -152,7 +169,9 @@ export function calculateSignals(
     darkRatio: clamp01(darkPixels / pixelCount),
     skinToneRatio: clamp01(skinTonePixels / pixelCount),
     natureColorRatio: clamp01(natureColorPixels / pixelCount),
+    blurVariance: buildBlurVariance(lumas, sampleWidth, sampleHeight),
     perceptualHash: buildPerceptualHash(lumas, sampleWidth, sampleHeight),
+    differenceHash: buildDifferenceHash(lumas, sampleWidth, sampleHeight),
   };
 }
 
@@ -200,6 +219,100 @@ function buildPerceptualHash(
 
   const average = cells.reduce((sum, value) => sum + value, 0) / cells.length;
   return cells.map((value) => (value >= average ? "1" : "0")).join("");
+}
+
+function buildDifferenceHash(
+  lumas: number[],
+  sampleWidth: number,
+  sampleHeight: number,
+) {
+  const rows = 8;
+  const cols = 9;
+  const cellWidth = sampleWidth / cols;
+  const cellHeight = sampleHeight / rows;
+  const cells: number[] = [];
+
+  for (let row = 0; row < rows; row += 1) {
+    for (let col = 0; col < cols; col += 1) {
+      cells.push(
+        averageCell(
+          lumas,
+          sampleWidth,
+          sampleHeight,
+          col,
+          row,
+          cellWidth,
+          cellHeight,
+        ),
+      );
+    }
+  }
+
+  const bits: string[] = [];
+  for (let row = 0; row < rows; row += 1) {
+    for (let col = 0; col < cols - 1; col += 1) {
+      const index = row * cols + col;
+      bits.push((cells[index] ?? 0) <= (cells[index + 1] ?? 0) ? "1" : "0");
+    }
+  }
+  return bits.join("");
+}
+
+function buildBlurVariance(
+  lumas: number[],
+  sampleWidth: number,
+  sampleHeight: number,
+) {
+  const values: number[] = [];
+
+  for (let y = 1; y < sampleHeight - 1; y += 1) {
+    for (let x = 1; x < sampleWidth - 1; x += 1) {
+      const center = lumas[y * sampleWidth + x] ?? 0;
+      const laplacian =
+        (lumas[(y - 1) * sampleWidth + x] ?? 0) +
+        (lumas[(y + 1) * sampleWidth + x] ?? 0) +
+        (lumas[y * sampleWidth + x - 1] ?? 0) +
+        (lumas[y * sampleWidth + x + 1] ?? 0) -
+        center * 4;
+      values.push(laplacian);
+    }
+  }
+
+  if (values.length === 0) {
+    return 0;
+  }
+
+  const average = values.reduce((sum, value) => sum + value, 0) / values.length;
+  const variance =
+    values.reduce((sum, value) => sum + (value - average) ** 2, 0) /
+    values.length;
+  return clamp01(variance * 18);
+}
+
+function averageCell(
+  lumas: number[],
+  sampleWidth: number,
+  sampleHeight: number,
+  cellX: number,
+  cellY: number,
+  cellWidth: number,
+  cellHeight: number,
+) {
+  let total = 0;
+  let count = 0;
+  const startX = Math.floor(cellX * cellWidth);
+  const endX = Math.max(startX + 1, Math.floor((cellX + 1) * cellWidth));
+  const startY = Math.floor(cellY * cellHeight);
+  const endY = Math.max(startY + 1, Math.floor((cellY + 1) * cellHeight));
+
+  for (let y = startY; y < Math.min(sampleHeight, endY); y += 1) {
+    for (let x = startX; x < Math.min(sampleWidth, endX); x += 1) {
+      total += lumas[y * sampleWidth + x] ?? 0;
+      count += 1;
+    }
+  }
+
+  return count === 0 ? 0 : total / count;
 }
 
 function clamp01(value: number) {

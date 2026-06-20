@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "appName": "pictory",
+  "source": "https://developers-apps-in-toss.toss.im/development/test/function.md",
+  "notes": [
+    "비게임 앱은 앱 내 기능을 최소 1개 이상 등록해야 한다.",
+    "콘솔에는 한국어 기능 이름, 영어 기능 이름, 이동 URL을 함께 입력한다.",
+    "픽토리는 루트 경로와 tab 쿼리 파라미터로 홈/분류/정리/보관 진입을 지원한다."
+  ],
+  "functions": [
+    {
+      "id": "organize-photos",
+      "koreanName": "사진정리하기",
+      "englishName": "Organize photos",
+      "targetTab": "home",
+      "url": "intoss://pictory/?tab=home"
+    },
+    {
+      "id": "view-photo-map",
+      "koreanName": "분류결과보기",
+      "englishName": "View categories",
+      "targetTab": "map",
+      "url": "intoss://pictory/?tab=map"
+    },
+    {
+      "id": "view-cleanup",
+      "koreanName": "정리후보보기",
+      "englishName": "View cleanup",
+      "targetTab": "clean",
+      "url": "intoss://pictory/?tab=clean"
+    },
+    {
+      "id": "open-archive",
+      "koreanName": "보관함열기",
+      "englishName": "Open archive",
+      "targetTab": "saved",
+      "url": "intoss://pictory/?tab=saved"
+    }
+  ]
+}

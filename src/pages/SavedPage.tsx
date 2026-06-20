@@ -5,7 +5,6 @@ import {
   FileText,
   FolderOpen,
   Heart,
-  MapPin,
   ReceiptText,
   Share2,
   Soup,
@@ -13,6 +12,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { BucketCard } from "../components/BucketCard";
+import { BucketPhotoTray } from "../components/BucketPhotoTray";
 import { Mascot } from "../components/Mascot";
 import { PhotoTile } from "../components/PhotoTile";
 import {
@@ -25,11 +25,13 @@ import type { UsagePlan } from "../features/billing/plans";
 
 interface SavedPageProps {
   savedItems: ClassifiedItem[];
+  recommendedItems: ClassifiedItem[];
   historyEntries: ScanHistoryEntry[];
   plan: UsagePlan;
   selectedBucket: MapBucketId | "all";
   onSelectBucket: (bucket: MapBucketId | "all") => void;
   onOpenPhoto: (id: string) => void;
+  onSave: (id: string) => void;
   onUnsave: (ids: string[]) => void;
   onClear: () => void;
   onShare: () => void;
@@ -40,7 +42,7 @@ const icons: Record<MapBucketId, JSX.Element> = {
   document: <FileText size={20} />,
   receipt: <ReceiptText size={20} />,
   food: <Soup size={20} />,
-  place: <MapPin size={20} />,
+  place: <FolderOpen size={20} />,
   people: <UserRound size={20} />,
   coupon: <ReceiptText size={20} />,
   memory: <Heart size={20} />,
@@ -48,11 +50,13 @@ const icons: Record<MapBucketId, JSX.Element> = {
 
 export function SavedPage({
   savedItems,
+  recommendedItems,
   historyEntries,
   plan,
   selectedBucket,
   onSelectBucket,
   onOpenPhoto,
+  onSave,
   onUnsave,
   onClear,
   onShare,
@@ -138,7 +142,11 @@ export function SavedPage({
       <section className="summary-hero saved-hero">
         <div>
           <p>보관</p>
-          <h1>다시 볼 것만 보관</h1>
+          <h1>
+            다시 볼 것만
+            <br />
+            보관
+          </h1>
           <span>정리 내역도 같이 저장</span>
         </div>
         <Mascot variant="saved" />
@@ -165,13 +173,20 @@ export function SavedPage({
           ))}
         </section>
       ) : (
-        <section className="saved-empty">
-          <Mascot variant="saved" size="empty" />
-          <div>
-            <strong>아직 보관함이 비었어요</strong>
-            <span>지도에서 사진을 눌러 보관하세요.</span>
-          </div>
-        </section>
+        <>
+          <BucketPhotoTray
+            items={recommendedItems}
+            title="보관 추천 사진"
+            onSave={onSave}
+          />
+          <section className="saved-empty">
+            <Mascot variant="empty" size="empty" />
+            <div>
+              <strong>아직 보관함이 비었어요</strong>
+              <span>위 사진을 보관하거나 분류 화면에서 직접 고르세요.</span>
+            </div>
+          </section>
+        </>
       )}
 
       {savedItems.length > 0 ? (
@@ -213,7 +228,7 @@ export function SavedPage({
             <strong>기록 없음</strong>
             <div>
               <b>0장</b>
-              <span>아직 만든 지도 없음</span>
+              <span>아직 정리 기록 없음</span>
             </div>
           </article>
         ) : null}

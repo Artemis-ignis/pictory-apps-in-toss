@@ -33,6 +33,10 @@ export function validatePictoryRuntimeEnv(
     "PICTORY_REWARD_REQUIRE_NATIVE_EVENT must be true.",
   );
   require(
+    value("PICTORY_REWARD_UNIT_TYPE") === "ai_credit",
+    "PICTORY_REWARD_UNIT_TYPE must be ai_credit.",
+  );
+  require(
     value("PICTORY_AI_FREE_MONTHLY_QUOTA") === "0",
     "PICTORY_AI_FREE_MONTHLY_QUOTA must be 0.",
   );
@@ -40,8 +44,27 @@ export function validatePictoryRuntimeEnv(
     value("PICTORY_AI_LOG_RAW_IMAGES") === "false",
     "PICTORY_AI_LOG_RAW_IMAGES must be false.",
   );
-  require(value("OPENAI_API_KEY").startsWith("sk-"), "OPENAI_API_KEY is missing.");
-  require(value("OPENAI_IMAGE_DETAIL") === "low", "OPENAI_IMAGE_DETAIL must be low.");
+  require(
+    value("PICTORY_AI_AD_CREDIT_QUOTA") === "30",
+    "PICTORY_AI_AD_CREDIT_QUOTA must be 30.",
+  );
+
+  const aiProvider = value("PICTORY_AI_PROVIDER").toLowerCase();
+  require(
+    aiProvider === "gemini" || aiProvider === "openai",
+    "PICTORY_AI_PROVIDER must be gemini or openai.",
+  );
+  if (aiProvider === "gemini") {
+    require(
+      looksLikeGeminiKey(value("GEMINI_API_KEY")),
+      "GEMINI_API_KEY is missing.",
+    );
+    require(Boolean(value("GEMINI_MODEL")), "GEMINI_MODEL is required.");
+  }
+  if (aiProvider === "openai") {
+    require(value("OPENAI_API_KEY").startsWith("sk-"), "OPENAI_API_KEY is missing.");
+    require(value("OPENAI_IMAGE_DETAIL") === "low", "OPENAI_IMAGE_DETAIL must be low.");
+  }
 
   for (const key of [
     "PICTORY_AI_AD_CREDIT_QUOTA",
@@ -101,6 +124,10 @@ export class PictoryRuntimeEnvError extends Error {
 
 function isPlaceholder(value: string) {
   return !value || value.startsWith(PLACEHOLDER_PREFIX) || value.includes("example.com");
+}
+
+function looksLikeGeminiKey(value: string) {
+  return value.startsWith("AIza") && !isPlaceholder(value) && value.length >= 30;
 }
 
 function fileHasContent(path: string) {

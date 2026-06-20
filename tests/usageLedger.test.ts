@@ -28,19 +28,70 @@ describe("pictoryUsageLedger", () => {
     const first = grantRewardCredits({
       account: {
         ...createNewUsageAccount("user-1", "free", now()),
-        serverAiCredits: 2950,
+        serverAiCredits: 290,
       },
       rewardId: "ad-event-1",
+      date: now(),
     });
     const second = grantRewardCredits({
       account: first.account,
       rewardId: "ad-event-1",
+      date: now(),
     });
 
-    expect(first.granted).toBe(50);
-    expect(first.account.serverAiCredits).toBe(3000);
+    expect(first.granted).toBe(10);
+    expect(first.account.serverAiCredits).toBe(300);
     expect(second.granted).toBe(0);
-    expect(second.account.serverAiCredits).toBe(3000);
+    expect(second.reason).toBe("duplicate");
+    expect(second.account.serverAiCredits).toBe(300);
+  });
+
+  it("limits ad rewards to three daily grants and 300 monthly credits", () => {
+    let account = createNewUsageAccount("user-1", "free", now());
+
+    for (let index = 1; index <= 3; index += 1) {
+      const reward = grantRewardCredits({
+        account,
+        rewardId: `ad-day-1-${index}`,
+        maxCredits: 1000,
+        date: now(),
+      });
+      account = reward.account;
+      expect(reward.granted).toBe(30);
+    }
+
+    const dailyBlocked = grantRewardCredits({
+      account,
+      rewardId: "ad-day-1-4",
+      maxCredits: 1000,
+      date: now(),
+    });
+    expect(dailyBlocked.granted).toBe(0);
+    expect(dailyBlocked.reason).toBe("daily_limit");
+
+    account = dailyBlocked.account;
+    for (let day = 2; day <= 8; day += 1) {
+      const reward = grantRewardCredits({
+        account,
+        rewardId: `ad-day-${day}-1`,
+        maxCredits: 1000,
+        date: new Date(
+          `2026-06-${String(day + 14).padStart(2, "0")}T00:00:00.000Z`,
+        ),
+      });
+      account = reward.account;
+      expect(reward.granted).toBe(30);
+    }
+
+    expect(account.monthlyRewardCreditsGranted).toBe(300);
+    const monthlyBlocked = grantRewardCredits({
+      account,
+      rewardId: "ad-month-11",
+      maxCredits: 1000,
+      date: new Date("2026-06-23T00:00:00.000Z"),
+    });
+    expect(monthlyBlocked.granted).toBe(0);
+    expect(monthlyBlocked.reason).toBe("monthly_limit");
   });
 
   it("allows server AI for free users only when ad credits exist", () => {
@@ -155,7 +206,8 @@ describe("pictoryUsageLedger", () => {
       entitlement: firstEntitlement!,
       quota: firstQuota!,
     });
-    const secondEntitlement = await secondDeps.verifyEntitlement(requestContext);
+    const secondEntitlement =
+      await secondDeps.verifyEntitlement(requestContext);
     const secondQuota = await secondDeps.verifyQuota({
       ...requestContext,
       entitlement: secondEntitlement!,
@@ -246,6 +298,63 @@ describe("pictoryUsageLedger", () => {
     expect(refunded.monthlyServerAiUsed).toBe(2);
     expect(refunded.serverAiCredits).toBe(2);
     expect(refunded.serverAiDailyUsed).toBe(2);
+  });
+
+  it("refunds mixed monthly quota and ad credits from the exact reservation", async () => {
+    const account = {
+      ...createNewUsageAccount("user-1", "plus", now()),
+      monthlyServerAiUsed: 498,
+      serverAiCredits: 10,
+    };
+    const store = createMemoryStore(account);
+    const deps = createPictoryUsageLedgerDeps({
+      store,
+      env,
+      now,
+      resolveSubjectId: vi.fn(async () => "user-1"),
+    });
+    const requestContext = {
+      schemaVersion: 1 as const,
+      itemCount: 5,
+      headers: {},
+      requestId: "req-mixed-refund",
+    };
+
+    const entitlement = await deps.verifyEntitlement(requestContext);
+    const quota = await deps.verifyQuota({
+      ...requestContext,
+      entitlement: entitlement!,
+    });
+    const reserved = await deps.consumeQuota?.({
+      ...requestContext,
+      entitlement: entitlement!,
+      quota: quota!,
+    });
+
+    expect((await store.readAccount("user-1"))).toMatchObject({
+      monthlyServerAiUsed: 500,
+      serverAiCredits: 7,
+    });
+    expect(reserved?.reservation).toMatchObject({
+      monthlyUsed: 2,
+      creditUsed: 3,
+      globalDailyUsed: 5,
+    });
+
+    await deps.refundQuota?.({
+      ...requestContext,
+      entitlement: entitlement!,
+      quota: reserved!,
+      reason: "classification_failed",
+    });
+
+    expect((await store.readAccount("user-1"))).toMatchObject({
+      monthlyServerAiUsed: 498,
+      serverAiCredits: 10,
+    });
+    expect(
+      (await store.readAccount(GLOBAL_USAGE_SUBJECT_ID))?.serverAiDailyUsed,
+    ).toBe(0);
   });
 
   it("normalizes monthly usage when the month changes", () => {

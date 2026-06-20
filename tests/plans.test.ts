@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canSaveMore,
+  canRequestServerAiRefinement,
   canUseServerAiRefinement,
   consumeScanAllowance,
   getEntitledBillingState,
@@ -33,6 +34,36 @@ describe("usage plans", () => {
 
     expect(consumed.monthlyScanUsed).toBe(40);
     expect(consumed.credits).toBe(13);
+  });
+
+  it("also consumes free user ad credits when server AI is used inside monthly quota", () => {
+    const consumed = consumeScanAllowance(
+      {
+        ...defaultPictoryState,
+        credits: 30,
+        monthlyScanUsed: 0,
+      },
+      20,
+      { serverAiRefinement: true },
+    );
+
+    expect(consumed.monthlyScanUsed).toBe(20);
+    expect(consumed.credits).toBe(10);
+  });
+
+  it("does not double-charge server AI credits already used as scan allowance", () => {
+    const consumed = consumeScanAllowance(
+      {
+        ...defaultPictoryState,
+        credits: 30,
+        monthlyScanUsed: 40,
+      },
+      20,
+      { serverAiRefinement: true },
+    );
+
+    expect(consumed.monthlyScanUsed).toBe(40);
+    expect(consumed.credits).toBe(10);
   });
 
   it("enforces storage limits by plan", () => {
@@ -82,6 +113,37 @@ describe("usage plans", () => {
           credits: 0,
         },
         40,
+      ),
+    ).toBe(true);
+  });
+
+  it("requests server AI only with entitlement and a real production endpoint", () => {
+    expect(
+      canRequestServerAiRefinement(
+        { ...defaultPictoryState, planId: "plus" },
+        10,
+        "https://your-api.example.com/pictory/classify",
+      ),
+    ).toBe(false);
+    expect(
+      canRequestServerAiRefinement(
+        { ...defaultPictoryState, planId: "plus" },
+        10,
+        undefined,
+      ),
+    ).toBe(false);
+    expect(
+      canRequestServerAiRefinement(
+        { ...defaultPictoryState, planId: "free", credits: 2 },
+        10,
+        "https://api.pictory.app/pictory/classify",
+      ),
+    ).toBe(false);
+    expect(
+      canRequestServerAiRefinement(
+        { ...defaultPictoryState, planId: "pro" },
+        10,
+        "https://api.pictory.app/pictory/classify",
       ),
     ).toBe(true);
   });

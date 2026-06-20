@@ -8,6 +8,25 @@ const rootDir = fileURLToPath(new URL("..", import.meta.url));
 const latestOutputPath = join(rootDir, "docs", "release-snapshot.json");
 const archiveDirectory = join(rootDir, "docs", "release-snapshots");
 
+export const requiredReleaseChecks = [
+  "npm run test",
+  "npm run typecheck",
+  "npm run lint",
+  "npm run qa:server",
+  "npm run qa:server:built",
+  "npm run qa:flow",
+  "npm run qa:real-upload",
+  "npm run check:production-env -- --file .env.production",
+  "npm run check:device-evidence -- --file qa-evidence/device-smoke.json",
+  "npm run build",
+  "npm run qa:flow:built",
+  "npm run check:privacy",
+  "npm run check:upload-assets",
+  "npm run check:release",
+  "npm run check:launch",
+  "npm run check:submission",
+];
+
 export function buildReleaseSnapshot({
   git = runGit,
   now = () => new Date(),
@@ -25,18 +44,7 @@ export function buildReleaseSnapshot({
       aitSha256: sha256File(aitPath),
     },
     github: repo,
-    requiredChecks: [
-      "npm run test",
-      "npm run typecheck",
-      "npm run lint",
-      "npm run qa:server",
-      "npm run qa:server:built",
-      "npm run check:production-env -- --file .env.production",
-      "npm run check:device-evidence -- --file qa-evidence/device-smoke.json",
-      "npm run build",
-      "npm run check:privacy",
-      "npm run check:release",
-    ],
+    requiredChecks: requiredReleaseChecks,
   };
 }
 

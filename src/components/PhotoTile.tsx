@@ -23,16 +23,7 @@ export function PhotoTile({
   onIgnore,
 }: PhotoTileProps) {
   const protectedPreview =
-    item.privacy !== "normal" ||
-    item.cleanBucketId === "sensitive" ||
-    item.cleanBucketId === "needsReview" ||
-    item.categoryId === "receipt" ||
-    item.categoryId === "document" ||
-    item.categoryId === "coupon";
-  const maskLabel =
-    item.privacy === "sensitive" || item.cleanBucketId === "sensitive"
-      ? "민감"
-      : "확인";
+    item.privacy === "sensitive" || item.cleanBucketId === "sensitive";
   const statusLabel = getStatusLabel(item.status);
   const title = getPhotoTitle(item);
   const subtitle = getPhotoSubtitle(item);
@@ -54,7 +45,7 @@ export function PhotoTile({
             <img src={item.dataUri} alt={item.fileName ?? "사진"} />
           ) : null}
           {protectedPreview ? (
-            <span className="sensitive-mask">{maskLabel}</span>
+            <span className="sensitive-mask">민감</span>
           ) : null}
         </div>
         <div className="photo-info">
@@ -116,10 +107,10 @@ function getPhotoTitle(item: ClassifiedItem) {
 }
 
 function getPhotoSubtitle(item: ClassifiedItem) {
-  const summary = [item.periodLabel, item.reasons[0]].filter(Boolean);
-  return summary.length > 0
-    ? summary.join(" · ")
-    : (item.fileName?.replace(/^sample-/, "") ?? "사진");
+  const cleanBucket = CLEAN_BUCKETS.find(
+    (bucket) => bucket.id === item.cleanBucketId,
+  );
+  return [item.periodLabel, cleanBucket?.label].filter(Boolean).join(" · ");
 }
 
 function getStatusLabel(status: ClassifiedItem["status"]) {

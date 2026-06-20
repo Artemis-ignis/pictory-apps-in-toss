@@ -47,11 +47,16 @@ describe("release snapshot", () => {
       },
     });
     expect(JSON.stringify(snapshot)).not.toMatch(
-      /OPENAI_API_KEY|PICTORY_SERVER_SECRET|sk-[a-zA-Z0-9]{16,}/,
+      /GEMINI_API_KEY|OPENAI_API_KEY|PICTORY_SERVER_SECRET|AIza[A-Za-z0-9_-]{20,}|sk-[a-zA-Z0-9]{16,}/,
     );
     expect(snapshot.requiredChecks).toContain(
       "npm run check:device-evidence -- --file qa-evidence/device-smoke.json",
     );
+    expect(snapshot.requiredChecks).toContain("npm run qa:flow");
+    expect(snapshot.requiredChecks).toContain("npm run qa:real-upload");
+    expect(snapshot.requiredChecks).toContain("npm run qa:flow:built");
+    expect(snapshot.requiredChecks).toContain("npm run check:launch");
+    expect(snapshot.requiredChecks).toContain("npm run check:submission");
   });
 
   it("writes a latest snapshot and a git-preservable archive snapshot", () => {

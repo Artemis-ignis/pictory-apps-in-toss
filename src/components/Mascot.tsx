@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-type MascotVariant = "home" | "map" | "clean" | "saved";
+type MascotVariant = "home" | "map" | "clean" | "saved" | "empty";
 
 interface MascotProps {
   variant: MascotVariant;
@@ -13,6 +13,7 @@ const mascotSrc: Record<MascotVariant, string> = {
   map: "/pictory-mascot-map.png",
   clean: "/pictory-mascot-clean.png",
   saved: "/pictory-mascot-saved.png",
+  empty: "/pictory-mascot-empty.png",
 };
 
 export function Mascot({ variant, size = "card", children }: MascotProps) {

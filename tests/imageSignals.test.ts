@@ -13,5 +13,8 @@ describe("image signals", () => {
     expect(signals.darkRatio).toBe(0.25);
     expect(signals.skinToneRatio).toBe(0.25);
     expect(signals.natureColorRatio).toBe(0.25);
+    expect(signals.contrast).toBeGreaterThan(0);
+    expect(signals.blurVariance).toBeGreaterThanOrEqual(0);
+    expect(signals.differenceHash).toHaveLength(64);
   });
 });
